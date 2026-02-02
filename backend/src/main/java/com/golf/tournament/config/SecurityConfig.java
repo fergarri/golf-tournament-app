@@ -1,6 +1,7 @@
 package com.golf.tournament.config;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,6 +25,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.List;
 
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -70,16 +72,25 @@ public class SecurityConfig {
         
         // Get allowed origins from environment variable for production flexibility
         String allowedOrigins = System.getenv("ALLOWED_ORIGINS");
+        log.info("CORS Configuration - Raw ALLOWED_ORIGINS: {}", allowedOrigins);
+        
         if (allowedOrigins != null && !allowedOrigins.isEmpty()) {
-            configuration.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+            List<String> origins = Arrays.asList(allowedOrigins.split(","));
+            log.info("CORS Configuration - Parsed origins: {}", origins);
+            configuration.setAllowedOrigins(origins);
         } else {
             // Default to localhost for development
+            log.warn("CORS Configuration - No ALLOWED_ORIGINS set, using default localhost");
             configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost"));
         }
         
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
+        
+        log.info("CORS Configuration - Final allowed origins: {}", configuration.getAllowedOrigins());
+        log.info("CORS Configuration - Allowed methods: {}", configuration.getAllowedMethods());
+        log.info("CORS Configuration - Allow credentials: {}", configuration.getAllowCredentials());
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
