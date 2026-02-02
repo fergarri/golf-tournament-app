@@ -1,0 +1,119 @@
+.holes-manager {
+  min-height: 400px;
+}
+
+.holes-summary {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+}
+
+.holes-summary p {
+  margin: 0;
+  color: #2c3e50;
+}
+
+.warning-message {
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #ffc107;
+}
+
+.holes-table-wrapper {
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.holes-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.holes-table thead {
+  background-color: #2c3e50;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.holes-table th {
+  padding: 0.75rem 0.5rem;
+  text-align: center;
+  font-weight: 600;
+  border: 1px solid #34495e;
+  white-space: nowrap;
+}
+
+.holes-table td {
+  padding: 0.5rem;
+  text-align: center;
+  border: 1px solid #dee2e6;
+}
+
+.holes-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.hole-number {
+  font-weight: 600;
+  background-color: #ecf0f1;
+  color: #2c3e50;
+}
+
+.compact-input,
+.compact-select {
+  width: 80px;
+  padding: 0.4rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+.compact-input:focus,
+.compact-select:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.totals-row {
+  background-color: #e8f5e9;
+  font-weight: bold;
+}
+
+.totals-row td {
+  border-top: 2px solid #27ae60;
+  padding: 0.75rem 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .holes-summary {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .holes-table {
+    font-size: 0.8rem;
+  }
+
+  .holes-table th,
+  .holes-table td {
+    padding: 0.4rem 0.25rem;
+  }
+
+  .compact-input,
+  .compact-select {
+    width: 60px;
+    font-size: 0.8rem;
+  }
+}

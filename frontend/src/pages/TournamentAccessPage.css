@@ -1,0 +1,82 @@
+.tournament-access-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  padding: 1rem;
+}
+
+.access-card {
+  background: white;
+  padding: 2.5rem;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  width: 100%;
+  max-width: 500px;
+}
+
+.tournament-header {
+  text-align: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+.tournament-header h1 {
+  color: #2c3e50;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.8rem;
+}
+
+.tournament-course {
+  color: #27ae60;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.5rem 0;
+}
+
+.tournament-date {
+  color: #7f8c8d;
+  margin: 0.25rem 0 0 0;
+}
+
+.access-form h2 {
+  color: #2c3e50;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.3rem;
+}
+
+.access-instruction {
+  color: #7f8c8d;
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+.tournament-info-footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #ecf0f1;
+  text-align: center;
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.tournament-info-footer p {
+  margin: 0.5rem 0;
+}
+
+.tournament-info-footer strong {
+  color: #2c3e50;
+  font-family: 'Courier New', monospace;
+}
+
+@media (max-width: 768px) {
+  .access-card {
+    padding: 2rem 1.5rem;
+  }
+
+  .tournament-header h1 {
+    font-size: 1.5rem;
+  }
+}

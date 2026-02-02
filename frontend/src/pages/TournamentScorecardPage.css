@@ -1,0 +1,374 @@
+.scorecard-container {
+  min-height: 100vh;
+  background-color: #f5f5f5;
+  padding: 1rem;
+}
+
+.scorecard-header {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.scorecard-header h1 {
+  margin: 0 0 0.5rem 0;
+  color: #2c3e50;
+  font-size: 1.5rem;
+}
+
+.course-name {
+  color: #27ae60;
+  font-weight: 600;
+  margin: 0.25rem 0;
+}
+
+.tournament-date {
+  color: #7f8c8d;
+  margin: 0.25rem 0;
+  font-size: 0.9rem;
+}
+
+.player-matricula {
+  margin: 0.5rem 0 0 0;
+  color: #2c3e50;
+  font-size: 0.95rem;
+}
+
+.auto-save-indicator {
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.auto-save-indicator .saving {
+  color: #f39c12;
+  font-weight: 500;
+}
+
+.auto-save-indicator .saved {
+  color: #27ae60;
+  font-weight: 500;
+}
+
+.auto-save-indicator .auto-save {
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+.delivered-badge {
+  margin-top: 0.75rem;
+  padding: 0.5rem 1rem;
+  background-color: #27ae60;
+  color: white;
+  border-radius: 6px;
+  font-weight: 600;
+  display: inline-block;
+}
+
+.scorecard-wrapper {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1rem;
+}
+
+.scorecard-table-container {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.scorecard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 800px;
+}
+
+.scorecard-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.header-row th {
+  background-color: #27ae60;
+  color: white;
+  padding: 0.75rem 0.4rem;
+  text-align: center;
+  font-weight: 600;
+  border: 1px solid #229954;
+  min-width: 65px;
+}
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background-color: #27ae60;
+  min-width: 80px;
+}
+
+.label-cell {
+  font-weight: 600;
+  text-align: left;
+  padding-left: 1rem !important;
+}
+
+.par-row {
+  background-color: #3498db;
+  color: white;
+  font-weight: 600;
+}
+
+.par-row .sticky-col {
+  background-color: #3498db;
+}
+
+.par-cell {
+  text-align: center;
+  padding: 0.5rem;
+  border: 1px solid #2980b9;
+}
+
+.handicap-row {
+  background-color: #ecf0f1;
+}
+
+.handicap-row .sticky-col {
+  background-color: #ecf0f1;
+  color: #2c3e50;
+}
+
+.hcp-cell {
+  text-align: center;
+  padding: 0.5rem;
+  border: 1px solid #bdc3c7;
+  font-size: 0.85rem;
+}
+
+.score-row td {
+  padding: 0.9rem;
+  border: 1px solid #dee2e6;
+  text-align: center;
+  min-width: 65px;
+}
+
+.player-row {
+  background-color: #fff3cd;
+}
+
+.player-row .sticky-col {
+  background-color: #ffc107;
+  color: #000;
+}
+
+.marker-row {
+  background-color: #f8f9fa;
+}
+
+.marker-row .sticky-col {
+  background-color: #6c757d;
+  color: white;
+}
+
+.score-input {
+  width: 100%;
+  min-width: 50px;
+  max-width: 65px;
+  padding: 0.6rem 0.3rem;
+  border: 2px solid #dee2e6;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.score-input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.score-input.validated {
+  border-color: #27ae60;
+  background-color: #d4edda;
+}
+
+.score-input.mismatch {
+  border-color: #e74c3c;
+  background-color: #f8d7da;
+}
+
+.score-input:disabled {
+  background-color: #ecf0f1;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.total-col,
+.total-cell {
+  background-color: #2c3e50;
+  color: white;
+  font-weight: 700;
+  min-width: 60px;
+}
+
+.score-total {
+  font-size: 1.1rem;
+}
+
+.scorecard-legend {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #2c3e50;
+}
+
+.legend-box {
+  width: 30px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid;
+}
+
+.legend-box.validated {
+  background-color: #d4edda;
+  border-color: #27ae60;
+}
+
+.legend-box.mismatch {
+  background-color: #f8d7da;
+  border-color: #e74c3c;
+}
+
+.scorecard-actions {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.score-summary {
+  display: flex;
+  gap: 2rem;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.summary-item span {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.summary-item strong {
+  color: #2c3e50;
+  font-size: 1.5rem;
+}
+
+.summary-item strong.under-par {
+  color: #27ae60;
+}
+
+.summary-item strong.over-par {
+  color: #e74c3c;
+}
+
+.btn-deliver {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: white;
+  border: none;
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.btn-deliver:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(39, 174, 96, 0.3);
+}
+
+.btn-deliver:disabled {
+  background: linear-gradient(135deg, #95a5a6 0%, #bdc3c7 100%);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.error-card {
+  background: white;
+  padding: 2rem;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  margin: 2rem auto;
+}
+
+@media (max-width: 768px) {
+  .scorecard-table {
+    font-size: 0.85rem;
+    min-width: 650px;
+  }
+
+  .sticky-col {
+    min-width: 70px;
+  }
+
+  .score-input {
+    min-width: 48px;
+    max-width: 58px;
+    padding: 0.55rem 0.3rem;
+    font-size: 1.05rem;
+  }
+
+  .scorecard-header h1 {
+    font-size: 1.2rem;
+  }
+
+  .score-summary {
+    flex-direction: column;
+    gap: 1rem;
+    width: 100%;
+  }
+
+  .scorecard-actions {
+    flex-direction: column;
+  }
+
+  .btn-deliver {
+    width: 100%;
+  }
+
+  .scorecard-legend {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+}

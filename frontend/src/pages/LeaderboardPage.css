@@ -1,0 +1,374 @@
+.leaderboard-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.leaderboard-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.leaderboard-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 0.5rem;
+}
+
+.tournament-info h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.tournament-info .course-name {
+  font-size: 1rem;
+  color: #666;
+}
+
+.category-filter {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+}
+
+.category-filter button {
+  padding: 0.5rem 1.5rem;
+  border: 2px solid #e0e0e0;
+  background-color: white;
+  color: #666;
+  font-size: 0.9rem;
+  font-weight: 500;
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.category-filter button:hover {
+  border-color: #4CAF50;
+  color: #4CAF50;
+}
+
+.category-filter button.active {
+  background-color: #4CAF50;
+  color: white;
+  border-color: #4CAF50;
+}
+
+.loading,
+.error,
+.no-data {
+  text-align: center;
+  padding: 3rem 2rem;
+  font-size: 1.1rem;
+  color: #666;
+}
+
+.error {
+  color: #f44336;
+}
+
+.no-data {
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin-top: 2rem;
+}
+
+.no-data p {
+  margin: 0.5rem 0;
+}
+
+.leaderboard-container {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.leaderboard-table thead {
+  background: linear-gradient(135deg, #2e7d32 0%, #4CAF50 100%);
+  color: white;
+}
+
+.leaderboard-table th {
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.leaderboard-table th:first-child {
+  text-align: center;
+  width: 60px;
+}
+
+.leaderboard-table tbody tr {
+  border-bottom: 1px solid #e0e0e0;
+  transition: background-color 0.2s ease;
+}
+
+.leaderboard-table tbody tr:hover {
+  background-color: #f5f5f5;
+}
+
+.leaderboard-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.leaderboard-table td {
+  padding: 1rem 0.75rem;
+  color: #333;
+}
+
+/* Position styling */
+.position {
+  text-align: center;
+  font-weight: 700;
+}
+
+.position-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background-color: #f5f5f5;
+  color: #666;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+/* Top 3 positions */
+.position-first {
+  background-color: #fff8e1;
+}
+
+.position-first .position-badge {
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  color: white;
+  font-size: 1.1rem;
+  width: 40px;
+  height: 40px;
+}
+
+.position-second {
+  background-color: #f5f5f5;
+}
+
+.position-second .position-badge {
+  background: linear-gradient(135deg, #C0C0C0, #A9A9A9);
+  color: white;
+  font-size: 1rem;
+}
+
+.position-third {
+  background-color: #fff3e0;
+}
+
+.position-third .position-badge {
+  background: linear-gradient(135deg, #CD7F32, #A0522D);
+  color: white;
+  font-size: 1rem;
+}
+
+/* Column specific styling */
+.player-name {
+  font-weight: 600;
+  color: #1a1a1a;
+  font-size: 1rem;
+}
+
+.matricula {
+  color: #666;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+}
+
+.handicap {
+  text-align: center;
+  font-weight: 600;
+  color: #333;
+}
+
+.score-gross,
+.score-neto {
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.score-neto {
+  color: #2e7d32;
+}
+
+.score-to-par {
+  text-align: center;
+}
+
+.score-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.score-badge.even {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.score-badge.under {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.score-badge.over {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.club {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.category {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.update-info {
+  padding: 1rem;
+  text-align: center;
+  background-color: #f5f5f5;
+  border-top: 1px solid #e0e0e0;
+}
+
+.update-info p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.live-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #4CAF50;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 1024px) {
+  .leaderboard-table {
+    font-size: 0.85rem;
+  }
+
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 0.75rem 0.5rem;
+  }
+
+  .position-badge {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+  }
+
+  .position-first .position-badge {
+    width: 36px;
+    height: 36px;
+  }
+}
+
+@media (max-width: 768px) {
+  .leaderboard-page {
+    padding: 1rem;
+  }
+
+  .leaderboard-header h1 {
+    font-size: 2rem;
+  }
+
+  .tournament-info h2 {
+    font-size: 1.2rem;
+  }
+
+  .leaderboard-table {
+    font-size: 0.8rem;
+  }
+
+  .leaderboard-table th,
+  .leaderboard-table td {
+    padding: 0.5rem 0.35rem;
+  }
+
+  .player-name {
+    font-size: 0.9rem;
+  }
+
+  .score-gross,
+  .score-neto {
+    font-size: 1rem;
+  }
+
+  /* Hide club column on mobile */
+  .leaderboard-table th:nth-child(8),
+  .leaderboard-table td:nth-child(8) {
+    display: none;
+  }
+
+  /* Hide category column on mobile when showing all */
+  .leaderboard-table th:nth-child(9),
+  .leaderboard-table td:nth-child(9) {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .category-filter {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .category-filter button {
+    width: 100%;
+  }
+
+  /* Also hide matricula on very small screens */
+  .leaderboard-table th:nth-child(3),
+  .leaderboard-table td:nth-child(3) {
+    display: none;
+  }
+}

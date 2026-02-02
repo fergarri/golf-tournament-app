@@ -1,0 +1,43 @@
+# OS Files
+.DS_Store
+
+# Production environment files - NEVER COMMIT THESE!
+.env.production
+.env.prod
+.env.local
+
+# AWS credentials and keys
+*.pem
+*.ppk
+aws-credentials.txt
+
+# Backup files
+*.sql
+backup/
+backups/
+Thumbs.db
+
+# IDE Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Environment Files
+.env
+.env.local
+.env.production
+.env.prod
+
+# AWS credentials and keys
+*.pem
+*.ppk
+aws-credentials.txt
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
