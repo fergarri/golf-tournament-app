@@ -11,11 +11,12 @@
 *.ppk
 aws-credentials.txt
 
-# Backup files
-*.sql
+# Backup files (pero permitir migraciones de Flyway)
 backup/
 backups/
-Thumbs.db
+/backend/target/**/*.sql
+**/backup*.sql
+**/dump*.sql
 
 # IDE Files
 .idea/
