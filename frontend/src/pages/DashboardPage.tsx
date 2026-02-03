@@ -25,7 +25,7 @@ const DashboardPage = () => {
       const data = await tournamentService.getAll();
       const activeTournaments = data.filter(t => {
         const endDate = t.fechaFin ? new Date(t.fechaFin) : new Date(t.fechaInicio);
-        return endDate >= new Date();
+        return endDate > new Date();
       });
       setTournaments(activeTournaments);
       setError('');
