@@ -5,12 +5,13 @@ import { courseService } from '../services/courseService';
 import { scorecardService } from '../services/scorecardService';
 import { playerService } from '../services/playerService';
 import { Tournament, Hole, Scorecard, Player } from '../types';
+import Modal from '../components/Modal';
 import './TournamentScorecardPage.css';
 
 const TournamentScorecardPage = () => {
   const { codigo } = useParams<{ codigo: string }>();
   const location = useLocation();
-  const { matricula } = location.state || {};
+  const { matricula, handicapCourse } = location.state || {};
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [holes, setHoles] = useState<Hole[]>([]);
@@ -22,6 +23,19 @@ const TournamentScorecardPage = () => {
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   
+  // Modal states
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalConfig, setModalConfig] = useState<{
+    title: string;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  }>({
+    title: '',
+    message: '',
+    type: 'info',
+  });
+  
   // Para evitar múltiples guardados simultáneos
   const saveTimeoutRef = useRef<number | null>(null);
 
@@ -31,8 +45,13 @@ const TournamentScorecardPage = () => {
       setLoading(false);
       return;
     }
+    if (!handicapCourse) {
+      setError('Invalid access. Please enter your handicap course.');
+      setLoading(false);
+      return;
+    }
     loadData();
-  }, [codigo, matricula]);
+  }, [codigo, matricula, handicapCourse]);
 
   // Auto-guardar en localStorage cuando cambian los scores
   useEffect(() => {
@@ -76,7 +95,7 @@ const TournamentScorecardPage = () => {
       // Cargar o crear scorecard del backend
       let scorecardData: Scorecard | null = null;
       try {
-        scorecardData = await scorecardService.getOrCreate(tournamentData.id, playerData.id);
+        scorecardData = await scorecardService.getOrCreate(tournamentData.id, playerData.id, handicapCourse);
         setScorecard(scorecardData);
       } catch (err) {
         console.error('Error loading scorecard:', err);
@@ -179,13 +198,59 @@ const TournamentScorecardPage = () => {
     return holes.reduce((sum, hole) => sum + hole.par, 0);
   };
 
-  const handleDeliverScorecard = async () => {
-    if (!scorecard) {
-      alert('Scorecard not loaded. Please try refreshing the page.');
-      return;
-    }
+  const getScoreNeto = () => {
+    const totalPropio = getTotalScore('propio');
+    if (!totalPropio || !scorecard?.handicapCourse) return null;
+    return totalPropio - scorecard.handicapCourse;
+  };
 
-    if (!confirm('Are you sure you want to deliver your scorecard? You will not be able to edit it after delivery.')) {
+  const showModal = (
+    title: string,
+    message: string,
+    type: 'info' | 'success' | 'warning' | 'error' | 'confirm',
+    onConfirm?: () => void
+  ) => {
+    setModalConfig({ title, message, type, onConfirm });
+    setModalOpen(true);
+  };
+
+  const deliverScorecardAction = async () => {
+    try {
+      setLoading(true);
+      await scorecardService.deliverScorecard(scorecard!.id);
+      
+      // Limpiar localStorage
+      if (tournament) {
+        const storageKey = `scorecard_${tournament.id}_${matricula}`;
+        localStorage.removeItem(storageKey);
+      }
+      
+      showModal(
+        'Exitos!',
+        'Tarjeta enviada correctamente!',
+        'success'
+      );
+      
+      // Recargar para ver el estado actualizado
+      await loadData();
+    } catch (err: any) {
+      showModal(
+        'Error',
+        err.response?.data?.message || 'Error delivering scorecard. Please try again.',
+        'error'
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeliverScorecard = () => {
+    if (!scorecard) {
+      showModal(
+        'Error',
+        'Scorecard not loaded. Please try refreshing the page.',
+        'error'
+      );
       return;
     }
 
@@ -194,28 +259,20 @@ const TournamentScorecardPage = () => {
     );
 
     if (!hasAllScores) {
-      alert('Please complete all holes before delivering the scorecard');
+      showModal(
+        'Tarjeta incompleta',
+        'Por favor complete todos los hoyos antes de enviar su tarjeta',
+        'warning'
+      );
       return;
     }
 
-    try {
-      setLoading(true);
-      await scorecardService.deliverScorecard(scorecard.id);
-      
-      // Limpiar localStorage
-      if (tournament) {
-        const storageKey = `scorecard_${tournament.id}_${matricula}`;
-        localStorage.removeItem(storageKey);
-      }
-      
-      alert('Scorecard delivered successfully!');
-      // Recargar para ver el estado actualizado
-      await loadData();
-    } catch (err: any) {
-      alert(err.response?.data?.message || 'Error delivering scorecard. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    showModal(
+      'Confirmar Envío',
+      '¿Seguro que desea enviar su tarjeta? No podrá editarla después de la entrega.',
+      'confirm',
+      deliverScorecardAction
+    );
   };
 
   if (loading) {
@@ -240,6 +297,7 @@ const TournamentScorecardPage = () => {
   const totalPropio = getTotalScore('propio');
   const totalMarcador = getTotalScore('marcador');
   const totalPar = getTotalPar();
+  const scoreNeto = getScoreNeto();
 
   return (
     <div className="scorecard-container">
@@ -250,6 +308,9 @@ const TournamentScorecardPage = () => {
         <p className="player-matricula">
           Registration: <strong>{matricula}</strong>
           {player && <span> - {player.nombre} {player.apellido}</span>}
+        </p>
+        <p className="player-matricula">
+          Handicap Course: <strong>{handicapCourse}</strong>
         </p>
         {scorecard?.delivered && (
           <div className="delivered-badge">
@@ -278,7 +339,8 @@ const TournamentScorecardPage = () => {
                 {holes.map((hole) => (
                   <th key={hole.numeroHoyo}>{hole.numeroHoyo}</th>
                 ))}
-                <th className="total-col">OUT</th>
+                <th className="total-col">GROSS</th>
+                <th className="total-col">NETO</th>
               </tr>
             </thead>
             <tbody>
@@ -288,12 +350,14 @@ const TournamentScorecardPage = () => {
                   <td key={hole.numeroHoyo} className="par-cell">{hole.par}</td>
                 ))}
                 <td className="total-cell">{totalPar}</td>
+                <td className="total-cell"></td>
               </tr>
               <tr className="handicap-row">
                 <td className="sticky-col label-cell">HCP</td>
                 {holes.map((hole) => (
                   <td key={hole.numeroHoyo} className="hcp-cell">{hole.handicap}</td>
                 ))}
+                <td></td>
                 <td></td>
               </tr>
               <tr className="score-row player-row">
@@ -313,6 +377,9 @@ const TournamentScorecardPage = () => {
                   </td>
                 ))}
                 <td className="total-cell score-total">{totalPropio || '-'}</td>
+                <td className="total-cell score-total neto-cell">
+                  {getScoreNeto() !== null ? getScoreNeto() : '-'}
+                </td>
               </tr>
               <tr className="score-row marker-row">
                 <td className="sticky-col label-cell marker-label">MARKER</td>
@@ -331,6 +398,7 @@ const TournamentScorecardPage = () => {
                   </td>
                 ))}
                 <td className="total-cell score-total">{totalMarcador || '-'}</td>
+                <td></td>
               </tr>
             </tbody>
           </table>
@@ -340,13 +408,17 @@ const TournamentScorecardPage = () => {
       <div className="scorecard-actions">
         <div className="score-summary">
           <div className="summary-item">
-            <span>Your Score:</span>
+            <span>Score Gross:</span>
             <strong>{totalPropio || '-'}</strong>
           </div>
           <div className="summary-item">
+            <span>Score Neto:</span>
+            <strong className="neto-score">{getScoreNeto() !== null ? getScoreNeto() : '-'}</strong>
+          </div>
+          <div className="summary-item">
             <span>To Par:</span>
-            <strong className={totalPropio > totalPar ? 'over-par' : totalPropio < totalPar ? 'under-par' : ''}>
-              {totalPropio ? (totalPropio === totalPar ? 'E' : totalPropio > totalPar ? `+${totalPropio - totalPar}` : `${totalPropio - totalPar}`) : '-'}
+            <strong className={scoreNeto !== null && scoreNeto > totalPar ? 'over-par' : scoreNeto !== null && scoreNeto < totalPar ? 'under-par' : ''}>
+              {scoreNeto !== null ? (scoreNeto === totalPar ? 'E' : scoreNeto > totalPar ? `+${scoreNeto - totalPar}` : `${scoreNeto - totalPar}`) : '-'}
             </strong>
           </div>
         </div>
@@ -358,6 +430,17 @@ const TournamentScorecardPage = () => {
           {scorecard?.delivered ? 'Already Delivered' : 'Deliver Scorecard'}
         </button>
       </div>
+
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        confirmText={modalConfig.type === 'confirm' ? 'Si, Enviar' : 'OK'}
+        cancelText="Cancelar"
+      />
     </div>
   );
 };

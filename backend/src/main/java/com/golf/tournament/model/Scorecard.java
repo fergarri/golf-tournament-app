@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,9 @@ public class Scorecard {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "marker_id")
     private Player marker;
+
+    @Column(name = "handicap_course", precision = 4, scale = 2)
+    private BigDecimal handicapCourse;
 
     @Column(nullable = false)
     @Builder.Default

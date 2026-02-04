@@ -10,6 +10,7 @@ const TournamentAccessPage = () => {
   const navigate = useNavigate();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [matricula, setMatricula] = useState('');
+  const [handicapCourse, setHandicapCourse] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -39,6 +40,17 @@ const TournamentAccessPage = () => {
       return;
     }
 
+    if (!handicapCourse.trim()) {
+      setError('Please enter your handicap course');
+      return;
+    }
+
+    const handicapValue = parseFloat(handicapCourse);
+    if (isNaN(handicapValue) || handicapValue < 0 || handicapValue > 54) {
+      setError('Handicap course must be a number between 0 and 54');
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError('');
@@ -46,7 +58,7 @@ const TournamentAccessPage = () => {
       await playerService.getByMatricula(matricula);
       
       navigate(`/play/${codigo}/scorecard`, {
-        state: { matricula },
+        state: { matricula, handicapCourse: handicapValue },
       });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Player not found or not inscribed in this tournament');
@@ -103,6 +115,21 @@ const TournamentAccessPage = () => {
                 placeholder="Enter your registration number"
                 required
                 autoFocus
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="handicapCourse">Handicap Course</label>
+              <input
+                id="handicapCourse"
+                type="number"
+                step="0.01"
+                min="0"
+                max="54"
+                value={handicapCourse}
+                onChange={(e) => setHandicapCourse(e.target.value)}
+                placeholder="Enter your handicap course (e.g., 18.50)"
+                required
               />
             </div>
 

@@ -15,6 +15,19 @@ const DashboardPage = () => {
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const navigate = useNavigate();
 
+  // Modal states
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalConfig, setModalConfig] = useState<{
+    title: string;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  }>({
+    title: '',
+    message: '',
+    type: 'info',
+  });
+
   useEffect(() => {
     loadTournaments();
   }, []);
@@ -23,9 +36,11 @@ const DashboardPage = () => {
     try {
       setLoading(true);
       const data = await tournamentService.getAll();
+      const todayMidnight = new Date();
       const activeTournaments = data.filter(t => {
-        const endDate = t.fechaFin ? new Date(t.fechaFin) : new Date(t.fechaInicio);
-        return endDate > new Date();
+        const endDate = t.fechaFin ? new Date(t.fechaFin + 'T00:00:00') : new Date(t.fechaInicio + 'T00:00:00');
+        todayMidnight.setHours(0, 0, 0, 0);
+        return endDate >= todayMidnight;
       });
       setTournaments(activeTournaments);
       setError('');
@@ -51,10 +66,17 @@ const DashboardPage = () => {
     navigate(`/tournaments/${tournament.id}/leaderboard`);
   };
 
-  const handleFinalizeTournament = async (tournament: Tournament) => {
-    if (!confirm(`Are you sure you want to finalize ${tournament.nombre}? This will close the tournament.`)) {
-      return;
-    }
+  const showModal = (
+    title: string,
+    message: string,
+    type: 'info' | 'success' | 'warning' | 'error' | 'confirm',
+    onConfirm?: () => void
+  ) => {
+    setModalConfig({ title, message, type, onConfirm });
+    setModalOpen(true);
+  };
+
+  const finalizeTournamentAction = async (tournament: Tournament) => {
     try {
       await tournamentService.finalize(tournament.id);
       loadTournaments();
@@ -64,9 +86,22 @@ const DashboardPage = () => {
     }
   };
 
+  const handleFinalizeTournament = (tournament: Tournament) => {
+    showModal(
+      'Finalize Tournament',
+      `Are you sure you want to finalize ${tournament.nombre}? This will close the tournament.`,
+      'confirm',
+      () => finalizeTournamentAction(tournament)
+    );
+  };
+
   const copyLink = (link: string) => {
     navigator.clipboard.writeText(link);
-    alert('Link copied to clipboard!');
+    showModal(
+      'Success',
+      'Link copied to clipboard!',
+      'success'
+    );
   };
 
   const getPlayLink = (codigo: string) => {
@@ -244,6 +279,17 @@ const DashboardPage = () => {
           </div>
         </Modal>
       )}
+
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onConfirm={modalConfig.onConfirm}
+        title={modalConfig.title}
+        message={modalConfig.message}
+        type={modalConfig.type}
+        confirmText={modalConfig.type === 'confirm' ? 'Yes, Finalize' : 'OK'}
+        cancelText="Cancel"
+      />
     </div>
   );
 };

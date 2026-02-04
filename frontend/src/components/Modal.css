@@ -4,40 +4,48 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-  overflow-y: auto;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.2s ease-out;
 }
 
-.modal-content {
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-container {
   background: white;
-  border-radius: 12px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-  animation: modalSlideIn 0.2s ease-out;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  max-width: 450px;
+  width: 90%;
+  animation: slideUp 0.3s ease-out;
 }
 
-.modal-small {
-  max-width: 400px;
+.modal-container.modal-small {
+  max-width: 450px;
 }
 
-.modal-medium {
+.modal-container.modal-medium {
   max-width: 600px;
 }
 
-.modal-large {
+.modal-container.modal-large {
   max-width: 900px;
 }
 
-@keyframes modalSlideIn {
+@keyframes slideUp {
   from {
-    transform: translateY(-50px);
+    transform: translateY(20px);
     opacity: 0;
   }
   to {
@@ -46,56 +54,146 @@
   }
 }
 
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem 2rem;
-  border-bottom: 1px solid #dee2e6;
+.modal-content {
+  padding: 2rem;
+  text-align: center;
 }
 
-.modal-header h2 {
-  margin: 0;
-  color: #2c3e50;
-  font-size: 1.5rem;
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 2rem;
-  color: #7f8c8d;
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
+.modal-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 1.5rem;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
-  transition: background-color 0.2s;
 }
 
-.modal-close:hover {
-  background-color: #f8f9fa;
+.modal-icon svg {
+  width: 36px;
+  height: 36px;
+  stroke-width: 2.5;
+}
+
+.modal-icon.success {
+  background-color: #d4edda;
+  color: #27ae60;
+}
+
+.modal-icon.error {
+  background-color: #f8d7da;
+  color: #e74c3c;
+}
+
+.modal-icon.warning {
+  background-color: #fff3cd;
+  color: #f39c12;
+}
+
+.modal-icon.confirm {
+  background-color: #d1ecf1;
+  color: #3498db;
+}
+
+.modal-icon.info {
+  background-color: #e3f2fd;
+  color: #2196f3;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
   color: #2c3e50;
+  margin: 0 0 1rem 0;
+}
+
+.modal-message {
+  font-size: 1rem;
+  color: #5a6c7d;
+  line-height: 1.6;
+  margin: 0 0 2rem 0;
 }
 
 .modal-body {
-  padding: 2rem;
+  margin-top: 1rem;
 }
 
-@media (max-width: 768px) {
+.modal-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.modal-btn {
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 120px;
+}
+
+.modal-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.modal-btn:active {
+  transform: translateY(0);
+}
+
+.modal-btn-cancel {
+  background-color: #ecf0f1;
+  color: #5a6c7d;
+}
+
+.modal-btn-cancel:hover {
+  background-color: #dfe6e9;
+}
+
+.modal-btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.modal-btn-primary:hover {
+  background: linear-gradient(135deg, #5568d3 0%, #653a8e 100%);
+}
+
+.modal-btn-primary.confirm {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+}
+
+.modal-btn-primary.confirm:hover {
+  background: linear-gradient(135deg, #2980b9 0%, #1f6ca1 100%);
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .modal-container {
+    width: 95%;
+    margin: 1rem;
+  }
+
   .modal-content {
-    max-width: 100%;
-    max-height: 95vh;
-  }
-
-  .modal-header {
-    padding: 1rem 1.5rem;
-  }
-
-  .modal-body {
     padding: 1.5rem;
+  }
+
+  .modal-title {
+    font-size: 1.25rem;
+  }
+
+  .modal-message {
+    font-size: 0.95rem;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+  }
+
+  .modal-btn {
+    width: 100%;
   }
 }

@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://54.146.206.114:8080/api';
+import api from './api';
 
 export interface Country {
   id: number;
@@ -16,12 +14,12 @@ export interface Province {
 
 export const locationService = {
   async getCountries(): Promise<Country[]> {
-    const response = await axios.get(`${API_BASE_URL}/locations/countries`);
+    const response = await api.get('/locations/countries');
     return response.data;
   },
 
   async getProvincesByCountry(countryId: number): Promise<Province[]> {
-    const response = await axios.get(`${API_BASE_URL}/locations/countries/${countryId}/provinces`);
+    const response = await api.get(`/locations/countries/${countryId}/provinces`);
     return response.data;
   },
 };

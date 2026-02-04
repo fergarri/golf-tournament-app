@@ -18,9 +18,10 @@ export interface UpdateScorecardRequest {
 }
 
 export const scorecardService = {
-  getOrCreate: async (tournamentId: number, playerId: number): Promise<Scorecard> => {
-    const response = await api.get<Scorecard>(
-      `/scorecards/tournaments/${tournamentId}/players/${playerId}`
+  getOrCreate: async (tournamentId: number, playerId: number, handicapCourse: number): Promise<Scorecard> => {
+    const response = await api.post<Scorecard>(
+      `/scorecards/tournaments/${tournamentId}/players/${playerId}`,
+      { handicapCourse }
     );
     return response.data;
   },

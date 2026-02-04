@@ -1,5 +1,6 @@
 package com.golf.tournament.controller;
 
+import com.golf.tournament.dto.scorecard.CreateScorecardRequest;
 import com.golf.tournament.dto.scorecard.ScorecardDTO;
 import com.golf.tournament.dto.scorecard.UpdateScoreRequest;
 import com.golf.tournament.dto.scorecard.UpdateScorecardRequest;
@@ -30,11 +31,12 @@ public class ScorecardController {
         return ResponseEntity.ok(scorecardService.getTournamentScorecards(tournamentId));
     }
 
-    @GetMapping("/tournaments/{tournamentId}/players/{playerId}")
+    @PostMapping("/tournaments/{tournamentId}/players/{playerId}")
     public ResponseEntity<ScorecardDTO> getOrCreateScorecard(
             @PathVariable Long tournamentId,
-            @PathVariable Long playerId) {
-        return ResponseEntity.ok(scorecardService.getOrCreateScorecard(tournamentId, playerId));
+            @PathVariable Long playerId,
+            @Valid @RequestBody CreateScorecardRequest request) {
+        return ResponseEntity.ok(scorecardService.getOrCreateScorecard(tournamentId, playerId, request.getHandicapCourse()));
     }
 
     @PatchMapping("/{scorecardId}/marker/{markerId}")

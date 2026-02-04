@@ -29,7 +29,7 @@ public class ScorecardService {
     private final TournamentInscriptionRepository inscriptionRepository;
 
     @Transactional
-    public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId) {
+    public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId, java.math.BigDecimal handicapCourse) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
 
@@ -41,7 +41,14 @@ public class ScorecardService {
         }
 
         Scorecard scorecard = scorecardRepository.findByTournamentIdAndPlayerId(tournamentId, playerId)
-                .orElseGet(() -> createNewScorecard(tournament, player));
+                .orElseGet(() -> createNewScorecard(tournament, player, handicapCourse));
+
+        // Update handicap course if it's different and scorecard not delivered
+        if (scorecard.getHandicapCourse() == null || 
+            (!scorecard.getDelivered() && !scorecard.getHandicapCourse().equals(handicapCourse))) {
+            scorecard.setHandicapCourse(handicapCourse);
+            scorecard = scorecardRepository.save(scorecard);
+        }
 
         return convertToDTO(scorecard);
     }
@@ -136,7 +143,7 @@ public class ScorecardService {
 
         List<HoleScore> allScores = holeScoreRepository.findByScorecardId(scorecardId);
         if (allScores.isEmpty()) {
-            throw new BadRequestException("Cannot deliver scorecard without any scores");
+            throw new BadRequestException("No se puede enviar la tarjeta sin ninguna puntuación");
         }
 
         // Verify all player scores are filled (golpes_propio is not null for all holes)
@@ -144,7 +151,7 @@ public class ScorecardService {
                 .allMatch(hs -> hs.getGolpesPropio() != null);
         
         if (!allPlayerScoresFilled) {
-            throw new BadRequestException("Cannot deliver scorecard with incomplete player scores");
+            throw new BadRequestException("No se puede enviar la tarjeta con hoyos incompletos");
         }
 
         scorecard.setDelivered(true);
@@ -169,10 +176,11 @@ public class ScorecardService {
         return convertToDTO(scorecard);
     }
 
-    private Scorecard createNewScorecard(Tournament tournament, Player player) {
+    private Scorecard createNewScorecard(Tournament tournament, Player player, java.math.BigDecimal handicapCourse) {
         Scorecard scorecard = Scorecard.builder()
                 .tournament(tournament)
                 .player(player)
+                .handicapCourse(handicapCourse)
                 .delivered(false)
                 .build();
 
@@ -187,7 +195,8 @@ public class ScorecardService {
             holeScoreRepository.save(holeScore);
         }
 
-        log.info("New scorecard created for tournament {} player {}", tournament.getId(), player.getId());
+        log.info("New scorecard created for tournament {} player {} with handicap course {}", 
+                tournament.getId(), player.getId(), handicapCourse);
         return scorecard;
     }
 
@@ -213,6 +222,7 @@ public class ScorecardService {
                 .markerId(scorecard.getMarker() != null ? scorecard.getMarker().getId() : null)
                 .markerName(scorecard.getMarker() != null ?
                         scorecard.getMarker().getNombre() + " " + scorecard.getMarker().getApellido() : null)
+                .handicapCourse(scorecard.getHandicapCourse())
                 .delivered(scorecard.getDelivered())
                 .deliveredAt(scorecard.getDeliveredAt())
                 .holeScores(holeScores)

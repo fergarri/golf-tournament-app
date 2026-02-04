@@ -114,6 +114,7 @@ export interface Scorecard {
   playerName: string;
   markerId?: number;
   markerName?: string;
+  handicapCourse?: number;
   delivered: boolean;
   deliveredAt?: string;
   holeScores: HoleScore[];

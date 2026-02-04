@@ -62,8 +62,10 @@ public class LeaderboardService {
                     .sum();
 
             // Calculate score neto (gross - handicap course)
-            BigDecimal handicapInt = inscription.getPlayer().getHandicapIndex();
-            BigDecimal scoreNeto = BigDecimal.valueOf(totalScore).subtract(handicapInt);
+            // Use handicap_course from scorecard instead of handicap_index from player
+            BigDecimal handicapCourse = scorecard.getHandicapCourse() != null ? 
+                    scorecard.getHandicapCourse() : BigDecimal.ZERO;
+            BigDecimal scoreNeto = BigDecimal.valueOf(totalScore).subtract(handicapCourse);
 
             BigDecimal scoreToPar = scoreNeto.subtract(BigDecimal.valueOf(totalPar));
 
@@ -78,7 +80,7 @@ public class LeaderboardService {
                     .scoreNeto(scoreNeto)
                     .totalPar(totalPar)
                     .scoreToPar(scoreToPar)
-                    .handicapCourse(handicapInt)
+                    .handicapCourse(handicapCourse)
                     .build();
 
             entries.add(entry);

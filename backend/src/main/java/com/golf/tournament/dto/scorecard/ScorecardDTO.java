@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,6 +21,7 @@ public class ScorecardDTO {
     private String playerName;
     private Long markerId;
     private String markerName;
+    private BigDecimal handicapCourse;
     private Boolean delivered;
     private LocalDateTime deliveredAt;
     private List<HoleScoreDTO> holeScores;
