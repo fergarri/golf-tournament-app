@@ -304,7 +304,7 @@ const TournamentScorecardPage = () => {
       <div className="scorecard-header">
         <h1>{tournament.nombre}</h1>
         <p className="course-name">{tournament.courseName}</p>
-        <p className="tournament-date">{new Date(tournament.fechaInicio).toLocaleDateString()}</p>
+        <p className="tournament-date">{new Date(tournament.fechaInicio + "T00:00:00").toLocaleDateString("es-AR", {day: "2-digit", month: "2-digit", year: "numeric",})}</p>
         <p className="player-matricula">
           Registration: <strong>{matricula}</strong>
           {player && <span> - {player.nombre} {player.apellido}</span>}
