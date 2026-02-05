@@ -34,7 +34,7 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
       const teesData = await courseService.getTees(course.id);
       setTees(teesData);
     } catch (err) {
-      console.error('Error loading tees:', err);
+      console.error('Error cargando tees:', err);
     } finally {
       setLoading(false);
     }
@@ -66,7 +66,7 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
       setShowForm(false);
       loadTees();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error saving tee');
+      alert(err.response?.data?.message || 'Error guardando tee');
     }
   };
 
@@ -76,20 +76,20 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
   };
 
   const handleDeactivate = async (tee: CourseTee) => {
-    if (!confirm(`Are you sure you want to deactivate ${tee.nombre}?`)) return;
+    if (!confirm(`¿Estás seguro de querer desactivar ${tee.nombre}?`)) return;
     try {
       await courseService.deactivateTee(tee.id);
       loadTees();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error deactivating tee');
+      alert(err.response?.data?.message || 'Error desactivando tee');
     }
   };
 
   const columns = [
-    { header: 'Tee Name', accessor: 'nombre' as keyof CourseTee },
+    { header: 'Nombre del Tee', accessor: 'nombre' as keyof CourseTee },
     { header: 'Group/Color', accessor: (row: CourseTee) => row.grupo || '-' },
     {
-      header: 'Status',
+      header: 'Estado',
       accessor: (row: CourseTee) => (
         <span className={row.active ? 'status-active' : 'status-inactive'}>
           {row.active ? 'Active' : 'Inactive'}
@@ -101,11 +101,11 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
   const customActions = (tee: CourseTee) => (
     <>
       <button onClick={() => handleEdit(tee)} className="btn-edit">
-        Edit
+        Editar
       </button>
       {tee.active && (
         <button onClick={() => handleDeactivate(tee)} className="btn btn-danger" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}>
-          Deactivate
+          Desactivar
         </button>
       )}
     </>
@@ -116,47 +116,47 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
       <div style={{ minHeight: '400px' }}>
         <div style={{ marginBottom: '1.5rem' }}>
           <button onClick={handleCreate} className="btn btn-primary">
-            Add New Tee
+            Agregar Nuevo Tee
           </button>
         </div>
 
         {loading ? (
-          <div className="loading">Loading tees...</div>
+          <div className="loading">Cargando tees...</div>
         ) : (
-          <Table data={tees} columns={columns} customActions={customActions} emptyMessage="No tees configured. Add your first tee." />
+          <Table data={tees} columns={columns} customActions={customActions} emptyMessage="No hay tees configurados. Agrega tu primer tee." />
         )}
 
         {showForm && (
           <div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-            <h3 style={{ marginTop: 0 }}>{editingTee ? 'Edit Tee' : 'Add New Tee'}</h3>
+            <h3 style={{ marginTop: 0 }}>{editingTee ? 'Editar Tee' : 'Agregar Nuevo Tee'}</h3>
             <form onSubmit={handleSubmit}>
               <div className="form-row">
                 <div className="form-group">
-                  <label>Tee Name *</label>
+                  <label>Nombre del Tee *</label>
                   <input
                     type="text"
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    placeholder="e.g., White, Red, Blue, Championship"
+                    placeholder="e.g., Blanco, Rojo, Azul, Campeonato"
                     required
                   />
                 </div>
                 <div className="form-group">
-                  <label>Group/Color (optional)</label>
+                  <label>Grupo/Color (opcional)</label>
                   <input
                     type="text"
                     value={formData.grupo}
                     onChange={(e) => setFormData({ ...formData, grupo: e.target.value })}
-                    placeholder="e.g., White, Red"
+                    placeholder="e.g., Blanco, Rojo"
                   />
                 </div>
               </div>
               <div className="form-actions" style={{ marginTop: '1rem', borderTop: 'none', paddingTop: 0 }}>
                 <button type="button" onClick={() => setShowForm(false)} className="btn btn-cancel">
-                  Cancel
+                  Cancelar
                 </button>
                 <button type="submit" className="btn btn-primary">
-                  {editingTee ? 'Update Tee' : 'Add Tee'}
+                  {editingTee ? 'Actualizar Tee' : 'Agregar Tee'}
                 </button>
               </div>
             </form>

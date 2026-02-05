@@ -29,6 +29,17 @@ textarea {
   font-family: inherit;
 }
 
+/* Remove number input arrows/spinners globally */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 .loading {
   text-align: center;
   padding: 2rem;

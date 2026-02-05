@@ -189,17 +189,21 @@ const TournamentsPage = () => {
   const selectedCourse = courses.find((c) => c.id === parseInt(formData.courseId));
 
   const columns = [
-    { header: 'Name', accessor: 'nombre' as keyof Tournament },
-    { header: 'Code', accessor: 'codigo' as keyof Tournament },
-    { header: 'Course', accessor: 'courseName' as keyof Tournament },
-    { header: 'Type', accessor: 'tipo' as keyof Tournament },
-    { header: 'Start Date', accessor: (row: Tournament) => new Date(row.fechaInicio).toLocaleDateString() },
-    { header: 'Inscribed', accessor: (row: Tournament) => `${row.currentInscriptos}${row.limiteInscriptos ? `/${row.limiteInscriptos}` : ''}` },
+    { header: 'Nombre', accessor: 'nombre' as keyof Tournament },
+    { header: 'Código', accessor: 'codigo' as keyof Tournament },
+    { header: 'Campo', accessor: 'courseName' as keyof Tournament },
+    { header: 'Tipo', accessor: 'tipo' as keyof Tournament },
+    { header: 'Fecha Inicio', accessor: (row: Tournament) => new Date(row.fechaInicio).toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    }) },
+    { header: 'Inscriptos', accessor: (row: Tournament) => `${row.currentInscriptos}${row.limiteInscriptos ? `/${row.limiteInscriptos}` : ''}` },
     { 
-      header: 'Status', 
+      header: 'Estado', 
       accessor: (row: Tournament) => (
         <span className={`status-badge status-${row.estado?.toLowerCase()}`}>
-          {row.estado || 'PENDING'}
+          {row.estado || 'PENDIENTE'}
         </span>
       ),
     },
@@ -255,9 +259,9 @@ const TournamentsPage = () => {
   return (
     <div>
       <div className="page-header">
-        <h1>Tournaments</h1>
+        <h1>Torneos</h1>
         <button onClick={handleCreate} className="btn btn-primary">
-          Create Tournament
+          Crear Torneo
         </button>
       </div>
 
@@ -268,12 +272,12 @@ const TournamentsPage = () => {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editingTournament ? 'Edit Tournament' : 'Create Tournament'}
+        title={editingTournament ? 'Editar Torneo' : 'Crear Torneo'}
         size="large"
       >
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Tournament Name *</label>
+            <label>Nombre del Torneo *</label>
             <input
               type="text"
               value={formData.nombre}
@@ -284,18 +288,18 @@ const TournamentsPage = () => {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Type *</label>
+              <label>Tipo *</label>
               <select
                 value={formData.tipo}
                 onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
                 required
               >
-                <option value="CLASICO">Classic</option>
-                <option value="ANUAL">Annual</option>
+                <option value="CLASICO">Clásico</option>
+                <option value="ANUAL">Anual</option>
               </select>
             </div>
             <div className="form-group">
-              <label>Scoring Modality *</label>
+              <label>Modalidad de Puntuación *</label>
               <select
                 value={formData.modalidad}
                 onChange={(e) => setFormData({ ...formData, modalidad: e.target.value })}
@@ -307,16 +311,16 @@ const TournamentsPage = () => {
           </div>
 
           <div className="form-group">
-            <label>Golf Course *</label>
+            <label>Campo de Golf *</label>
             <select
               value={formData.courseId}
               onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
               required
             >
-              <option value="">Select a course</option>
+              <option value="">Seleccionar un campo</option>
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>
-                  {course.nombre} ({course.cantidadHoyos} holes)
+                  {course.nombre} ({course.cantidadHoyos} hoyos)
                 </option>
               ))}
             </select>
@@ -325,7 +329,7 @@ const TournamentsPage = () => {
           {selectedCourse && selectedCourse.tees && selectedCourse.tees.length > 0 && (
             <div className="form-row">
               <div className="form-group">
-                <label>Tee for First 9 Holes *</label>
+                <label>Tee para los primeros 9 hoyos *</label>
                 <select
                   value={formData.teeConfig.courseTeeIdPrimeros9}
                   onChange={(e) =>
@@ -336,7 +340,7 @@ const TournamentsPage = () => {
                   }
                   required
                 >
-                  <option value="">Select tee</option>
+                  <option value="">Seleccionar tee</option>
                   {selectedCourse.tees
                     .filter((tee) => tee.active)
                     .map((tee) => (
@@ -347,7 +351,7 @@ const TournamentsPage = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label>Tee for Second 9 Holes</label>
+                <label>Tee para los segundos 9 hoyos</label>
                 <select
                   value={formData.teeConfig.courseTeeIdSegundos9}
                   onChange={(e) =>
@@ -357,7 +361,7 @@ const TournamentsPage = () => {
                     })
                   }
                 >
-                  <option value="">Same as first 9</option>
+                  <option value="">Igual que los primeros 9</option>
                   {selectedCourse.tees
                     .filter((tee) => tee.active)
                     .map((tee) => (
@@ -372,7 +376,7 @@ const TournamentsPage = () => {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Start Date *</label>
+              <label>Fecha de Inicio *</label>
               <input
                 type="date"
                 value={formData.fechaInicio}
@@ -381,7 +385,7 @@ const TournamentsPage = () => {
               />
             </div>
             <div className="form-group">
-              <label>End Date</label>
+              <label>Fecha de Fin</label>
               <input
                 type="date"
                 value={formData.fechaFin}
@@ -391,22 +395,22 @@ const TournamentsPage = () => {
           </div>
 
           <div className="form-group">
-            <label>Maximum Inscriptions</label>
+            <label>Máximo de Inscriptos</label>
             <input
               type="number"
               value={formData.limiteInscriptos}
               onChange={(e) => setFormData({ ...formData, limiteInscriptos: e.target.value })}
-              placeholder="Leave empty for unlimited"
+              placeholder="Dejar vacío para ilimitado"
             />
           </div>
 
           <div className="form-group">
-            <label>Categories</label>
+            <label>Categorías</label>
             {formData.categories.map((category: TournamentCategory, index: number) => (
               <div key={index} className="category-row" style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <input
                   type="text"
-                  placeholder="Category name"
+                  placeholder="Nombre de la categoría"
                   value={category.nombre}
                   onChange={(e) => updateCategory(index, 'nombre', e.target.value)}
                   required
@@ -415,7 +419,7 @@ const TournamentsPage = () => {
                 <input
                   type="number"
                   step="0.1"
-                  placeholder="Min"
+                  placeholder="Mínimo"
                   value={category.handicapMin}
                   onChange={(e) => updateCategory(index, 'handicapMin', parseFloat(e.target.value))}
                   required
@@ -424,7 +428,7 @@ const TournamentsPage = () => {
                 <input
                   type="number"
                   step="0.1"
-                  placeholder="Max"
+                  placeholder="Máximo"
                   value={category.handicapMax}
                   onChange={(e) => updateCategory(index, 'handicapMax', parseFloat(e.target.value))}
                   required
@@ -437,22 +441,22 @@ const TournamentsPage = () => {
                     className="btn btn-danger"
                     style={{ padding: '0.75rem' }}
                   >
-                    Remove
+                    Eliminar
                   </button>
                 )}
               </div>
             ))}
             <button type="button" onClick={addCategory} className="btn btn-secondary" style={{ marginTop: '0.5rem' }}>
-              Add Category
+              Agregar Categoría
             </button>
           </div>
 
           <div className="form-actions">
             <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
-              Cancel
+              Cancelar
             </button>
             <button type="submit" className="btn btn-primary">
-              {editingTournament ? 'Update' : 'Create'}
+              {editingTournament ? 'Actualizar' : 'Crear'}
             </button>
           </div>
         </form>
@@ -465,7 +469,7 @@ const TournamentsPage = () => {
             setShowCreatedModal(false);
             setCreatedTournament(null);
           }}
-          title="Tournament Created Successfully"
+          title="Torneo Creado Exitosamente"
           size="medium"
         >
           <div style={{ textAlign: 'center' }}>
@@ -474,13 +478,13 @@ const TournamentsPage = () => {
               {createdTournament.nombre}
             </h3>
             <p style={{ color: '#7f8c8d', marginBottom: '1.5rem' }}>
-              Tournament Code: <strong style={{ color: '#2c3e50', fontFamily: 'monospace', fontSize: '1.2rem' }}>{createdTournament.codigo}</strong>
+              Código del Torneo: <strong style={{ color: '#2c3e50', fontFamily: 'monospace', fontSize: '1.2rem' }}>{createdTournament.codigo}</strong>
             </p>
             
             <div style={{ marginBottom: '2rem' }}>
-              <h4 style={{ marginBottom: '0.5rem', color: '#2c3e50' }}>Inscription Link</h4>
+              <h4 style={{ marginBottom: '0.5rem', color: '#2c3e50' }}>Link de Inscripción</h4>
               <p style={{ color: '#7f8c8d', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                Share this link with players to inscribe:
+                Comparte este link con los jugadores para inscribirse:
               </p>
               <div style={{ backgroundColor: '#f8f9fa', padding: '1rem', borderRadius: '6px', marginBottom: '0.5rem', wordBreak: 'break-all' }}>
                 <code style={{ fontSize: '0.9rem', color: '#2c3e50' }}>
@@ -491,7 +495,7 @@ const TournamentsPage = () => {
                 onClick={() => copyLink(getInscriptionLink(createdTournament.codigo))} 
                 className="btn btn-secondary"
               >
-                Copy Inscription Link
+                Copiar Link de Inscripción
               </button>
             </div>
           </div>
@@ -505,7 +509,7 @@ const TournamentsPage = () => {
             setShowLinkModal(false);
             setSelectedTournamentForLink(null);
           }}
-          title="Tournament Started"
+          title="Torneo Iniciado"
           size="medium"
         >
           <div style={{ textAlign: 'center' }}>
@@ -513,10 +517,10 @@ const TournamentsPage = () => {
               ✓
             </div>
             <h3 style={{ marginBottom: '1rem', color: '#2c3e50' }}>
-              {selectedTournamentForLink.nombre} is now active!
+              {selectedTournamentForLink.nombre} está ahora activo!
             </h3>
             <p style={{ color: '#7f8c8d', marginBottom: '1.5rem' }}>
-              Share this link with players so they can access their scorecards:
+              Comparte este link con los jugadores para que puedan acceder a sus tarjetas de puntuación:
             </p>
             <div style={{ 
               backgroundColor: '#f8f9fa', 
@@ -534,10 +538,10 @@ const TournamentsPage = () => {
               className="btn btn-primary"
               style={{ marginBottom: '1rem' }}
             >
-              Copy Link to Clipboard
+              Copiar Link al Portapapeles
             </button>
             <p style={{ color: '#7f8c8d', fontSize: '0.9rem' }}>
-              Players will need to enter their registration number to access their scorecard
+              Los jugadores necesitarán ingresar su número de matrícula para acceder a su tarjeta de puntuación
             </p>
           </div>
         </Modal>

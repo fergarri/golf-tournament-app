@@ -48,7 +48,7 @@ function Table<T>({
                 {column.header}
               </th>
             ))}
-            {(onEdit || onDelete || customActions) && <th style={{ width: '180px' }}>Actions</th>}
+            {(onEdit || onDelete || customActions) && <th style={{ width: '180px' }}>Acciones</th>}
           </tr>
         </thead>
         <tbody>
@@ -73,12 +73,12 @@ function Table<T>({
                         <>
                           {onEdit && (
                             <button onClick={() => onEdit(row)} className="btn-edit">
-                              Edit
+                              Editar
                             </button>
                           )}
                           {onDelete && (
                             <button onClick={() => onDelete(row)} className="btn-delete">
-                              Delete
+                              Eliminar
                             </button>
                           )}
                         </>

@@ -80,36 +80,36 @@ const PlayersPage = () => {
       setShowModal(false);
       loadPlayers();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error saving player');
+      setError(err.response?.data?.message || 'Error guardando jugador');
     }
   };
 
   const handleDelete = async (player: Player) => {
-    if (!confirm(`Are you sure you want to delete ${player.nombre} ${player.apellido}?`)) return;
+    if (!confirm(`¿Estás seguro de querer eliminar ${player.nombre} ${player.apellido}?`)) return;
     try {
       await playerService.delete(player.id);
       loadPlayers();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error deleting player');
+      setError(err.response?.data?.message || 'Error eliminando jugador');
     }
   };
 
   const columns = [
-    { header: 'Name', accessor: (row: Player) => `${row.nombre} ${row.apellido}` },
-    { header: 'Registration', accessor: 'matricula' as keyof Player },
+    { header: 'Nombre', accessor: (row: Player) => `${row.nombre} ${row.apellido}` },
+    { header: 'Matricula', accessor: 'matricula' as keyof Player },
     { header: 'Handicap', accessor: 'handicapIndex' as keyof Player },
     { header: 'Club', accessor: 'clubOrigen' as keyof Player },
     { header: 'Email', accessor: 'email' as keyof Player },
   ];
 
-  if (loading) return <div className="loading">Loading players...</div>;
+  if (loading) return <div className="loading">Cargando jugadores...</div>;
 
   return (
     <div>
       <div className="page-header">
-        <h1>Players</h1>
+        <h1>Jugadores</h1>
         <button onClick={handleCreate} className="btn btn-primary">
-          Create Player
+          Crear Jugador
         </button>
       </div>
 
@@ -120,12 +120,12 @@ const PlayersPage = () => {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editingPlayer ? 'Edit Player' : 'Create Player'}
+        title={editingPlayer ? 'Editar Jugador' : 'Crear Jugador'}
       >
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="form-group">
-              <label>First Name *</label>
+              <label>Nombre *</label>
               <input
                 type="text"
                 value={formData.nombre}
@@ -134,7 +134,7 @@ const PlayersPage = () => {
               />
             </div>
             <div className="form-group">
-              <label>Last Name *</label>
+              <label>Apellido *</label>
               <input
                 type="text"
                 value={formData.apellido}
@@ -146,7 +146,7 @@ const PlayersPage = () => {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Registration Number *</label>
+              <label>Matricula *</label>
               <input
                 type="text"
                 value={formData.matricula}
@@ -176,7 +176,7 @@ const PlayersPage = () => {
               />
             </div>
             <div className="form-group">
-              <label>Phone</label>
+              <label>Teléfono</label>
               <input
                 type="tel"
                 value={formData.telefono}
@@ -187,7 +187,7 @@ const PlayersPage = () => {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Birth Date</label>
+              <label>Fecha de Nacimiento</label>
               <input
                 type="date"
                 value={formData.fechaNacimiento}
@@ -206,10 +206,10 @@ const PlayersPage = () => {
 
           <div className="form-actions">
             <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
-              Cancel
+              Cancelar
             </button>
             <button type="submit" className="btn btn-primary">
-              {editingPlayer ? 'Update' : 'Create'}
+              {editingPlayer ? 'Actualizar' : 'Crear'}
             </button>
           </div>
         </form>

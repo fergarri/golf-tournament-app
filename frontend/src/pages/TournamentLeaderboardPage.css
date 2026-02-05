@@ -238,6 +238,12 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.modal-overlay * {
+  box-sizing: border-box;
 }
 
 .modal-content {
@@ -248,7 +254,14 @@
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.modal-content.scorecard-modal {
+  max-width: 95%;
+  width: 90%;
+  min-width: 850px;
 }
 
 .modal-header {
@@ -263,6 +276,13 @@
   margin: 0;
   color: #2c3e50;
   font-size: 1.5rem;
+}
+
+.scorecard-info {
+  margin: 0.5rem 0 0 0;
+  color: #7f8c8d;
+  font-size: 0.9rem;
+  font-weight: normal;
 }
 
 .modal-close {
@@ -287,49 +307,144 @@
 }
 
 .modal-body {
-  padding: 1.5rem;
+  padding: 1rem;
   overflow-y: auto;
   flex: 1;
 }
 
-.scores-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1rem;
+.scorecard-table-wrapper {
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
-.score-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+.modal-scorecard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 750px;
 }
 
-.score-item label {
-  font-size: 0.9rem;
-  color: #2c3e50;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.par-info {
-  font-size: 0.75rem;
-  color: #7f8c8d;
-  font-weight: normal;
-}
-
-.score-input {
-  padding: 0.5rem;
-  border: 2px solid #e0e0e0;
-  border-radius: 6px;
-  font-size: 1rem;
+.scorecard-header-row th {
+  background-color: #27ae60;
+  color: white;
+  padding: 0.75rem 0.3rem;
   text-align: center;
+  font-weight: 600;
+  border: 1px solid #229954;
+  min-width: 45px;
+}
+
+.scorecard-sticky-col {
+  position: sticky;
+  left: 0;
+  z-index: 20;
+  background-color: #27ae60;
+  min-width: 80px !important;
+  text-align: left !important;
+  padding-left: 1rem !important;
+}
+
+.scorecard-label {
+  font-weight: 600;
+  text-align: left;
+  padding-left: 1rem !important;
+}
+
+.scorecard-par-row {
+  background-color: #3498db;
+  color: white;
+  font-weight: 600;
+}
+
+.scorecard-par-row .scorecard-sticky-col {
+  background-color: #3498db;
+}
+
+.scorecard-par-cell {
+  text-align: center;
+  padding: 0.6rem 0.3rem;
+  border: 1px solid #2980b9;
+}
+
+.scorecard-hcp-row {
+  background-color: #ecf0f1;
+}
+
+.scorecard-hcp-row .scorecard-sticky-col {
+  background-color: #ecf0f1;
+  color: #2c3e50;
+}
+
+.scorecard-hcp-cell {
+  text-align: center;
+  padding: 0.6rem 0.3rem;
+  border: 1px solid #bdc3c7;
+  font-size: 0.8rem;
+  color: #7f8c8d;
+}
+
+.scorecard-score-row {
+  background-color: #fff3cd;
+}
+
+.scorecard-score-row .scorecard-sticky-col {
+  background-color: #ffc107;
+  color: #000;
+}
+
+.scorecard-player-label {
+  font-weight: 700;
+}
+
+.scorecard-input-cell {
+  padding: 0.5rem 0.2rem;
+  border: 1px solid #dee2e6;
+  text-align: center;
+}
+
+.scorecard-score-input {
+  width: 100%;
+  min-width: 42px;
+  max-width: 50px;
+  padding: 0.5rem 0.2rem;
+  border: 2px solid #dee2e6;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 700;
   transition: border-color 0.2s;
 }
 
-.score-input:focus {
+.scorecard-score-input:focus {
   outline: none;
-  border-color: #2196F3;
+  border-color: #3498db;
+  background-color: #e8f4f8;
+}
+
+/* Remove number input arrows/spinners */
+.scorecard-score-input::-webkit-inner-spin-button,
+.scorecard-score-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.scorecard-score-input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.scorecard-total-col,
+.scorecard-total-cell {
+  background-color: #2c3e50;
+  color: white;
+  font-weight: 700;
+  min-width: 60px !important;
+  text-align: center !important;
+  padding: 0.6rem 0.3rem;
+}
+
+.scorecard-score-total {
+  font-size: 1.1rem;
+  font-weight: 700;
 }
 
 .modal-footer {
@@ -402,5 +517,39 @@
 
   .category-select {
     width: 100%;
+  }
+
+  .modal-content.scorecard-modal {
+    min-width: 100%;
+    max-width: 100%;
+  }
+
+  .modal-scorecard-table {
+    font-size: 0.75rem;
+    min-width: 650px;
+  }
+
+  .scorecard-header-row th {
+    padding: 0.6rem 0.2rem;
+    min-width: 38px;
+  }
+
+  .scorecard-sticky-col {
+    min-width: 65px !important;
+  }
+
+  .scorecard-score-input {
+    min-width: 38px;
+    max-width: 42px;
+    padding: 0.4rem 0.1rem;
+    font-size: 0.9rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .scorecard-info {
+    font-size: 0.8rem;
   }
 }

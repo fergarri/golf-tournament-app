@@ -42,7 +42,7 @@ const CoursesPage = () => {
       setCourses(data);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error loading courses');
+      setError(err.response?.data?.message || 'Error cargando campos de golf');
     } finally {
       setLoading(false);
     }
@@ -54,7 +54,7 @@ const CoursesPage = () => {
       const data = await locationService.getCountries();
       setCountries(data);
     } catch (err: any) {
-      console.error('Error loading countries:', err);
+      console.error('Error cargando países:', err);
     } finally {
       setLoadingCountries(false);
     }
@@ -66,7 +66,7 @@ const CoursesPage = () => {
       const data = await locationService.getProvincesByCountry(countryId);
       setProvinces(data);
     } catch (err: any) {
-      console.error('Error loading provinces:', err);
+      console.error('Error cargando provincias:', err);
       setProvinces([]);
     } finally {
       setLoadingProvinces(false);
@@ -148,17 +148,17 @@ const CoursesPage = () => {
       setShowModal(false);
       loadCourses();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error saving course');
+      setError(err.response?.data?.message || 'Error guardando campo de golf');
     }
   };
 
   const handleDelete = async (course: Course) => {
-    if (!confirm(`Are you sure you want to delete ${course.nombre}?`)) return;
+    if (!confirm(`¿Estás seguro de querer eliminar ${course.nombre}?`)) return;
     try {
       await courseService.delete(course.id);
       loadCourses();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error deleting course');
+      setError(err.response?.data?.message || 'Error eliminando campo de golf');
     }
   };
 
@@ -178,38 +178,38 @@ const CoursesPage = () => {
   };
 
   const columns = [
-    { header: 'Name', accessor: 'nombre' as keyof Course },
-    { header: 'Location', accessor: (row: Course) => `${row.ciudad || ''}, ${row.provincia || ''}, ${row.pais}` },
-    { header: 'Holes', accessor: 'cantidadHoyos' as keyof Course },
-    { header: 'Rating', accessor: (row: Course) => row.courseRating || '-' },
+    { header: 'Nombre', accessor: 'nombre' as keyof Course },
+    { header: 'Ubicación', accessor: (row: Course) => `${row.ciudad || ''}, ${row.provincia || ''}, ${row.pais}` },
+    { header: 'Hoyos', accessor: 'cantidadHoyos' as keyof Course },
+    { header: 'Puntuación', accessor: (row: Course) => row.courseRating || '-' },
     { header: 'Slope', accessor: (row: Course) => row.slopeRating || '-' },
   ];
 
   const customActions = (course: Course) => (
     <>
       <button onClick={() => handleEdit(course)} className="btn-edit">
-        Edit
+        Editar
       </button>
       <button onClick={() => handleManageTees(course)} className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#9b59b6' }}>
-        Manage Tees
+        Gestionar Tees
       </button>
       <button onClick={() => handleManageHoles(course)} className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}>
-        Manage Holes
+        Gestionar Hoyos
       </button>
       <button onClick={() => handleDelete(course)} className="btn-delete">
-        Delete
+        Eliminar
       </button>
     </>
   );
 
-  if (loading) return <div className="loading">Loading courses...</div>;
+  if (loading) return <div className="loading">Cargando campos de golf...</div>;
 
   return (
     <div>
       <div className="page-header">
-        <h1>Golf Courses</h1>
+        <h1>Campos de Golf</h1>
         <button onClick={handleCreate} className="btn btn-primary">
-          Create Course
+          Crear Campo de Golf
         </button>
       </div>
 
@@ -220,11 +220,11 @@ const CoursesPage = () => {
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
-        title={editingCourse ? 'Edit Course' : 'Create Course'}
+        title={editingCourse ? 'Editar Campo de Golf' : 'Crear Campo de Golf'}
       >
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label>Course Name *</label>
+            <label>Nombre del Campo de Golf *</label>
             <input
               type="text"
               value={formData.nombre}
@@ -235,7 +235,7 @@ const CoursesPage = () => {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Country *</label>
+              <label>País *</label>
               <select
                 value={selectedCountryId || ''}
                 onChange={(e) => handleCountryChange(e.target.value)}
@@ -243,7 +243,7 @@ const CoursesPage = () => {
                 disabled={loadingCountries}
               >
                 <option value="">
-                  {loadingCountries ? 'Loading...' : 'Select a country'}
+                  {loadingCountries ? 'Cargando...' : 'Seleccionar un país'}
                 </option>
                 {countries.map((country) => (
                   <option key={country.id} value={country.id}>
@@ -253,14 +253,14 @@ const CoursesPage = () => {
               </select>
             </div>
             <div className="form-group">
-              <label>Province/State</label>
+              <label>Provincia/Estado</label>
               <select
                 value={formData.provincia || ''}
                 onChange={(e) => handleProvinceChange(e.target.value)}
                 disabled={!selectedCountryId || loadingProvinces}
               >
                 <option value="">
-                  {loadingProvinces ? 'Loading...' : selectedCountryId ? 'Select a province' : 'Select a country first'}
+                  {loadingProvinces ? 'Cargando...' : selectedCountryId ? 'Seleccionar una provincia' : 'Seleccionar un país primero'}
                 </option>
                 {provinces.map((province) => (
                   <option key={province.id} value={province.nombre}>
@@ -273,7 +273,7 @@ const CoursesPage = () => {
 
           <div className="form-row">
             <div className="form-group">
-              <label>City</label>
+              <label>Ciudad</label>
               <input
                 type="text"
                 value={formData.ciudad}
@@ -281,21 +281,21 @@ const CoursesPage = () => {
               />
             </div>
             <div className="form-group">
-              <label>Number of Holes *</label>
+              <label>Cantidad de Hoyos *</label>
               <select
                 value={formData.cantidadHoyos}
                 onChange={(e) => setFormData({ ...formData, cantidadHoyos: parseInt(e.target.value) })}
                 required
               >
-                <option value={9}>9 Holes</option>
-                <option value={18}>18 Holes</option>
+                <option value={9}>9 Hoyos</option>
+                <option value={18}>18 Hoyos</option>
               </select>
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label>Course Rating</label>
+              <label>Handicap Course</label>
               <input
                 type="number"
                 step="0.1"
@@ -315,10 +315,10 @@ const CoursesPage = () => {
 
           <div className="form-actions">
             <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
-              Cancel
+              Cancelar
             </button>
             <button type="submit" className="btn btn-primary">
-              {editingCourse ? 'Update' : 'Create'}
+              {editingCourse ? 'Actualizar' : 'Crear'}
             </button>
           </div>
         </form>

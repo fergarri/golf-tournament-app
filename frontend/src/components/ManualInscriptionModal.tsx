@@ -96,25 +96,25 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Inscribe Players - ${tournament.nombre}`} size="large">
+    <Modal isOpen={isOpen} onClose={onClose} title={`Inscribir Jugadores - ${tournament.nombre}`} size="large">
       <div className="manual-inscription">
         {loading ? (
-          <div className="loading">Loading players...</div>
+          <div className="loading">Cargando jugadores...</div>
         ) : (
           <>
             <div className="inscription-header">
               <div className="search-box">
                 <input
                   type="text"
-                  placeholder="Search players by name or registration..."
+                  placeholder="Buscar jugadores por nombre o matrícula..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="search-input"
                 />
               </div>
               <div className="inscription-stats">
-                <p><strong>Available players:</strong> {availablePlayers.length}</p>
-                <p><strong>Selected:</strong> {selectedPlayers.size}</p>
+                <p><strong>Jugadores disponibles:</strong> {availablePlayers.length}</p>
+                <p><strong>Seleccionados:</strong> {selectedPlayers.size}</p>
               </div>
             </div>
 
@@ -122,8 +122,8 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
 
             {filteredPlayers.length === 0 ? (
               <div className="empty-state">
-                <p>No players available for inscription</p>
-                {searchQuery && <p>Try a different search term</p>}
+                <p>No hay jugadores disponibles para inscripción</p>
+                {searchQuery && <p>Intenta con un término de búsqueda diferente</p>}
               </div>
             ) : (
               <>
@@ -134,7 +134,7 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
                       checked={selectedPlayers.size === filteredPlayers.length && filteredPlayers.length > 0}
                       onChange={toggleAll}
                     />
-                    <span>Select All ({filteredPlayers.length})</span>
+                    <span>Seleccionar Todos ({filteredPlayers.length})</span>
                   </label>
                 </div>
 
@@ -166,7 +166,7 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
 
             <div className="form-actions">
               <button type="button" onClick={onClose} className="btn btn-cancel" disabled={saving}>
-                Cancel
+                Cancelar
               </button>
               <button 
                 type="button" 
@@ -174,7 +174,7 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
                 className="btn btn-primary" 
                 disabled={saving || selectedPlayers.size === 0}
               >
-                {saving ? 'Inscribing...' : `Inscribe ${selectedPlayers.size} Player(s)`}
+                {saving ? 'Inscribiendo...' : `Inscribir ${selectedPlayers.size} Jugador(es)`}
               </button>
             </div>
           </>

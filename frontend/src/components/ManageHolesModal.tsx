@@ -82,10 +82,10 @@ const ManageHolesModal = ({ isOpen, onClose, course, onSave }: ManageHolesModalP
       for (const hole of holes) {
         await courseService.saveHole(course.id, hole);
       }
-      alert('Holes configuration saved successfully');
+      alert('Configuración de hoyos guardada correctamente');
       onSave();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error saving holes');
+      alert(err.response?.data?.message || 'Error guardando hoyos');
     } finally {
       setSaving(false);
     }
@@ -96,7 +96,7 @@ const ManageHolesModal = ({ isOpen, onClose, course, onSave }: ManageHolesModalP
   if (loading) {
     return (
       <Modal isOpen={isOpen} onClose={onClose} title={`Manage Holes - ${course?.nombre}`} size="large">
-        <div className="loading">Loading holes...</div>
+        <div className="loading">Cargando hoyos...</div>
       </Modal>
     );
   }
@@ -106,19 +106,19 @@ const ManageHolesModal = ({ isOpen, onClose, course, onSave }: ManageHolesModalP
       <div className="holes-manager">
         <div className="holes-summary">
           <p>
-            <strong>Total Holes:</strong> {course?.cantidadHoyos}
+            <strong>Total Hoyos:</strong> {course?.cantidadHoyos}
           </p>
           <p>
             <strong>Total Par:</strong> {totalPar}
           </p>
           <p>
-            <strong>Active Tees:</strong> {tees.length}
+            <strong>Tees Activos:</strong> {tees.length}
           </p>
         </div>
 
         {tees.length === 0 && (
           <div className="warning-message">
-            No tees configured for this course. Please add tees first to configure distances.
+            No hay tees configurados para este campo. Por favor, agrega tees primero para configurar las distancias.
           </div>
         )}
 
@@ -126,7 +126,7 @@ const ManageHolesModal = ({ isOpen, onClose, course, onSave }: ManageHolesModalP
           <table className="holes-table">
             <thead>
               <tr>
-                <th>Hole</th>
+                <th>Hoyo</th>
                 <th>Par</th>
                 <th>HCP</th>
                 {tees.map((tee) => (
@@ -193,10 +193,10 @@ const ManageHolesModal = ({ isOpen, onClose, course, onSave }: ManageHolesModalP
 
         <div className="form-actions">
           <button type="button" onClick={onClose} className="btn btn-cancel" disabled={saving}>
-            Cancel
+            Cancelar
           </button>
           <button type="button" onClick={handleSave} className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Save Holes Configuration'}
+            {saving ? 'Guardando...' : 'Guardar Configuración de Hoyos'}
           </button>
         </div>
       </div>

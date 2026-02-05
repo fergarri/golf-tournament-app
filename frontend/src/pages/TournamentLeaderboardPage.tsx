@@ -132,7 +132,7 @@ const TournamentLeaderboardPage = () => {
       ),
       width: '60px',
     },
-    { header: 'Player', accessor: 'playerName' as keyof LeaderboardEntry, width: '15%' },
+    { header: 'Jugador', accessor: 'playerName' as keyof LeaderboardEntry, width: '15%' },
     { header: 'Matrícula', accessor: 'matricula' as keyof LeaderboardEntry, width: '10%' },
     {
       header: 'HCP',
@@ -155,32 +155,32 @@ const TournamentLeaderboardPage = () => {
       width: '8%',
     },
     { header: 'Club', accessor: (row: LeaderboardEntry) => row.clubOrigen || '-', width: '10%' },
-    { header: 'Category', accessor: (row: LeaderboardEntry) => row.categoryName || '-', width: '10%' },
+    { header: 'Categoría', accessor: (row: LeaderboardEntry) => row.categoryName || '-', width: '10%' },
     {
-      header: 'Actions',
+      header: 'Acciones',
       accessor: (row: LeaderboardEntry) => (
         <button
           onClick={() => handleEditScorecard(row.scorecardId)}
           className="btn-edit"
         >
-          Edit
+          Editar
         </button>
       ),
       width: '8%',
     },
   ];
 
-  if (loading) return <div className="loading">Loading leaderboard...</div>;
+  if (loading) return <div className="loading">Cargando leaderboard...</div>;
 
   return (
     <div className="leaderboard-page">
       <div className="leaderboard-header">
         <div className="header-actions">
           <button onClick={() => navigate('/')} className="btn-back">
-            ← Back to Dashboard
+            ← Volver al Dashboard
           </button>
           <button onClick={loadData} className="btn-refresh" disabled={loading}>
-            {loading ? '⟳ Refreshing...' : '⟳ Refresh'}
+            {loading ? '⟳ Actualizando...' : '⟳ Actualizar'}
           </button>
         </div>
         
@@ -189,16 +189,16 @@ const TournamentLeaderboardPage = () => {
           {isFinal && <span className="final-badge">FINAL RESULTS</span>}
           <div className="tournament-details">
             <span className="detail-item">
-              <strong>Course:</strong> {tournament?.courseName}
+              <strong>Campo:</strong> {tournament?.courseName}
             </span>
             <span className="detail-item">
-              <strong>Date:</strong> {tournament?.fechaInicio ? new Date(tournament.fechaInicio).toLocaleDateString() : ''}
+              <strong>Fecha:</strong> {tournament?.fechaInicio ? new Date(tournament.fechaInicio).toLocaleDateString("es-AR", {day: "2-digit", month: "2-digit", year: "numeric",}) : ''}
             </span>
             <span className="detail-item">
-              <strong>Players:</strong> {tournament?.currentInscriptos}
+              <strong>Jugadores:</strong> {tournament?.currentInscriptos}
             </span>
             <span className="detail-item">
-              <strong>Code:</strong> <span className="tournament-code">{tournament?.codigo}</span>
+              <strong>Código:</strong> <span className="tournament-code">{tournament?.codigo}</span>
             </span>
           </div>
         </div>
@@ -206,13 +206,13 @@ const TournamentLeaderboardPage = () => {
 
       {tournament && tournament.categories && tournament.categories.length > 1 && (
         <div className="category-filter">
-          <label>Filter by Category:</label>
+          <label>Filtrar por Categoría:</label>
           <select
             value={selectedCategory || ''}
             onChange={(e) => setSelectedCategory(e.target.value ? parseInt(e.target.value) : null)}
             className="category-select"
           >
-            <option value="">All Categories</option>
+            <option value="">Todas las Categorías</option>
             {tournament.categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.nombre} (HCP {cat.handicapMin}-{cat.handicapMax})
@@ -226,8 +226,8 @@ const TournamentLeaderboardPage = () => {
 
       {leaderboard.length === 0 ? (
         <div className="empty-state">
-          <h2>No Scores Yet</h2>
-          <p>No scorecards have been delivered for this tournament</p>
+          <h2>No hay Puntuaciones Aún Enviadas</h2>
+          <p>No hay tarjetas de puntuación enviadas para este torneo</p>
         </div>
       ) : (
         <>
@@ -235,13 +235,13 @@ const TournamentLeaderboardPage = () => {
             <Table 
               data={leaderboard} 
               columns={columns} 
-              emptyMessage="No players in this category"
+              emptyMessage="No hay jugadores en esta categoría"
               getRowKey={(row) => row.playerId}
             />
           </div>
           <div className="update-info">
             <span className="live-indicator"></span>
-            <span>Actualizando en tiempo real cada 10 segundos</span>
+            <span>Actualizando en tiempo real cada 100 segundos</span>
           </div>
         </>
       )}
@@ -249,45 +249,83 @@ const TournamentLeaderboardPage = () => {
       {/* Edit Scorecard Modal */}
       {editingScorecardId && editingScorecard && (
         <div className="modal-overlay" onClick={handleCloseModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-content scorecard-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>Edit Scorecard - {editingScorecard.playerName}</h2>
+              <div>
+                <h2>Editar Tarjeta - {editingScorecard.playerName}</h2>
+                <p className="scorecard-info">
+                  HCP: {editingScorecard.handicapCourse?.toFixed(1)} | 
+                  Score: {editingScorecard.holeScores.reduce((sum, hs) => sum + (hs.golpesPropio || 0), 0) || '-'}
+                </p>
+              </div>
               <button className="modal-close" onClick={handleCloseModal}>×</button>
             </div>
             
             <div className="modal-body">
-              <div className="scores-grid">
-                {editingScorecard.holeScores
-                  .sort((a, b) => a.numeroHoyo - b.numeroHoyo)
-                  .map((holeScore) => (
-                    <div key={holeScore.id} className="score-item">
-                      <label>
-                        <strong>Hole {holeScore.numeroHoyo}</strong>
-                        <span className="par-info">(Par {holeScore.par})</span>
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="15"
-                        value={holeScore.golpesPropio || ''}
-                        onChange={(e) => handleScoreChange(holeScore.id, parseInt(e.target.value))}
-                        className="score-input"
-                      />
-                    </div>
-                  ))}
+              <div className="scorecard-table-wrapper">
+                <table className="modal-scorecard-table">
+                  <thead>
+                    <tr className="scorecard-header-row">
+                      <th className="scorecard-sticky-col">HOYO</th>
+                      {editingScorecard.holeScores
+                        .sort((a, b) => a.numeroHoyo - b.numeroHoyo)
+                        .map((holeScore) => (
+                          <th key={holeScore.id}>{holeScore.numeroHoyo}</th>
+                        ))}
+                      <th className="scorecard-total-col">TOTAL</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="scorecard-par-row">
+                      <td className="scorecard-sticky-col scorecard-label">PAR</td>
+                      {editingScorecard.holeScores
+                        .sort((a, b) => a.numeroHoyo - b.numeroHoyo)
+                        .map((holeScore) => (
+                          <td key={holeScore.id} className="scorecard-par-cell">
+                            {holeScore.par}
+                          </td>
+                        ))}
+                      <td className="scorecard-total-cell">
+                        {editingScorecard.holeScores.reduce((sum, hs) => sum + hs.par, 0)}
+                      </td>
+                    </tr>
+                    <tr className="scorecard-score-row">
+                      <td className="scorecard-sticky-col scorecard-label scorecard-player-label">
+                        SCORE
+                      </td>
+                      {editingScorecard.holeScores
+                        .sort((a, b) => a.numeroHoyo - b.numeroHoyo)
+                        .map((holeScore) => (
+                          <td key={holeScore.id} className="scorecard-input-cell">
+                            <input
+                              type="number"
+                              min="1"
+                              max="15"
+                              value={holeScore.golpesPropio || ''}
+                              onChange={(e) => handleScoreChange(holeScore.id, parseInt(e.target.value))}
+                              className="scorecard-score-input"
+                            />
+                          </td>
+                        ))}
+                      <td className="scorecard-total-cell scorecard-score-total">
+                        {editingScorecard.holeScores.reduce((sum, hs) => sum + (hs.golpesPropio || 0), 0) || '-'}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
             
             <div className="modal-footer">
               <button onClick={handleCloseModal} className="btn-cancel">
-                Cancel
+                Cancelar
               </button>
               <button 
                 onClick={handleSaveScorecard} 
                 className="btn-save"
                 disabled={savingScorecard}
               >
-                {savingScorecard ? 'Saving...' : 'Save Changes'}
+                {savingScorecard ? 'Guardando...' : 'Guardar Cambios'}
               </button>
             </div>
           </div>
