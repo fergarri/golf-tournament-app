@@ -35,18 +35,25 @@ const TournamentScorecardPage = () => {
     message: '',
     type: 'info',
   });
+
+  // Marker assignment states
+  const [markerModalOpen, setMarkerModalOpen] = useState(false);
+  const [markerMatricula, setMarkerMatricula] = useState('');
+  const [markerFound, setMarkerFound] = useState<Player | null>(null);
+  const [markerStep, setMarkerStep] = useState<'search' | 'confirm'>('search');
+  const [searchingMarker, setSearchingMarker] = useState(false);
   
   // Para evitar múltiples guardados simultáneos
   const saveTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!matricula) {
-      setError('Invalid access. Please enter your registration number.');
+      setError('Acceso inválido. Por favor ingrese su número de matrícula.');
       setLoading(false);
       return;
     }
     if (!handicapCourse) {
-      setError('Invalid access. Please enter your handicap course.');
+      setError('Acceso inválido. Por favor ingrese su handicap course.');
       setLoading(false);
       return;
     }
@@ -98,7 +105,7 @@ const TournamentScorecardPage = () => {
         scorecardData = await scorecardService.getOrCreate(tournamentData.id, playerData.id, handicapCourse);
         setScorecard(scorecardData);
       } catch (err) {
-        console.error('Error loading scorecard:', err);
+        console.error('Error cargando scorecard:', err);
       }
 
       // Inicializar scores
@@ -126,7 +133,7 @@ const TournamentScorecardPage = () => {
               }
             });
           } catch (err) {
-            console.error('Error parsing localStorage data:', err);
+            console.error('Error analizando datos en localStorage:', err);
           }
         }
       }
@@ -134,7 +141,7 @@ const TournamentScorecardPage = () => {
       setScores(initialScores);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error loading tournament data');
+      setError(err.response?.data?.message || 'Error cargando datos del torneo');
     } finally {
       setLoading(false);
     }
@@ -180,7 +187,7 @@ const TournamentScorecardPage = () => {
       });
       setLastSaved(new Date());
     } catch (err: any) {
-      console.error('Error saving score:', err);
+      console.error('Error guardando puntuación:', err);
       // No mostramos error al usuario ya que localStorage ya guardó los datos
     } finally {
       setSaving(false);
@@ -214,6 +221,91 @@ const TournamentScorecardPage = () => {
     setModalOpen(true);
   };
 
+  // Marker assignment functions
+  const openMarkerModal = () => {
+    if (scorecard?.delivered) {
+      setTimeout(() => {
+        showModal('Error', 'Cannot assign marker to a delivered scorecard', 'error');
+      }, 100);
+      return;
+    }
+    setMarkerMatricula('');
+    setMarkerFound(null);
+    setMarkerStep('search');
+    setMarkerModalOpen(true);
+  };
+
+  const searchMarkerByMatricula = async () => {
+    if (!markerMatricula.trim()) {
+      setMarkerModalOpen(false);
+      setTimeout(() => {
+        showModal('Error', 'Please enter a registration number', 'error');
+      }, 200);
+      return;
+    }
+
+    try {
+      setSearchingMarker(true);
+      const foundPlayer = await playerService.getByMatricula(markerMatricula);
+      
+      // Verify marker is not the same player
+      if (foundPlayer.id === player?.id) {
+        setMarkerModalOpen(false);
+        setSearchingMarker(false);
+        setTimeout(() => {
+          showModal('Error', 'You cannot mark yourself', 'error');
+        }, 200);
+        return;
+      }
+
+      // Verify marker is inscribed in the tournament
+      if (!tournament) {
+        setMarkerModalOpen(false);
+        setSearchingMarker(false);
+        setTimeout(() => {
+          showModal('Error', 'Tournament data not available', 'error');
+        }, 200);
+        return;
+      }
+
+      setMarkerFound(foundPlayer);
+      setMarkerStep('confirm');
+    } catch (err: any) {
+      setMarkerModalOpen(false);
+      setSearchingMarker(false);
+      setTimeout(() => {
+        showModal('Error', 'Player not found or not inscribed in this tournament', 'error');
+      }, 200);
+    } finally {
+      setSearchingMarker(false);
+    }
+  };
+
+  const confirmMarkerAssignment = async () => {
+    if (!markerFound || !scorecard) return;
+
+    try {
+      const updatedScorecard = await scorecardService.assignMarker(scorecard.id, markerFound.id);
+      setScorecard(updatedScorecard);
+      setMarkerModalOpen(false);
+      setTimeout(() => {
+        showModal('Success', `${markerFound.apellido} has been assigned as your marker`, 'success');
+      }, 200);
+    } catch (err: any) {
+      setMarkerModalOpen(false);
+      setTimeout(() => {
+        showModal('Error', err.response?.data?.message || 'Error assigning marker', 'error');
+      }, 200);
+    }
+  };
+
+  const cancelMarkerAssignment = () => {
+    setMarkerModalOpen(false);
+    setMarkerMatricula('');
+    setMarkerFound(null);
+    setMarkerStep('search');
+  };
+
   const deliverScorecardAction = async () => {
     try {
       setLoading(true);
@@ -236,7 +328,7 @@ const TournamentScorecardPage = () => {
     } catch (err: any) {
       showModal(
         'Error',
-        err.response?.data?.message || 'Error delivering scorecard. Please try again.',
+        err.response?.data?.message || 'Error entregando tarjeta. Por favor intente nuevamente.',
         'error'
       );
     } finally {
@@ -248,7 +340,7 @@ const TournamentScorecardPage = () => {
     if (!scorecard) {
       showModal(
         'Error',
-        'Scorecard not loaded. Please try refreshing the page.',
+        'Tarjeta no cargada. Por favor intente recargando la página.',
         'error'
       );
       return;
@@ -278,7 +370,7 @@ const TournamentScorecardPage = () => {
   if (loading) {
     return (
       <div className="scorecard-container">
-        <div className="loading">Loading scorecard...</div>
+        <div className="loading">Cargando tarjeta...</div>
       </div>
     );
   }
@@ -288,7 +380,7 @@ const TournamentScorecardPage = () => {
       <div className="scorecard-container">
         <div className="error-card">
           <h2>Error</h2>
-          <p>{error || 'Tournament not found'}</p>
+          <p>{error || 'Torneo no encontrado'}</p>
         </div>
       </div>
     );
@@ -306,7 +398,7 @@ const TournamentScorecardPage = () => {
         <p className="course-name">{tournament.courseName}</p>
         <p className="tournament-date">{new Date(tournament.fechaInicio + "T00:00:00").toLocaleDateString("es-AR", {day: "2-digit", month: "2-digit", year: "numeric",})}</p>
         <p className="player-matricula">
-          Registration: <strong>{matricula}</strong>
+          Matrícula: <strong>{matricula}</strong>
           {player && <span> - {player.nombre} {player.apellido}</span>}
         </p>
         <p className="player-matricula">
@@ -314,17 +406,17 @@ const TournamentScorecardPage = () => {
         </p>
         {scorecard?.delivered && (
           <div className="delivered-badge">
-            Scorecard Delivered ✓
+            Tarjeta entregada ✓
           </div>
         )}
         {!scorecard?.delivered && (
           <div className="auto-save-indicator">
             {saving ? (
-              <span className="saving">Saving...</span>
+              <span className="saving">Guardando...</span>
             ) : lastSaved ? (
               <span className="saved">Saved at {lastSaved.toLocaleTimeString()}</span>
             ) : (
-              <span className="auto-save">Auto-save enabled</span>
+              <span className="auto-save">Auto-guardado activado</span>
             )}
           </div>
         )}
@@ -335,7 +427,7 @@ const TournamentScorecardPage = () => {
           <table className="scorecard-table">
             <thead>
               <tr className="header-row">
-                <th className="sticky-col">HOLE</th>
+                <th className="sticky-col">HOYO</th>
                 {holes.map((hole) => (
                   <th key={hole.numeroHoyo}>{hole.numeroHoyo}</th>
                 ))}
@@ -361,7 +453,7 @@ const TournamentScorecardPage = () => {
                 <td></td>
               </tr>
               <tr className="score-row player-row">
-                <td className="sticky-col label-cell player-label">YOU</td>
+                <td className="sticky-col label-cell player-label">TU</td>
                 {holes.map((hole) => (
                   <td key={hole.numeroHoyo}>
                     <input
@@ -382,7 +474,14 @@ const TournamentScorecardPage = () => {
                 </td>
               </tr>
               <tr className="score-row marker-row">
-                <td className="sticky-col label-cell marker-label">MARKER</td>
+                <td 
+                  className="sticky-col label-cell marker-label clickable"
+                  onClick={openMarkerModal}
+                  style={{ cursor: 'pointer' }}
+                  title="Click to assign marker"
+                >
+                  {scorecard?.markerName ? scorecard.markerName : 'MARCADOR'}
+                </td>
                 {holes.map((hole) => (
                   <td key={hole.numeroHoyo}>
                     <input
@@ -416,7 +515,7 @@ const TournamentScorecardPage = () => {
             <strong className="neto-score">{getScoreNeto() !== null ? getScoreNeto() : '-'}</strong>
           </div>
           <div className="summary-item">
-            <span>To Par:</span>
+            <span>Para Par:</span>
             <strong className={scoreNeto !== null && scoreNeto > totalPar ? 'over-par' : scoreNeto !== null && scoreNeto < totalPar ? 'under-par' : ''}>
               {scoreNeto !== null ? (scoreNeto === totalPar ? 'E' : scoreNeto > totalPar ? `+${scoreNeto - totalPar}` : `${scoreNeto - totalPar}`) : '-'}
             </strong>
@@ -427,7 +526,7 @@ const TournamentScorecardPage = () => {
           className="btn btn-deliver"
           disabled={scorecard?.delivered || false}
         >
-          {scorecard?.delivered ? 'Already Delivered' : 'Deliver Scorecard'}
+          {scorecard?.delivered ? 'Ya entregada' : 'Entregar tarjeta'}
         </button>
       </div>
 
@@ -441,6 +540,129 @@ const TournamentScorecardPage = () => {
         confirmText={modalConfig.type === 'confirm' ? 'Si, Enviar' : 'OK'}
         cancelText="Cancelar"
       />
+
+      {/* Marker Assignment Modal */}
+      <Modal
+        isOpen={markerModalOpen}
+        onClose={cancelMarkerAssignment}
+        title={markerStep === 'search' ? 'Assign Marker' : 'Confirm Marker'}
+        size="medium"
+      >
+        {markerStep === 'search' ? (
+          <div style={{ padding: '1rem 0' }}>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label 
+                htmlFor="markerMatricula" 
+                style={{ 
+                  display: 'block', 
+                  marginBottom: '0.5rem',
+                  fontWeight: 600,
+                  color: '#2c3e50'
+                }}
+              >
+                Marker Registration Number
+              </label>
+              <input
+                id="markerMatricula"
+                type="text"
+                value={markerMatricula}
+                onChange={(e) => setMarkerMatricula(e.target.value)}
+                placeholder="Matrícula Marcador"
+                onKeyPress={(e) => e.key === 'Enter' && searchMarkerByMatricula()}
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  fontSize: '1rem',
+                  border: '2px solid #dee2e6',
+                  borderRadius: '8px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#3498db'}
+                onBlur={(e) => e.target.style.borderColor = '#dee2e6'}
+              />
+            </div>
+            <button
+              onClick={searchMarkerByMatricula}
+              disabled={searchingMarker}
+              style={{
+                width: '100%',
+                padding: '0.75rem',
+                background: 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: searchingMarker ? 'not-allowed' : 'pointer',
+                opacity: searchingMarker ? 0.7 : 1,
+                transition: 'all 0.2s'
+              }}
+            >
+              {searchingMarker ? 'Searching...' : 'Search'}
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: '1rem 0', textAlign: 'center' }}>
+            <div style={{ 
+              fontSize: '3rem', 
+              color: '#3498db', 
+              marginBottom: '1rem' 
+            }}>
+              👤
+            </div>
+            <p style={{ 
+              fontSize: '1.1rem', 
+              color: '#2c3e50',
+              marginBottom: '2rem',
+              lineHeight: 1.6
+            }}>
+              Confirm player <strong>{markerFound?.nombre} {markerFound?.apellido}</strong> as your marker?
+            </p>
+            <div style={{ 
+              display: 'flex', 
+              gap: '0.75rem',
+              justifyContent: 'center'
+            }}>
+              <button
+                onClick={cancelMarkerAssignment}
+                style={{
+                  padding: '0.75rem 2rem',
+                  backgroundColor: '#ecf0f1',
+                  color: '#5a6c7d',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minWidth: '120px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmMarkerAssignment}
+                style={{
+                  padding: '0.75rem 2rem',
+                  background: 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minWidth: '120px',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
