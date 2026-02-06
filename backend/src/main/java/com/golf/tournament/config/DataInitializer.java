@@ -18,7 +18,9 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        if (!userRepository.existsByEmail("admin@golftournament.com")) {
+        // Check both email and matricula to avoid duplicate key violations
+        if (!userRepository.existsByEmail("admin@golftournament.com") && 
+            !userRepository.existsByMatricula("ADMIN001")) {
             User admin = User.builder()
                     .email("admin@golftournament.com")
                     .matricula("ADMIN001")
