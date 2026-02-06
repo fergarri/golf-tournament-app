@@ -309,6 +309,19 @@ const TournamentScorecardPage = () => {
   const deliverScorecardAction = async () => {
     try {
       setLoading(true);
+      
+      // PASO 1: Enviar TODOS los valores de TODOS los hoyos (doble guardado)
+      const holeScoresUpdate = holes.map(hole => ({
+        holeId: hole.id,
+        golpesPropio: scores[hole.numeroHoyo]?.propio || undefined,
+        golpesMarcador: scores[hole.numeroHoyo]?.marcador || undefined,
+      }));
+
+      await scorecardService.updateScorecard(scorecard!.id, {
+        holeScores: holeScoresUpdate
+      });
+      
+      // PASO 2: Marcar la tarjeta como entregada
       await scorecardService.deliverScorecard(scorecard!.id);
       
       // Limpiar localStorage
