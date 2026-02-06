@@ -376,7 +376,12 @@
   }
 
   .sticky-col {
-    min-width: 70px;
+    min-width: 140px;
+    max-width: 140px;
+    width: 140px;
+    font-size: 0.8rem;
+    padding: 0.6rem 0.4rem !important;
+    line-height: 1.2;
   }
 
   .score-input {

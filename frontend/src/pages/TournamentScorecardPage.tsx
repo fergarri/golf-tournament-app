@@ -225,7 +225,7 @@ const TournamentScorecardPage = () => {
   const openMarkerModal = () => {
     if (scorecard?.delivered) {
       setTimeout(() => {
-        showModal('Error', 'Cannot assign marker to a delivered scorecard', 'error');
+        showModal('Error', 'No se puede asignar un marcador a una tarjeta entregada', 'error');
       }, 100);
       return;
     }
@@ -239,7 +239,7 @@ const TournamentScorecardPage = () => {
     if (!markerMatricula.trim()) {
       setMarkerModalOpen(false);
       setTimeout(() => {
-        showModal('Error', 'Please enter a registration number', 'error');
+        showModal('Error', 'Por favor ingrese un número de matrícula', 'error');
       }, 200);
       return;
     }
@@ -253,7 +253,7 @@ const TournamentScorecardPage = () => {
         setMarkerModalOpen(false);
         setSearchingMarker(false);
         setTimeout(() => {
-          showModal('Error', 'You cannot mark yourself', 'error');
+          showModal('Error', 'No se puede marcar a uno mismo', 'error');
         }, 200);
         return;
       }
@@ -263,7 +263,7 @@ const TournamentScorecardPage = () => {
         setMarkerModalOpen(false);
         setSearchingMarker(false);
         setTimeout(() => {
-          showModal('Error', 'Tournament data not available', 'error');
+          showModal('Error', 'Datos del torneo no disponibles', 'error');
         }, 200);
         return;
       }
@@ -274,7 +274,7 @@ const TournamentScorecardPage = () => {
       setMarkerModalOpen(false);
       setSearchingMarker(false);
       setTimeout(() => {
-        showModal('Error', 'Player not found or not inscribed in this tournament', 'error');
+        showModal('Error', 'Jugador no encontrado o no inscrito en este torneo', 'error');
       }, 200);
     } finally {
       setSearchingMarker(false);
@@ -289,12 +289,12 @@ const TournamentScorecardPage = () => {
       setScorecard(updatedScorecard);
       setMarkerModalOpen(false);
       setTimeout(() => {
-        showModal('Success', `${markerFound.apellido} has been assigned as your marker`, 'success');
+        showModal('Success', `${markerFound.apellido} ha sido asignado como tu marcador`, 'success');
       }, 200);
     } catch (err: any) {
       setMarkerModalOpen(false);
       setTimeout(() => {
-        showModal('Error', err.response?.data?.message || 'Error assigning marker', 'error');
+        showModal('Error', err.response?.data?.message || 'Error asignando marcador', 'error');
       }, 200);
     }
   };
@@ -545,7 +545,7 @@ const TournamentScorecardPage = () => {
       <Modal
         isOpen={markerModalOpen}
         onClose={cancelMarkerAssignment}
-        title={markerStep === 'search' ? 'Assign Marker' : 'Confirm Marker'}
+        title={markerStep === 'search' ? 'Asignar Marcador' : 'Confirmar Marcador'}
         size="medium"
       >
         {markerStep === 'search' ? (
@@ -560,7 +560,7 @@ const TournamentScorecardPage = () => {
                   color: '#2c3e50'
                 }}
               >
-                Marker Registration Number
+                Número de Matrícula del Marcador
               </label>
               <input
                 id="markerMatricula"
@@ -600,7 +600,7 @@ const TournamentScorecardPage = () => {
                 transition: 'all 0.2s'
               }}
             >
-              {searchingMarker ? 'Searching...' : 'Search'}
+              {searchingMarker ? 'Buscando...' : 'Buscar'}
             </button>
           </div>
         ) : (
@@ -618,7 +618,7 @@ const TournamentScorecardPage = () => {
               marginBottom: '2rem',
               lineHeight: 1.6
             }}>
-              Confirm player <strong>{markerFound?.nombre} {markerFound?.apellido}</strong> as your marker?
+              Confirmar jugador <strong>{markerFound?.nombre} {markerFound?.apellido}</strong> como tu marcador?
             </p>
             <div style={{ 
               display: 'flex', 
@@ -640,7 +640,7 @@ const TournamentScorecardPage = () => {
                   transition: 'all 0.2s'
                 }}
               >
-                Cancel
+                Cancelar
               </button>
               <button
                 onClick={confirmMarkerAssignment}
@@ -657,7 +657,7 @@ const TournamentScorecardPage = () => {
                   transition: 'all 0.2s'
                 }}
               >
-                Confirm
+                Confirmar
               </button>
             </div>
           </div>
