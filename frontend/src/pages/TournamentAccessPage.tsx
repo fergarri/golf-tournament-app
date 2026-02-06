@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { playerService } from '../services/playerService';
+import { scorecardService } from '../services/scorecardService';
 import { Tournament } from '../types';
+import Modal from '../components/Modal';
 import './TournamentAccessPage.css';
 
 const TournamentAccessPage = () => {
@@ -14,6 +16,8 @@ const TournamentAccessPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalMessage, setModalMessage] = useState('');
 
   useEffect(() => {
     loadTournament();
@@ -55,13 +59,22 @@ const TournamentAccessPage = () => {
       setSubmitting(true);
       setError('');
 
-      await playerService.getByMatricula(matricula);
+      // Validar que el jugador exista
+      const player = await playerService.getByMatricula(matricula);
       
+      // Validar que el jugador esté inscrito en el torneo
+      if (tournament) {
+        await scorecardService.getOrCreate(tournament.id, player.id, handicapValue);
+      }
+      
+      // Si todo está bien, navegar a la scorecard
       navigate(`/play/${codigo}/scorecard`, {
         state: { matricula, handicapCourse: handicapValue },
       });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Player not found or not inscribed in this tournament');
+      const errorMessage = err.response?.data?.message || 'Player not found or not inscribed in this tournament';
+      setModalMessage(errorMessage);
+      setModalOpen(true);
       setSubmitting(false);
     }
   };
@@ -146,6 +159,15 @@ const TournamentAccessPage = () => {
           <p>Inscribed Players: <strong>{tournament.currentInscriptos}</strong></p>
         </div>
       </div>
+
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Error"
+        message={modalMessage}
+        type="error"
+        confirmText="Cerrar"
+      />
     </div>
   );
 };

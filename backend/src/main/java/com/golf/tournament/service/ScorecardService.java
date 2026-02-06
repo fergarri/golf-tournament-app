@@ -37,7 +37,7 @@ public class ScorecardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Player", "id", playerId));
 
         if (!inscriptionRepository.existsByTournamentIdAndPlayerId(tournamentId, playerId)) {
-            throw new BadRequestException("Player is not inscribed in this tournament");
+            throw new BadRequestException("Jugador no inscrito en este torneo");
         }
 
         Scorecard scorecard = scorecardRepository.findByTournamentIdAndPlayerId(tournamentId, playerId)
@@ -63,11 +63,11 @@ public class ScorecardService {
 
         if (!inscriptionRepository.existsByTournamentIdAndPlayerId(
                 scorecard.getTournament().getId(), markerId)) {
-            throw new BadRequestException("Marker is not inscribed in this tournament");
+            throw new BadRequestException("Marcador no inscrito en este torneo");
         }
 
         if (scorecard.getPlayer().getId().equals(markerId)) {
-            throw new BadRequestException("Player cannot mark themselves");
+            throw new BadRequestException("No se puede marcar a uno mismo");
         }
 
         scorecard.setMarker(marker);
@@ -98,7 +98,7 @@ public class ScorecardService {
         } else if ("MARCADOR".equalsIgnoreCase(request.getTipo())) {
             holeScore.setGolpesMarcador(request.getGolpes());
         } else {
-            throw new BadRequestException("Invalid score type. Must be PROPIO or MARCADOR");
+            throw new BadRequestException("Tipo de puntuación inválido. Debe ser PROPIO o MARCADOR");
         }
 
         holeScoreRepository.save(holeScore);
@@ -143,7 +143,7 @@ public class ScorecardService {
 
         List<HoleScore> allScores = holeScoreRepository.findByScorecardId(scorecardId);
         if (allScores.isEmpty()) {
-            throw new BadRequestException("No se puede enviar la tarjeta sin ninguna puntuación");
+            throw new BadRequestException("No se puede entregar la tarjeta sin ninguna puntuación");
         }
 
         // Verify all player scores are filled (golpes_propio is not null for all holes)
@@ -151,7 +151,7 @@ public class ScorecardService {
                 .allMatch(hs -> hs.getGolpesPropio() != null);
         
         if (!allPlayerScoresFilled) {
-            throw new BadRequestException("No se puede enviar la tarjeta con hoyos incompletos");
+            throw new BadRequestException("No se puede entregar la tarjeta con hoyos incompletos");
         }
 
         scorecard.setDelivered(true);
