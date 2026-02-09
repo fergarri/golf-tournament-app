@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/auth/**",
                                 "/public/**",
+                                "/health",
                                 "/tournaments/*/inscribe",
                                 "/tournaments/code/*",
                                 "/players/matricula/*",
