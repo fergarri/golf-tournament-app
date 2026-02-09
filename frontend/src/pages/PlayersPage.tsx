@@ -139,7 +139,7 @@ const PlayersPage = () => {
     : players;
 
   const columns = [
-    { header: 'Nombre', accessor: (row: Player) => `${row.nombre} ${row.apellido}` },
+    { header: 'Nombre', accessor: (row: Player) => `${row.apellido} ${row.nombre}` },
     { header: 'Matricula', accessor: 'matricula' as keyof Player },
     { header: 'Handicap', accessor: 'handicapIndex' as keyof Player },
     { header: 'Club', accessor: 'clubOrigen' as keyof Player },
