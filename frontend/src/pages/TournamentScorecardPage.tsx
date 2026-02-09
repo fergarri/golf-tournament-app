@@ -11,7 +11,7 @@ import './TournamentScorecardPage.css';
 const TournamentScorecardPage = () => {
   const { codigo } = useParams<{ codigo: string }>();
   const location = useLocation();
-  const { matricula, handicapCourse } = location.state || {};
+  const { matricula, handicapCourse, teeId } = location.state || {};
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [holes, setHoles] = useState<Hole[]>([]);
@@ -52,13 +52,8 @@ const TournamentScorecardPage = () => {
       setLoading(false);
       return;
     }
-    if (!handicapCourse) {
-      setError('Acceso inválido. Por favor ingrese su handicap course.');
-      setLoading(false);
-      return;
-    }
     loadData();
-  }, [codigo, matricula, handicapCourse]);
+  }, [codigo, matricula]);
 
   // Auto-guardar en localStorage cuando cambian los scores
   useEffect(() => {
@@ -102,8 +97,14 @@ const TournamentScorecardPage = () => {
       // Cargar o crear scorecard del backend
       let scorecardData: Scorecard | null = null;
       try {
-        scorecardData = await scorecardService.getOrCreate(tournamentData.id, playerData.id, handicapCourse);
-        setScorecard(scorecardData);
+        // El scorecard ya debería estar creado desde TournamentAccessPage
+        // pero llamamos a getOrCreate por si acaso, pasando el teeId
+        if (teeId) {
+          scorecardData = await scorecardService.getOrCreate(tournamentData.id, playerData.id, teeId);
+          setScorecard(scorecardData);
+        } else {
+          setError('Acceso inválido. Por favor ingrese nuevamente desde la página de acceso.');
+        }
       } catch (err) {
         console.error('Error cargando scorecard:', err);
       }

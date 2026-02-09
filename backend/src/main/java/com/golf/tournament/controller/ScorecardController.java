@@ -36,7 +36,7 @@ public class ScorecardController {
             @PathVariable Long tournamentId,
             @PathVariable Long playerId,
             @Valid @RequestBody CreateScorecardRequest request) {
-        return ResponseEntity.ok(scorecardService.getOrCreateScorecard(tournamentId, playerId, request.getHandicapCourse()));
+        return ResponseEntity.ok(scorecardService.getOrCreateScorecard(tournamentId, playerId, request.getTeeId()));
     }
 
     @PatchMapping("/{scorecardId}/marker/{markerId}")

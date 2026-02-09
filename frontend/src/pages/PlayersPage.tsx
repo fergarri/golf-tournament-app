@@ -21,6 +21,11 @@ const PlayersPage = () => {
     telefono: '',
     clubOrigen: '',
   });
+  const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [bulkUpdateResult, setBulkUpdateResult] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadPlayers();
@@ -94,6 +99,45 @@ const PlayersPage = () => {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleBulkUpdate = async () => {
+    if (!selectedFile) {
+      setError('Por favor seleccione un archivo');
+      return;
+    }
+    
+    try {
+      setIsProcessing(true);
+      setError('');
+      const result = await playerService.bulkUpdate(selectedFile);
+      setBulkUpdateResult(result);
+      setSelectedFile(null);
+      loadPlayers();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error procesando archivo');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCloseBulkModal = () => {
+    setShowBulkUpdateModal(false);
+    setSelectedFile(null);
+    setBulkUpdateResult(null);
+    setError('');
+  };
+
+  const filteredPlayers = searchQuery
+    ? players.filter(p =>
+        `${p.nombre} ${p.apellido} ${p.matricula}`.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : players;
+
   const columns = [
     { header: 'Nombre', accessor: (row: Player) => `${row.nombre} ${row.apellido}` },
     { header: 'Matricula', accessor: 'matricula' as keyof Player },
@@ -108,14 +152,49 @@ const PlayersPage = () => {
     <div>
       <div className="page-header">
         <h1>Jugadores</h1>
-        <button onClick={handleCreate} className="btn btn-primary">
-          Crear Jugador
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => setShowBulkUpdateModal(true)} className="btn btn-secondary" id="update-players">
+            Actualizar Jugadores
+          </button>
+          <button onClick={handleCreate} className="btn btn-primary">
+            Crear Jugador
+          </button>
+        </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
-      <Table data={players} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
+      <div className="search-container" style={{ marginBottom: '1.5rem' }}>
+        <input
+          type="text"
+          placeholder="Buscar jugadores por nombre, apellido o matrícula"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="search-input"
+          style={{
+            width: '50%',
+            padding: '0.75rem 1rem',
+            fontSize: '1rem',
+            border: '2px solid #e0e0e0',
+            borderRadius: '8px',
+            outline: 'none',
+            transition: 'border-color 0.2s',
+          }}
+          onFocus={(e) => e.target.style.borderColor = '#3498db'}
+          onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+        />
+        {searchQuery && (
+          <p style={{ 
+            marginTop: '0.5rem', 
+            fontSize: '0.875rem', 
+            color: '#7f8c8d' 
+          }}>
+            Mostrando {filteredPlayers.length} de {players.length} jugadores
+          </p>
+        )}
+      </div>
+
+      <Table data={filteredPlayers} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
 
       <Modal
         isOpen={showModal}
@@ -213,6 +292,104 @@ const PlayersPage = () => {
             </button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={showBulkUpdateModal}
+        onClose={handleCloseBulkModal}
+        title="Actualizar Jugadores"
+      >
+        {!bulkUpdateResult ? (
+          <div>
+            <p style={{ marginBottom: '20px' }}>
+              Seleccione el archivo para actualizar la lista de jugadores
+            </p>
+            
+            <div className="form-group">
+              <input
+                type="file"
+                accept=".xlsx"
+                onChange={handleFileChange}
+                disabled={isProcessing}
+              />
+            </div>
+            
+            {selectedFile && (
+              <p style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
+                Archivo seleccionado: {selectedFile.name}
+              </p>
+            )}
+            
+            {isProcessing && (
+              <div style={{ 
+                textAlign: 'center', 
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '10px'
+              }}>
+                <div className="loading-spinner"></div>
+                <p>Procesando archivo...</p>
+              </div>
+            )}
+            
+            {error && <div className="error-message">{error}</div>}
+            
+            <div className="form-actions" style={{ marginTop: '20px' }}>
+              <button 
+                onClick={handleCloseBulkModal} 
+                className="btn btn-cancel"
+                disabled={isProcessing}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleBulkUpdate} 
+                className="btn btn-primary"
+                disabled={!selectedFile || isProcessing}
+              >
+                Procesar
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <h3 style={{ color: '#28a745', marginBottom: '20px' }}>
+              ✓ Actualización exitosa
+            </h3>
+            
+            <div style={{ marginBottom: '15px' }}>
+              <p><strong>Jugadores creados:</strong> {bulkUpdateResult.creados}</p>
+              <p><strong>Jugadores actualizados:</strong> {bulkUpdateResult.actualizados}</p>
+            </div>
+            
+            {bulkUpdateResult.matriculasNoProcesadas && 
+             bulkUpdateResult.matriculasNoProcesadas.length > 0 && (
+              <div style={{ marginTop: '20px' }}>
+                <p style={{ color: '#dc3545', fontWeight: 'bold' }}>
+                  Matrículas no procesadas:
+                </p>
+                <ul style={{ 
+                  marginTop: '10px', 
+                  paddingLeft: '20px',
+                  maxHeight: '150px',
+                  overflowY: 'auto'
+                }}>
+                  {bulkUpdateResult.matriculasNoProcesadas.map((mat: string, idx: number) => (
+                    <li key={idx}>{mat}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            <div className="form-actions" style={{ marginTop: '30px' }}>
+              <button onClick={handleCloseBulkModal} className="btn btn-primary">
+                Cerrar
+              </button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

@@ -88,6 +88,11 @@
   cursor: pointer;
   transition: all 0.2s;
   font-size: 1rem;
+  width: 170px;
+}
+
+#update-players {
+  width: 210px;
 }
 
 .btn-primary {
@@ -129,6 +134,20 @@
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.loading-spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #5e72e4;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 @media (max-width: 768px) {

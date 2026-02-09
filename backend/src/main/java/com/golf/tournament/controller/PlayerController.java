@@ -1,7 +1,9 @@
 package com.golf.tournament.controller;
 
+import com.golf.tournament.dto.player.BulkUpdateResponse;
 import com.golf.tournament.dto.player.CreatePlayerRequest;
 import com.golf.tournament.dto.player.PlayerDTO;
+import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.service.PlayerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -62,5 +65,23 @@ public class PlayerController {
     public ResponseEntity<Void> deletePlayer(@PathVariable Long id) {
         playerService.deletePlayer(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/bulk-update")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BulkUpdateResponse> bulkUpdatePlayers(
+            @RequestParam("file") MultipartFile file) {
+        
+        if (file.isEmpty()) {
+            throw new BadRequestException("El archivo está vacío");
+        }
+        
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.endsWith(".xlsx")) {
+            throw new BadRequestException("El archivo debe ser formato .xlsx");
+        }
+        
+        BulkUpdateResponse response = playerService.bulkUpdatePlayers(file);
+        return ResponseEntity.ok(response);
     }
 }

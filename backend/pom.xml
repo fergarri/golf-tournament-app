@@ -67,6 +67,19 @@
             <version>1.17.2</version>
         </dependency>
 
+        <!-- Apache POI for Excel processing -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+
         <!-- JWT for Authentication -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

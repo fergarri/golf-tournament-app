@@ -27,9 +27,11 @@ public class ScorecardService {
     private final HoleRepository holeRepository;
     private final HoleScoreRepository holeScoreRepository;
     private final TournamentInscriptionRepository inscriptionRepository;
+    private final HandicapConversionRepository handicapConversionRepository;
+    private final CourseTeeRepository courseTeeRepository;
 
     @Transactional
-    public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId, java.math.BigDecimal handicapCourse) {
+    public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId, Long teeId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
 
@@ -38,6 +40,29 @@ public class ScorecardService {
 
         if (!inscriptionRepository.existsByTournamentIdAndPlayerId(tournamentId, playerId)) {
             throw new BadRequestException("Jugador no inscrito en este torneo");
+        }
+
+        // Validar que el jugador tiene handicap_index
+        if (player.getHandicapIndex() == null) {
+            throw new BadRequestException("El jugador no tiene handicap index asignado. Hable con el capitan de cancha");
+        }
+
+        // Validar que el tee existe
+        courseTeeRepository.findById(teeId)
+                .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeId));
+
+        // Calcular el handicap course basado en la tabla handicap_conversions
+        HandicapConversion conversion = handicapConversionRepository
+                .findByTeeAndHandicapIndex(teeId, player.getHandicapIndex())
+                .orElseThrow(() -> new BadRequestException(
+                    "No se encontró conversión de handicap para el tee seleccionado y el handicap index del jugador"));
+
+        // Si el torneo es de 9 hoyos, dividir por 2
+        java.math.BigDecimal handicapCourse;
+        if (tournament.getCourse().getCantidadHoyos() == 9) {
+            handicapCourse = java.math.BigDecimal.valueOf(conversion.getCourseHandicap() / 2.0);
+        } else {
+            handicapCourse = java.math.BigDecimal.valueOf(conversion.getCourseHandicap());
         }
 
         Scorecard scorecard = scorecardRepository.findByTournamentIdAndPlayerId(tournamentId, playerId)

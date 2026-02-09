@@ -23,6 +23,38 @@
   white-space: nowrap;
 }
 
+.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.sortable-header:hover {
+  background-color: #e9ecef !important;
+}
+
+.non-sortable-header {
+  cursor: default;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.sort-icon {
+  color: #95a5a6;
+  font-size: 0.75rem;
+  min-width: 12px;
+  text-align: center;
+}
+
+.sortable-header:hover .sort-icon {
+  color: #5e72e4;
+}
+
 .data-table td {
   padding: 1rem;
   border-bottom: 1px solid #dee2e6;

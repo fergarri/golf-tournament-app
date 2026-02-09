@@ -35,4 +35,16 @@ export const playerService = {
   delete: async (id: number): Promise<void> => {
     await api.delete(`/players/${id}`);
   },
+
+  bulkUpdate: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await api.post('/players/bulk-update', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };

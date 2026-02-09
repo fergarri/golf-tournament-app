@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { playerService } from '../services/playerService';
 import { scorecardService } from '../services/scorecardService';
+import { courseService } from '../services/courseService';
 import { Tournament } from '../types';
 import Modal from '../components/Modal';
 import './TournamentAccessPage.css';
@@ -12,7 +13,8 @@ const TournamentAccessPage = () => {
   const navigate = useNavigate();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [matricula, setMatricula] = useState('');
-  const [handicapCourse, setHandicapCourse] = useState('');
+  const [selectedTeeId, setSelectedTeeId] = useState<number | null>(null);
+  const [courseTees, setCourseTees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -29,6 +31,11 @@ const TournamentAccessPage = () => {
       setLoading(true);
       const data = await tournamentService.getByCodigo(codigo);
       setTournament(data);
+      
+      // Cargar los tees del campo
+      const tees = await courseService.getTees(data.courseId);
+      setCourseTees(tees);
+      
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Tournament not found');
@@ -44,14 +51,8 @@ const TournamentAccessPage = () => {
       return;
     }
 
-    if (!handicapCourse.trim()) {
-      setError('Please enter your handicap course');
-      return;
-    }
-
-    const handicapValue = parseFloat(handicapCourse);
-    if (isNaN(handicapValue) || handicapValue < 0 || handicapValue > 54) {
-      setError('Handicap course must be a number between 0 and 54');
+    if (!selectedTeeId) {
+      setError('Please select a tee');
       return;
     }
 
@@ -62,15 +63,19 @@ const TournamentAccessPage = () => {
       // Validar que el jugador exista
       const player = await playerService.getByMatricula(matricula);
       
-      // Validar que el jugador esté inscrito en el torneo
+      // Validar y crear scorecard (el backend calculará el handicap course)
       if (tournament) {
-        await scorecardService.getOrCreate(tournament.id, player.id, handicapValue);
+        const scorecard = await scorecardService.getOrCreate(tournament.id, player.id, selectedTeeId);
+        
+        // Navegar con el handicapCourse calculado por el backend
+        navigate(`/play/${codigo}/scorecard`, {
+          state: { 
+            matricula, 
+            handicapCourse: scorecard.handicapCourse,
+            teeId: selectedTeeId 
+          },
+        });
       }
-      
-      // Si todo está bien, navegar a la scorecard
-      navigate(`/play/${codigo}/scorecard`, {
-        state: { matricula, handicapCourse: handicapValue },
-      });
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Player not found or not inscribed in this tournament';
       setModalMessage(errorMessage);
@@ -132,18 +137,20 @@ const TournamentAccessPage = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="handicapCourse">Handicap Course</label>
-              <input
-                id="handicapCourse"
-                type="number"
-                step="0.01"
-                min="0"
-                max="54"
-                value={handicapCourse}
-                onChange={(e) => setHandicapCourse(e.target.value)}
-                placeholder="Enter your handicap course (e.g., 18.50)"
+              <label htmlFor="teeSelection">Tee de Salida</label>
+              <select
+                id="teeSelection"
+                value={selectedTeeId || ''}
+                onChange={(e) => setSelectedTeeId(Number(e.target.value))}
                 required
-              />
+              >
+                <option value="">Seleccione un tee</option>
+                {courseTees.map((tee) => (
+                  <option key={tee.id} value={tee.id}>
+                    {tee.nombre}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {error && <div className="error-message">{error}</div>}
