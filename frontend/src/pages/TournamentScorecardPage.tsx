@@ -434,6 +434,7 @@ const TournamentScorecardPage = () => {
   const totalMarcador = getTotalScore('marcador');
   const totalPar = getTotalPar();
   const scoreNeto = getScoreNeto();
+  const hasBackNine = holes.some(h => h.numeroHoyo > 9);
 
   return (
     <div className="scorecard-container">
@@ -477,13 +478,13 @@ const TournamentScorecardPage = () => {
                       {hole.distancesByTee?.[teeId] || '-'}
                     </td>
                   ))}
-                <th className="subtotal-col distance-cell"></th>
-                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                  {hasBackNine && <td className="subtotal-cell distance-cell"></td>}
+                  {hasBackNine && holes.filter(h => h.numeroHoyo > 9).map((hole) => (
                     <td key={hole.numeroHoyo} className="distance-cell">
                       {hole.distancesByTee?.[teeId] || '-'}
                     </td>
                   ))}
-                <th className="subtotal-col distance-cell"></th>
+                {hasBackNine && <th className="subtotal-col distance-cell"></th>}
                 <th className="total-col"></th>
                 <th className="total-col"></th>
               </tr>
@@ -495,11 +496,11 @@ const TournamentScorecardPage = () => {
                 {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
                   <td key={hole.numeroHoyo} className="hcp-cell">{hole.handicap}</td>
                 ))}
-                <td className="subtotal-cell hcp-cell"></td>
-                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                {hasBackNine && <td className="subtotal-cell hcp-cell"></td>}
+                {hasBackNine && holes.filter(h => h.numeroHoyo > 9).map((hole) => (
                   <td key={hole.numeroHoyo} className="hcp-cell">{hole.handicap}</td>
                 ))}
-                <td className="subtotal-cell hcp-cell"></td>
+                {hasBackNine && <td className="subtotal-cell hcp-cell"></td>}
                 <td></td>
                 <td></td>
               </tr>
@@ -509,11 +510,11 @@ const TournamentScorecardPage = () => {
                 {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
                   <td key={hole.numeroHoyo} className="par-cell">{hole.par}</td>
                 ))}
-                <td className="subtotal-cell  par-cell">{getFrontNinePar()}</td>
-                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                {hasBackNine && <td className="subtotal-cell par-cell">{getFrontNinePar()}</td>}
+                {hasBackNine && holes.filter(h => h.numeroHoyo > 9).map((hole) => (
                   <td key={hole.numeroHoyo} className="par-cell">{hole.par}</td>
                 ))}
-                <td className="subtotal-cell par-cell">{getBackNinePar()}</td>
+                {hasBackNine && <td className="subtotal-cell par-cell">{getBackNinePar()}</td>}
                 <td className="total-cell final-total-cell">{totalPar}</td>
                 <td className="total-cell final-total-cell"></td>
               </tr>
@@ -523,11 +524,11 @@ const TournamentScorecardPage = () => {
                 {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
                   <td key={hole.numeroHoyo} className="hoyo-cell">{hole.numeroHoyo}</td>
                 ))}
-                <td className="subtotal-cell hoyo-cell">IDA</td>
-                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                {hasBackNine && <td className="subtotal-cell hoyo-cell">IDA</td>}
+                {hasBackNine && holes.filter(h => h.numeroHoyo > 9).map((hole) => (
                   <td key={hole.numeroHoyo} className="hoyo-cell">{hole.numeroHoyo}</td>
                 ))}
-                <td className="subtotal-cell hoyo-cell">VTA</td>
+                {hasBackNine && <td className="subtotal-cell hoyo-cell">VTA</td>}
                 <td className="total-cell final-total-cell">GROSS</td>
                 <td className="total-cell final-total-cell">NETO</td>
               </tr>
@@ -548,8 +549,8 @@ const TournamentScorecardPage = () => {
                     />
                   </td>
                 ))}
-                <td className="subtotal-cell score-total">{getFrontNineScore('propio') || '-'}</td>
-                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                {hasBackNine && <td className="subtotal-cell score-total">{getFrontNineScore('propio') || '-'}</td>}
+                {hasBackNine && holes.filter(h => h.numeroHoyo > 9).map((hole) => (
                   <td key={hole.numeroHoyo}>
                     <input
                       type="number"
@@ -563,7 +564,7 @@ const TournamentScorecardPage = () => {
                     />
                   </td>
                 ))}
-                <td className="subtotal-cell score-total">{getBackNineScore('propio') || '-'}</td>
+                {hasBackNine && <td className="subtotal-cell score-total">{getBackNineScore('propio') || '-'}</td>}
                 <td className="total-cell score-total">{totalPropio || '-'}</td>
                 <td className="total-cell score-total neto-cell">
                   {getScoreNeto() !== null ? getScoreNeto() : '-'}
@@ -593,8 +594,8 @@ const TournamentScorecardPage = () => {
                     />
                   </td>
                 ))}
-                <td className="subtotal-cell score-total">{getFrontNineScore('marcador') || '-'}</td>
-                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                {hasBackNine && <td className="subtotal-cell score-total">{getFrontNineScore('marcador') || '-'}</td>}
+                {hasBackNine && holes.filter(h => h.numeroHoyo > 9).map((hole) => (
                   <td key={hole.numeroHoyo}>
                     <input
                       type="number"
@@ -608,7 +609,7 @@ const TournamentScorecardPage = () => {
                     />
                   </td>
                 ))}
-                <td className="subtotal-cell score-total">{getBackNineScore('marcador') || '-'}</td>
+                {hasBackNine && <td className="subtotal-cell score-total">{getBackNineScore('marcador') || '-'}</td>}
                 <td className="total-cell score-total">{totalMarcador || '-'}</td>
                 <td></td>
               </tr>
