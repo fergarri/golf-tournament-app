@@ -130,7 +130,7 @@ const ManageHolesModal = ({ isOpen, onClose, course, onSave }: ManageHolesModalP
                 <th>Par</th>
                 <th>HCP</th>
                 {tees.map((tee) => (
-                  <th key={tee.id}>{tee.nombre} (yds)</th>
+                  <th key={tee.id}>{tee.grupo} - {tee.nombre} (yds)</th>
                 ))}
               </tr>
             </thead>

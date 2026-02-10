@@ -22,6 +22,7 @@ const TournamentScorecardPage = () => {
   const [player, setPlayer] = useState<Player | null>(null);
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [selectedTee, setSelectedTee] = useState<any>(null);
   
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
@@ -93,6 +94,13 @@ const TournamentScorecardPage = () => {
       const holesData = await courseService.getHoles(tournamentData.courseId);
       const sortedHoles = holesData.sort((a: Hole, b: Hole) => a.numeroHoyo - b.numeroHoyo);
       setHoles(sortedHoles);
+
+      // Cargar información del tee seleccionado
+      if (teeId) {
+        const tees = await courseService.getTees(tournamentData.courseId);
+        const tee = tees.find((t: any) => t.id === teeId);
+        setSelectedTee(tee);
+      }
 
       // Cargar o crear scorecard del backend
       let scorecardData: Scorecard | null = null;
@@ -204,6 +212,28 @@ const TournamentScorecardPage = () => {
 
   const getTotalPar = () => {
     return holes.reduce((sum, hole) => sum + hole.par, 0);
+  };
+
+  const getFrontNinePar = () => {
+    return holes.filter(h => h.numeroHoyo <= 9).reduce((sum, hole) => sum + hole.par, 0);
+  };
+
+  const getBackNinePar = () => {
+    return holes.filter(h => h.numeroHoyo > 9).reduce((sum, hole) => sum + hole.par, 0);
+  };
+
+  const getFrontNineScore = (type: 'propio' | 'marcador') => {
+    return holes.filter(h => h.numeroHoyo <= 9).reduce((sum, hole) => {
+      const score = scores[hole.numeroHoyo]?.[type];
+      return sum + (score || 0);
+    }, 0);
+  };
+
+  const getBackNineScore = (type: 'propio' | 'marcador') => {
+    return holes.filter(h => h.numeroHoyo > 9).reduce((sum, hole) => {
+      const score = scores[hole.numeroHoyo]?.[type];
+      return sum + (score || 0);
+    }, 0);
   };
 
   const getScoreNeto = () => {
@@ -441,34 +471,70 @@ const TournamentScorecardPage = () => {
           <table className="scorecard-table">
             <thead>
               <tr className="header-row">
-                <th className="sticky-col">HOYO</th>
-                {holes.map((hole) => (
-                  <th key={hole.numeroHoyo}>{hole.numeroHoyo}</th>
-                ))}
-                <th className="total-col">GROSS</th>
-                <th className="total-col">NETO</th>
+                <th className="sticky-col">{selectedTee.grupo} - {selectedTee.nombre}</th>
+                {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
+                    <td key={hole.numeroHoyo} className="distance-cell">
+                      {hole.distancesByTee?.[teeId] || '-'}
+                    </td>
+                  ))}
+                <th className="subtotal-col distance-cell"></th>
+                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                    <td key={hole.numeroHoyo} className="distance-cell">
+                      {hole.distancesByTee?.[teeId] || '-'}
+                    </td>
+                  ))}
+                <th className="subtotal-col distance-cell"></th>
+                <th className="total-col"></th>
+                <th className="total-col"></th>
               </tr>
             </thead>
             <tbody>
-              <tr className="par-row">
-                <td className="sticky-col label-cell">PAR</td>
-                {holes.map((hole) => (
-                  <td key={hole.numeroHoyo} className="par-cell">{hole.par}</td>
-                ))}
-                <td className="total-cell">{totalPar}</td>
-                <td className="total-cell"></td>
-              </tr>
+              {/* Fila 1: HCP */}
               <tr className="handicap-row">
                 <td className="sticky-col label-cell">HCP</td>
-                {holes.map((hole) => (
+                {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
                   <td key={hole.numeroHoyo} className="hcp-cell">{hole.handicap}</td>
                 ))}
+                <td className="subtotal-cell hcp-cell"></td>
+                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                  <td key={hole.numeroHoyo} className="hcp-cell">{hole.handicap}</td>
+                ))}
+                <td className="subtotal-cell hcp-cell"></td>
                 <td></td>
                 <td></td>
               </tr>
+              {/* Fila 2: PAR */}
+              <tr className="par-row">
+                <td className="sticky-col label-cell">PAR</td>
+                {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
+                  <td key={hole.numeroHoyo} className="par-cell">{hole.par}</td>
+                ))}
+                <td className="subtotal-cell  par-cell">{getFrontNinePar()}</td>
+                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                  <td key={hole.numeroHoyo} className="par-cell">{hole.par}</td>
+                ))}
+                <td className="subtotal-cell par-cell">{getBackNinePar()}</td>
+                <td className="total-cell final-total-cell">{totalPar}</td>
+                <td className="total-cell final-total-cell"></td>
+              </tr>
+              {/* Fila 3: HOYO */}
+              <tr className="hoyo-row">
+                <td className="sticky-col label-cell">HOYO</td>
+                {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
+                  <td key={hole.numeroHoyo} className="hoyo-cell">{hole.numeroHoyo}</td>
+                ))}
+                <td className="subtotal-cell hoyo-cell">IDA</td>
+                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                  <td key={hole.numeroHoyo} className="hoyo-cell">{hole.numeroHoyo}</td>
+                ))}
+                <td className="subtotal-cell hoyo-cell">VTA</td>
+                <td className="total-cell final-total-cell">GROSS</td>
+                <td className="total-cell final-total-cell">NETO</td>
+              </tr>
+              {/* Fila 4: TU (jugador) */}
               <tr className="score-row player-row">
                 <td className="sticky-col label-cell player-label">TU</td>
-                {holes.map((hole) => (
+                {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
                   <td key={hole.numeroHoyo}>
                     <input
                       type="number"
@@ -482,11 +548,28 @@ const TournamentScorecardPage = () => {
                     />
                   </td>
                 ))}
+                <td className="subtotal-cell score-total">{getFrontNineScore('propio') || '-'}</td>
+                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                  <td key={hole.numeroHoyo}>
+                    <input
+                      type="number"
+                      min="1"
+                      max="15"
+                      value={scores[hole.numeroHoyo]?.propio || ''}
+                      onChange={(e) => updateScore(hole.numeroHoyo, 'propio', e.target.value)}
+                      className="score-input"
+                      placeholder="-"
+                      disabled={scorecard?.delivered || false}
+                    />
+                  </td>
+                ))}
+                <td className="subtotal-cell score-total">{getBackNineScore('propio') || '-'}</td>
                 <td className="total-cell score-total">{totalPropio || '-'}</td>
                 <td className="total-cell score-total neto-cell">
                   {getScoreNeto() !== null ? getScoreNeto() : '-'}
                 </td>
               </tr>
+              {/* Fila 5: MARCADOR */}
               <tr className="score-row marker-row">
                 <td 
                   className="sticky-col label-cell marker-label clickable"
@@ -496,7 +579,7 @@ const TournamentScorecardPage = () => {
                 >
                   {scorecard?.markerName ? scorecard.markerName : 'MARCADOR'}
                 </td>
-                {holes.map((hole) => (
+                {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
                   <td key={hole.numeroHoyo}>
                     <input
                       type="number"
@@ -510,6 +593,22 @@ const TournamentScorecardPage = () => {
                     />
                   </td>
                 ))}
+                <td className="subtotal-cell score-total">{getFrontNineScore('marcador') || '-'}</td>
+                {holes.filter(h => h.numeroHoyo > 9).map((hole) => (
+                  <td key={hole.numeroHoyo}>
+                    <input
+                      type="number"
+                      min="1"
+                      max="15"
+                      value={scores[hole.numeroHoyo]?.marcador || ''}
+                      onChange={(e) => updateScore(hole.numeroHoyo, 'marcador', e.target.value)}
+                      className="score-input"
+                      placeholder="-"
+                      disabled={scorecard?.delivered || false}
+                    />
+                  </td>
+                ))}
+                <td className="subtotal-cell score-total">{getBackNineScore('marcador') || '-'}</td>
                 <td className="total-cell score-total">{totalMarcador || '-'}</td>
                 <td></td>
               </tr>

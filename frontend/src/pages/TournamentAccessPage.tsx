@@ -147,7 +147,7 @@ const TournamentAccessPage = () => {
                 <option value="">Seleccione un tee</option>
                 {courseTees.map((tee) => (
                   <option key={tee.id} value={tee.id}>
-                    {tee.nombre}
+                    {tee.grupo} - {tee.nombre}
                   </option>
                 ))}
               </select>
