@@ -9,6 +9,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.math.BigDecimal;
 
 @Data
 @Builder
@@ -33,6 +34,7 @@ public class CreateTournamentRequest {
     
     private LocalDate fechaFin;
     private Integer limiteInscriptos;
+    private BigDecimal valorInscripcion;
     
     @NotNull(message = "Tee configuration is required")
     private TournamentTeeConfigDTO teeConfig;

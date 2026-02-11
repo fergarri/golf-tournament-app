@@ -1,12 +1,14 @@
 package com.golf.tournament.controller;
 
 import com.golf.tournament.dto.leaderboard.LeaderboardEntryDTO;
+import com.golf.tournament.dto.leaderboard.UpdatePaymentRequest;
 import com.golf.tournament.service.LeaderboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/leaderboard")
@@ -25,5 +27,22 @@ public class LeaderboardController {
             @PathVariable Long tournamentId,
             @PathVariable Long categoryId) {
         return ResponseEntity.ok(leaderboardService.getLeaderboard(tournamentId, categoryId));
+    }
+
+    @PutMapping("/tournaments/{tournamentId}/payments")
+    public ResponseEntity<Void> updatePayments(
+            @PathVariable Long tournamentId,
+            @RequestBody UpdatePaymentRequest request) {
+        
+        List<Long> inscriptionIds = request.getPayments().stream()
+                .map(UpdatePaymentRequest.PaymentUpdate::getInscriptionId)
+                .collect(Collectors.toList());
+        
+        List<Boolean> pagadoValues = request.getPayments().stream()
+                .map(UpdatePaymentRequest.PaymentUpdate::getPagado)
+                .collect(Collectors.toList());
+        
+        leaderboardService.updatePayments(tournamentId, inscriptionIds, pagadoValues);
+        return ResponseEntity.ok().build();
     }
 }

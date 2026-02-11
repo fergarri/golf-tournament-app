@@ -69,6 +69,7 @@ public class TournamentService {
                 .fechaInicio(request.getFechaInicio())
                 .fechaFin(request.getFechaFin())
                 .limiteInscriptos(request.getLimiteInscriptos())
+                .valorInscripcion(request.getValorInscripcion())
                 .build();
 
         tournament = tournamentRepository.save(tournament);
@@ -106,7 +107,7 @@ public class TournamentService {
         tournament.setFechaInicio(request.getFechaInicio());
         tournament.setFechaFin(request.getFechaFin());
         tournament.setLimiteInscriptos(request.getLimiteInscriptos());
-
+        tournament.setValorInscripcion(request.getValorInscripcion());
         tournament = tournamentRepository.save(tournament);
 
         tournamentCategoryRepository.deleteAll(tournament.getCategories());
@@ -252,6 +253,7 @@ public class TournamentService {
                 .fechaInicio(tournament.getFechaInicio())
                 .fechaFin(tournament.getFechaFin())
                 .limiteInscriptos(tournament.getLimiteInscriptos())
+                .valorInscripcion(tournament.getValorInscripcion())
                 .currentInscriptos(inscriptos.intValue())
                 .categories(categories)
                 .teeConfig(teeConfigDTO)

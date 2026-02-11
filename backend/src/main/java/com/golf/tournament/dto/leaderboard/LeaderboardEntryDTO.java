@@ -16,6 +16,7 @@ public class LeaderboardEntryDTO {
     private Integer position;
     private Long scorecardId;
     private Long playerId;
+    private Long inscriptionId; // ID de la inscripción
     private String playerName;
     private String matricula;
     private String clubOrigen;
@@ -25,4 +26,6 @@ public class LeaderboardEntryDTO {
     private Integer totalPar;
     private BigDecimal scoreToPar;
     private BigDecimal handicapCourse;
+    private Boolean delivered; // Indica si el jugador entregó su tarjeta
+    private Boolean pagado; // Indica si el jugador pagó su inscripción
 }

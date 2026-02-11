@@ -41,7 +41,7 @@ public class HandicapService {
             if (tables.isEmpty()) {
                 log.warn("No table found in response for matricula: {}", matricula);
                 log.debug("Response body: {}", doc.body().text());
-                throw new BadRequestException("Player not found with matricula: " + matricula);
+                throw new BadRequestException("1- Player not found with matricula: " + matricula);
             }
 
             Element table = tables.first();
@@ -51,7 +51,7 @@ public class HandicapService {
                 log.warn("Not enough rows in table for matricula: {}. Table has {} rows", 
                         matricula, rows.size());
                 log.debug("Table HTML: {}", table.html());
-                throw new BadRequestException("Player not found with matricula: " + matricula);
+                throw new BadRequestException("2- Player not found with matricula: " + matricula);
             }
 
             Element dataRow = null;
@@ -65,7 +65,7 @@ public class HandicapService {
             }
 
             if (dataRow == null) {
-                throw new BadRequestException("Player not found with matricula: " + matricula);
+                throw new BadRequestException("3- Player not found with matricula: " + matricula);
             }
 
             Elements cells = dataRow.select("td");

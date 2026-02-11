@@ -57,6 +57,8 @@ const TournamentScorecardPage = () => {
   }, [codigo, matricula]);
 
   // Auto-guardar en localStorage cuando cambian los scores
+  // Nota: localStorage se usa solo como respaldo temporal, 
+  // pero los datos del backend siempre tienen prioridad al cargar
   useEffect(() => {
     if (scorecard && tournament && Object.keys(scores).length > 0) {
       const storageKey = `scorecard_${tournament.id}_${matricula}`;
@@ -117,10 +119,10 @@ const TournamentScorecardPage = () => {
         console.error('Error cargando scorecard:', err);
       }
 
-      // Inicializar scores
+      // Inicializar scores SIEMPRE desde el backend
       const initialScores: any = {};
       sortedHoles.forEach((hole: Hole) => {
-        // Primero intentar del backend
+        // Cargar SOLO del backend
         const holeScore = scorecardData?.holeScores.find(hs => hs.numeroHoyo === hole.numeroHoyo);
         initialScores[hole.numeroHoyo] = {
           propio: holeScore?.golpesPropio || null,
@@ -128,23 +130,11 @@ const TournamentScorecardPage = () => {
         };
       });
 
-      // Si no hay datos del backend, intentar cargar de localStorage
-      if (!scorecardData || scorecardData.holeScores.every(hs => !hs.golpesPropio && !hs.golpesMarcador)) {
+      // Limpiar localStorage para esta scorecard si existe una scorecard en el backend
+      // Esto evita que datos antiguos en caché sobrescriban los datos del servidor
+      if (scorecardData) {
         const storageKey = `scorecard_${tournamentData.id}_${matricula}`;
-        const savedData = localStorage.getItem(storageKey);
-        if (savedData) {
-          try {
-            const { scores: savedScores } = JSON.parse(savedData);
-            Object.keys(savedScores).forEach(holeNumber => {
-              const num = parseInt(holeNumber);
-              if (initialScores[num]) {
-                initialScores[num] = savedScores[num];
-              }
-            });
-          } catch (err) {
-            console.error('Error analizando datos en localStorage:', err);
-          }
-        }
+        localStorage.removeItem(storageKey);
       }
 
       setScores(initialScores);

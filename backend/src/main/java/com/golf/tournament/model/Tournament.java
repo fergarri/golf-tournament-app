@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -55,6 +56,9 @@ public class Tournament {
 
     @Column(name = "limite_inscriptos")
     private Integer limiteInscriptos;
+
+    @Column(name = "valor_inscripcion", precision = 10, scale = 2)
+    private BigDecimal valorInscripcion;
 
     @OneToOne(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
     private TournamentTeeConfig teeConfig;

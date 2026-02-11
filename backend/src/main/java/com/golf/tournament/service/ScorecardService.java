@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 @Slf4j
 @Service
@@ -58,11 +59,11 @@ public class ScorecardService {
                     "No se encontró conversión de handicap para el tee seleccionado y el handicap index del jugador"));
 
         // Si el torneo es de 9 hoyos, dividir por 2
-        java.math.BigDecimal handicapCourse;
+        BigDecimal handicapCourse;
         if (tournament.getCourse().getCantidadHoyos() == 9) {
-            handicapCourse = java.math.BigDecimal.valueOf(conversion.getCourseHandicap() / 2.0);
+            handicapCourse = BigDecimal.valueOf(conversion.getCourseHandicap() / 2.0);
         } else {
-            handicapCourse = java.math.BigDecimal.valueOf(conversion.getCourseHandicap());
+            handicapCourse = BigDecimal.valueOf(conversion.getCourseHandicap());
         }
 
         Scorecard scorecard = scorecardRepository.findByTournamentIdAndPlayerId(tournamentId, playerId)
@@ -201,7 +202,7 @@ public class ScorecardService {
         return convertToDTO(scorecard);
     }
 
-    private Scorecard createNewScorecard(Tournament tournament, Player player, java.math.BigDecimal handicapCourse) {
+    private Scorecard createNewScorecard(Tournament tournament, Player player, BigDecimal handicapCourse) {
         Scorecard scorecard = Scorecard.builder()
                 .tournament(tournament)
                 .player(player)

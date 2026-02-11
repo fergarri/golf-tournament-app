@@ -39,6 +39,10 @@ public class TournamentInscription {
     @Column(name = "handicap_course", precision = 4, scale = 1)
     private BigDecimal handicapCourse;
 
+    @Column(name = "pagado", nullable = false)
+    @Builder.Default
+    private Boolean pagado = false;
+
     @Column(name = "fecha_inscripcion", nullable = false)
     @Builder.Default
     private LocalDateTime fechaInscripcion = LocalDateTime.now();

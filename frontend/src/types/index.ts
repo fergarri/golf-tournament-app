@@ -89,6 +89,7 @@ export interface Tournament {
   fechaInicio: string;
   fechaFin?: string;
   limiteInscriptos?: number;
+  valorInscripcion?: number;
   currentInscriptos: number;
   categories: TournamentCategory[];
   teeConfig: TournamentTeeConfig;
@@ -136,6 +137,7 @@ export interface LeaderboardEntry {
   position: number;
   scorecardId: number;
   playerId: number;
+  inscriptionId: number;
   playerName: string;
   matricula: string;
   clubOrigen?: string;
@@ -145,4 +147,6 @@ export interface LeaderboardEntry {
   totalPar: number;
   scoreToPar: number;
   handicapCourse?: number;
+  delivered?: boolean; // Indica si el jugador entregó su tarjeta
+  pagado?: boolean; // Indica si el jugador pagó su inscripción
 }

@@ -30,12 +30,46 @@ const TournamentsPage = () => {
     fechaInicio: '',
     fechaFin: '',
     limiteInscriptos: '',
+    valorInscripcion: '',
     teeConfig: {
       courseTeeIdPrimeros9: '',
       courseTeeIdSegundos9: '',
     },
     categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54 }],
   });
+
+  // Función para formatear número a formato argentino/europeo (punto miles, coma decimales)
+  const formatCurrency = (value: string | number): string => {
+    if (!value && value !== 0) return '';
+    
+    // Si ya es un número, convertirlo directamente
+    let num: number;
+    if (typeof value === 'number') {
+      num = value;
+    } else {
+      // Si es string, parsearlo (viene del backend en formato estándar: 10500.15)
+      num = parseFloat(String(value));
+    }
+    
+    if (isNaN(num)) return '';
+    
+    // Formatear con separador de miles (punto) y decimales (coma)
+    return num.toLocaleString('es-AR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  };
+
+  // Función para parsear formato argentino/europeo a número
+  const parseCurrency = (formatted: string): number | null => {
+    if (!formatted) return null;
+    
+    // Remover puntos (separador de miles) y reemplazar coma por punto (separador decimal)
+    const cleaned = formatted.replace(/\./g, '').replace(/,/g, '.');
+    const num = parseFloat(cleaned);
+    
+    return isNaN(num) ? null : num;
+  };
 
   useEffect(() => {
     loadData();
@@ -87,6 +121,7 @@ const TournamentsPage = () => {
       fechaInicio: tournament.fechaInicio,
       fechaFin: tournament.fechaFin || '',
       limiteInscriptos: tournament.limiteInscriptos || '',
+      valorInscripcion: tournament.valorInscripcion ? formatCurrency(tournament.valorInscripcion) : '',
       teeConfig: tournament.teeConfig,
       categories: tournament.categories,
     });
@@ -100,6 +135,7 @@ const TournamentsPage = () => {
         ...formData,
         courseId: parseInt(formData.courseId),
         limiteInscriptos: formData.limiteInscriptos ? parseInt(formData.limiteInscriptos) : null,
+        valorInscripcion: parseCurrency(formData.valorInscripcion),
         teeConfig: {
           courseTeeIdPrimeros9: parseInt(formData.teeConfig.courseTeeIdPrimeros9),
           courseTeeIdSegundos9: formData.teeConfig.courseTeeIdSegundos9
@@ -177,6 +213,41 @@ const TournamentsPage = () => {
     const newCategories = [...formData.categories];
     newCategories[index] = { ...newCategories[index], [field]: value };
     setFormData({ ...formData, categories: newCategories });
+  };
+
+  // Manejador especial para el input de valor de inscripción con formato automático
+  const handleValorInscripcionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    
+    // Permitir solo números, punto, coma y teclas de control
+    const cleaned = input.replace(/[^\d,]/g, '');
+    
+    // Si está vacío, actualizar con string vacío
+    if (!cleaned) {
+      setFormData({ ...formData, valorInscripcion: '' });
+      return;
+    }
+    
+    // Separar parte entera y decimal
+    const parts = cleaned.split(',');
+    let integerPart = parts[0];
+    let decimalPart = parts[1] || '';
+    
+    // Limitar decimales a 2 dígitos
+    if (decimalPart.length > 2) {
+      decimalPart = decimalPart.substring(0, 2);
+    }
+    
+    // Formatear parte entera con separador de miles (punto)
+    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    
+    // Construir valor formateado
+    let formatted = integerPart;
+    if (parts.length > 1) {
+      formatted += ',' + decimalPart;
+    }
+    
+    setFormData({ ...formData, valorInscripcion: formatted });
   };
 
   const removeCategory = (index: number) => {
@@ -394,15 +465,28 @@ const TournamentsPage = () => {
             </div>
           </div>
 
-          <div className="form-group">
-            <label>Máximo de Inscriptos</label>
-            <input
-              type="number"
-              value={formData.limiteInscriptos}
-              onChange={(e) => setFormData({ ...formData, limiteInscriptos: e.target.value })}
-              placeholder="Dejar vacío para ilimitado"
-            />
-          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Máximo de Inscriptos</label>
+              <input
+                type="number"
+                value={formData.limiteInscriptos}
+                onChange={(e) => setFormData({ ...formData, limiteInscriptos: e.target.value })}
+                placeholder="Dejar vacío para ilimitado"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Valor de Inscripción</label>
+              <input
+                type="text"
+                value={formData.valorInscripcion}
+                onChange={handleValorInscripcionChange}
+                placeholder="Ej: 1.500,00"
+                inputMode="decimal"
+              />
+            </div>
+            </div>
 
           <div className="form-group">
             <label>Categorías</label>

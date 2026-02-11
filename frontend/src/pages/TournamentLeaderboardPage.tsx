@@ -22,6 +22,9 @@ const TournamentLeaderboardPage = () => {
   const [editingScorecardId, setEditingScorecardId] = useState<number | null>(null);
   const [editingScorecard, setEditingScorecard] = useState<Scorecard | null>(null);
   const [savingScorecard, setSavingScorecard] = useState(false);
+  const [paymentChanges, setPaymentChanges] = useState<Map<number, boolean>>(new Map());
+  const [savingPayments, setSavingPayments] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadData();
@@ -124,11 +127,100 @@ const TournamentLeaderboardPage = () => {
     }
   };
 
+  const handlePaymentChange = (inscriptionId: number, pagado: boolean) => {
+    // Encontrar el entry original en el leaderboard para comparar con el valor del servidor
+    const originalEntry = leaderboard.find(entry => entry.inscriptionId === inscriptionId);
+    const originalPagado = originalEntry?.pagado || false;
+    
+    setPaymentChanges((prev: Map<number, boolean>) => {
+      const newMap = new Map(prev);
+      
+      // Si el nuevo valor es igual al original del servidor, remover el cambio
+      if (pagado === originalPagado) {
+        newMap.delete(inscriptionId);
+      } else {
+        // Si es diferente, agregar/actualizar el cambio
+        newMap.set(inscriptionId, pagado);
+      }
+      
+      return newMap;
+    });
+  };
+
+  const getPaymentStatus = (entry: LeaderboardEntry): boolean => {
+    // Si hay un cambio pendiente, usar ese valor
+    if (paymentChanges.has(entry.inscriptionId)) {
+      return paymentChanges.get(entry.inscriptionId)!;
+    }
+    // Si no hay cambio, usar el valor actual del servidor
+    return entry.pagado || false;
+  };
+
+  const formatCurrency = (amount: number): string => {
+    return new Intl.NumberFormat('es-AR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(amount);
+  };
+  
+  const calculateTotalPaid = (): number => {
+    if (!tournament?.valorInscripcion) return 0;
+    
+    let total = 0;
+    leaderboard.forEach((entry: LeaderboardEntry) => {
+      const isPaid = getPaymentStatus(entry);
+      if (isPaid) {
+        total += tournament.valorInscripcion || 0;
+      }
+    });
+    
+    return total;
+  };
+
+  const handleSavePayments = async () => {
+    if (!id || paymentChanges.size === 0) return;
+
+    try {
+      setSavingPayments(true);
+      
+      // Convertir el Map a un array de PaymentUpdate
+      const payments = Array.from(paymentChanges.entries()).map(([inscriptionId, pagado]) => ({
+        inscriptionId,
+        pagado
+      }));
+
+      await leaderboardService.updatePayments(parseInt(id), payments);
+
+      // Limpiar los cambios pendientes
+      setPaymentChanges(new Map());
+
+      // Recargar datos
+      await loadData();
+      
+      setError('');
+    } catch (err: any) {
+      console.error('Error saving payments:', err);
+      setError(err.response?.data?.message || 'Error al guardar los pagos');
+    } finally {
+      setSavingPayments(false);
+    }
+  };
+
+  const filteredLeaderboard = searchQuery
+    ? leaderboard.filter((entry: LeaderboardEntry) =>
+        `${entry.playerName} ${entry.matricula} ${entry.clubOrigen || ''}`.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : leaderboard;
+
   const columns = [
     {
       header: 'Pos',
       accessor: (row: LeaderboardEntry) => (
-        <span className={`position ${getPositionClass(row.position)}`}>{row.position}</span>
+        row.delivered ? (
+          <span className={`position ${getPositionClass(row.position)}`}>{row.position}</span>
+        ) : (
+          <span>-</span>
+        )
       ),
       width: '60px',
     },
@@ -139,32 +231,60 @@ const TournamentLeaderboardPage = () => {
       accessor: (row: LeaderboardEntry) => row.handicapCourse?.toFixed(1) || '-',
       width: '8%',
     },
-    { header: 'Score Gross', accessor: 'scoreGross' as keyof LeaderboardEntry, width: '10%' },
+    { 
+      header: 'Score Gross', 
+      accessor: (row: LeaderboardEntry) => row.delivered ? row.scoreGross : '-',
+      width: '10%' 
+    },
     { 
       header: 'Score Neto', 
-      accessor: (row: LeaderboardEntry) => <strong>{row.scoreNeto}</strong>, 
+      accessor: (row: LeaderboardEntry) => row.delivered ? <strong>{row.scoreNeto}</strong> : '-', 
       width: '10%' 
     },
     {
       header: 'To Par',
       accessor: (row: LeaderboardEntry) => (
-        <span className={`score-to-par ${row.scoreToPar < 0 ? 'under-par' : row.scoreToPar > 0 ? 'over-par' : 'even-par'}`}>
-          {getScoreToPar(row.scoreToPar)}
-        </span>
+        row.delivered ? (
+          <span className={`score-to-par ${row.scoreToPar < 0 ? 'under-par' : row.scoreToPar > 0 ? 'over-par' : 'even-par'}`}>
+            {getScoreToPar(row.scoreToPar)}
+          </span>
+        ) : (
+          <span>-</span>
+        )
       ),
       width: '8%',
     },
     { header: 'Club', accessor: (row: LeaderboardEntry) => row.clubOrigen || '-', width: '10%' },
-    { header: 'Categoría', accessor: (row: LeaderboardEntry) => row.categoryName || '-', width: '10%' },
+    { 
+      header: 'Categoría', 
+      accessor: (row: LeaderboardEntry) => row.delivered ? (row.categoryName || '-') : '-',
+      width: '10%' 
+    },
+    {
+      header: 'Pagado',
+      accessor: (row: LeaderboardEntry) => (
+        <input
+          type="checkbox"
+          checked={getPaymentStatus(row)}
+          onChange={(e) => handlePaymentChange(row.inscriptionId, e.target.checked)}
+          style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+        />
+      ),
+      width: '7%',
+    },
     {
       header: 'Acciones',
       accessor: (row: LeaderboardEntry) => (
-        <button
-          onClick={() => handleEditScorecard(row.scorecardId)}
-          className="btn-edit"
-        >
-          Editar
-        </button>
+        row.delivered && row.scorecardId ? (
+          <button
+            onClick={() => handleEditScorecard(row.scorecardId)}
+            className="btn-edit"
+          >
+            Editar
+          </button>
+        ) : (
+          <span>-</span>
+        )
       ),
       width: '8%',
     },
@@ -181,6 +301,22 @@ const TournamentLeaderboardPage = () => {
           </button>
           <button onClick={loadData} className="btn-refresh" disabled={loading}>
             {loading ? '⟳ Actualizando...' : '⟳ Actualizar'}
+          </button>
+          <button 
+            onClick={handleSavePayments} 
+            className="btn-save-payments" 
+            disabled={savingPayments || paymentChanges.size === 0}
+            style={{
+              backgroundColor: paymentChanges.size > 0 ? '#4CAF50' : '#ccc',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: paymentChanges.size > 0 ? 'pointer' : 'not-allowed',
+              fontWeight: 'bold'
+            }}
+          >
+            {savingPayments ? 'Guardando...' : `Guardar Pagos ${paymentChanges.size > 0 ? `(${paymentChanges.size})` : ''}`}
           </button>
         </div>
         
@@ -199,6 +335,11 @@ const TournamentLeaderboardPage = () => {
             </span>
             <span className="detail-item">
               <strong>Código:</strong> <span className="tournament-code">{tournament?.codigo}</span>
+            </span>
+            <span className="detail-item">
+              <strong>Total Recaudado:</strong> <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
+                ${formatCurrency(calculateTotalPaid())}
+              </span>
             </span>
           </div>
         </div>
@@ -222,26 +363,60 @@ const TournamentLeaderboardPage = () => {
         </div>
       )}
 
+      <div className="search-container" style={{ marginBottom: '1.5rem' }}>
+        <input
+          type="text"
+          placeholder="Buscar jugadores por nombre, matrícula o club"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="search-input"
+          style={{
+            width: '50%',
+            padding: '0.75rem 1rem',
+            fontSize: '1rem',
+            border: '1px solid #e0e0e0',
+            borderRadius: '4px',
+            transition: 'border-color 0.3s',
+          }}
+          onFocus={(e) => e.target.style.borderColor = '#3498db'}
+          onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+        />
+        {searchQuery && (
+          <p style={{ 
+            marginTop: '0.5rem', 
+            fontSize: '0.875rem', 
+            color: '#7f8c8d' 
+          }}>
+            Mostrando {filteredLeaderboard.length} de {leaderboard.length} jugadores
+          </p>
+        )}
+      </div>
+
       {error && <div className="error-message">{error}</div>}
 
       {leaderboard.length === 0 ? (
         <div className="empty-state">
-          <h2>No hay Puntuaciones Aún Enviadas</h2>
-          <p>No hay tarjetas de puntuación enviadas para este torneo</p>
+          <h2>No hay Jugadores Inscritos</h2>
+          <p>No hay jugadores inscritos en este torneo</p>
         </div>
       ) : (
         <>
           <div className="leaderboard-container">
             <Table 
-              data={leaderboard} 
+              data={filteredLeaderboard} 
               columns={columns} 
-              emptyMessage="No hay jugadores en esta categoría"
+              emptyMessage="No hay jugadores que coincidan con la búsqueda"
               getRowKey={(row) => row.playerId}
             />
           </div>
           <div className="update-info">
             <span className="live-indicator"></span>
             <span>Actualizando en tiempo real cada 100 segundos</span>
+            {leaderboard.filter(entry => entry.delivered).length > 0 && (
+              <span style={{ marginLeft: '20px' }}>
+                • Tarjetas entregadas: {leaderboard.filter(entry => entry.delivered).length} de {leaderboard.length}
+              </span>
+            )}
           </div>
         </>
       )}

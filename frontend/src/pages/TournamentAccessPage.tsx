@@ -38,7 +38,7 @@ const TournamentAccessPage = () => {
       
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Tournament not found');
+      setError(err.response?.data?.message || 'Torneo no encontrado');
     } finally {
       setLoading(false);
     }
@@ -47,12 +47,12 @@ const TournamentAccessPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!matricula.trim()) {
-      setError('Please enter your registration number');
+      setError('Por favor ingrese su número de matrícula');
       return;
     }
 
     if (!selectedTeeId) {
-      setError('Please select a tee');
+      setError('Por favor seleccione un tee');
       return;
     }
 
@@ -77,7 +77,7 @@ const TournamentAccessPage = () => {
         });
       }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Player not found or not inscribed in this tournament';
+      const errorMessage = err.response?.data?.message || 'Jugador no encontrado o no inscrito en este torneo';
       setModalMessage(errorMessage);
       setModalOpen(true);
       setSubmitting(false);
@@ -88,7 +88,7 @@ const TournamentAccessPage = () => {
     return (
       <div className="tournament-access-container">
         <div className="access-card">
-          <div className="loading">Loading tournament...</div>
+          <div className="loading">Cargando torneo...</div>
         </div>
       </div>
     );
@@ -98,8 +98,8 @@ const TournamentAccessPage = () => {
     return (
       <div className="tournament-access-container">
         <div className="access-card">
-          <h2>Tournament Not Found</h2>
-          <p>The tournament code is invalid or the tournament has been removed.</p>
+          <h2>Torneo no encontrado</h2>
+          <p>El código del torneo es inválido o el torneo ha sido eliminado.</p>
         </div>
       </div>
     );
@@ -112,25 +112,25 @@ const TournamentAccessPage = () => {
           <h1>{tournament.nombre}</h1>
           <p className="tournament-course">{tournament.courseName}</p>
           <p className="tournament-date">
-            {new Date(tournament.fechaInicio).toLocaleDateString()}
+            {new Date(tournament.fechaInicio).toLocaleDateString("es-AR", {day: "2-digit", month: "2-digit", year: "numeric",})}
           </p>
         </div>
 
         <div className="access-form">
-          <h2>Player Access</h2>
+          <h2>Acceso de Jugador</h2>
           <p className="access-instruction">
-            Enter your registration number to access your scorecard
+            Ingrese su número de matrícula para acceder a su tarjeta
           </p>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <label htmlFor="matricula">Registration Number</label>
+              <label htmlFor="matricula">Número de Matrícula</label>
               <input
                 id="matricula"
                 type="text"
                 value={matricula}
                 onChange={(e) => setMatricula(e.target.value)}
-                placeholder="Enter your registration number"
+                placeholder="Ingrese su número de matrícula"
                 required
                 autoFocus
               />
@@ -156,14 +156,14 @@ const TournamentAccessPage = () => {
             {error && <div className="error-message">{error}</div>}
 
             <button type="submit" className="btn btn-primary" disabled={submitting}>
-              {submitting ? 'Validating...' : 'Access Scorecard'}
+              {submitting ? 'Validando...' : 'Acceder a la tarjeta'}
             </button>
           </form>
         </div>
 
         <div className="tournament-info-footer">
-          <p>Tournament Code: <strong>{tournament.codigo}</strong></p>
-          <p>Inscribed Players: <strong>{tournament.currentInscriptos}</strong></p>
+          <p>Código del Torneo: <strong>{tournament.codigo}</strong></p>
+          <p>Jugadores Inscritos: <strong>{tournament.currentInscriptos}</strong></p>
         </div>
       </div>
 

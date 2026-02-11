@@ -15,6 +15,8 @@ public interface ScorecardRepository extends JpaRepository<Scorecard, Long> {
     List<Scorecard> findByTournamentId(Long tournamentId);
     
     List<Scorecard> findByTournamentIdAndDeliveredTrue(Long tournamentId);
+
+    List<Scorecard> findByTournamentIdOrderByDeliveredAtAsc(Long tournamentId);
     
     Optional<Scorecard> findByTournamentIdAndPlayerId(Long tournamentId, Long playerId);
     

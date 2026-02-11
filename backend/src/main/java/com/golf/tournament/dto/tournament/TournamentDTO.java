@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -25,6 +26,7 @@ public class TournamentDTO {
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
     private Integer limiteInscriptos;
+    private BigDecimal valorInscripcion;
     private Integer currentInscriptos;
     private List<TournamentCategoryDTO> categories;
     private TournamentTeeConfigDTO teeConfig;
