@@ -9,18 +9,18 @@ const Layout = () => {
     <div className="layout">
       <nav className="navbar">
         <div className="navbar-brand">
-          <h1>Golf Tournament</h1>
+          <h1>Torneos de Golf</h1>
         </div>
         <div className="navbar-links">
           <Link to="/">Dashboard</Link>
-          <Link to="/tournaments">Tournaments</Link>
-          <Link to="/players">Players</Link>
-          <Link to="/courses">Courses</Link>
-          <Link to="/users">Users</Link>
+          <Link to="/tournaments">Torneos</Link>
+          <Link to="/players">Jugadores</Link>
+          <Link to="/courses">Campos</Link>
+          <Link to="/users">Usuarios</Link>
         </div>
         <div className="navbar-user">
           <span>{user?.email}</span>
-          <button onClick={logout} className="btn-logout">Logout</button>
+          <button onClick={logout} className="btn-logout">Cerrar sesión</button>
         </div>
       </nav>
       <main className="main-content">

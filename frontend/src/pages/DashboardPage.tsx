@@ -45,7 +45,7 @@ const DashboardPage = () => {
       setTournaments(activeTournaments);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error loading tournaments');
+      setError(err.response?.data?.message || 'Error cargando torneos');
     } finally {
       setLoading(false);
     }
@@ -58,7 +58,7 @@ const DashboardPage = () => {
       setShowLinkModal(true);
       loadTournaments();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error starting tournament');
+      setError(err.response?.data?.message || 'Error iniciando torneo');
     }
   };
 
@@ -82,14 +82,14 @@ const DashboardPage = () => {
       loadTournaments();
       navigate(`/tournaments/${tournament.id}/leaderboard?final=true`);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error finalizing tournament');
+      setError(err.response?.data?.message || 'Error finalizando torneo');
     }
   };
 
   const handleFinalizeTournament = (tournament: Tournament) => {
     showModal(
-      'Finalize Tournament',
-      `Are you sure you want to finalize ${tournament.nombre}? This will close the tournament.`,
+      'Finalizar Torneo',
+      `¿Estás seguro de querer finalizar ${tournament.nombre}? Esto cerrará el torneo.`,
       'confirm',
       () => finalizeTournamentAction(tournament)
     );
@@ -98,8 +98,8 @@ const DashboardPage = () => {
   const copyLink = (link: string) => {
     navigator.clipboard.writeText(link);
     showModal(
-      'Success',
-      'Link copied to clipboard!',
+      'Éxito',
+      'Link copiado al portapapeles!',
       'success'
     );
   };
@@ -109,15 +109,15 @@ const DashboardPage = () => {
   };
 
   const columns = [
-    { header: 'Tournament Name', accessor: 'nombre' as keyof Tournament, width: '25%' },
-    { header: 'Course', accessor: 'courseName' as keyof Tournament, width: '20%' },
+    { header: 'Nombre del Torneo', accessor: 'nombre' as keyof Tournament, width: '25%' },
+    { header: 'Campo', accessor: 'courseName' as keyof Tournament, width: '20%' },
     { 
-      header: 'Start Date', 
+      header: 'Fecha de Inicio', 
       accessor: (row: Tournament) => new Date(row.fechaInicio).toLocaleDateString(),
       width: '12%'
     },
     {
-      header: 'Inscribed',
+      header: 'Inscriptos',
       accessor: (row: Tournament) => {
         const limit = row.limiteInscriptos ? `/${row.limiteInscriptos}` : '';
         const percentage = row.limiteInscriptos 
@@ -128,7 +128,7 @@ const DashboardPage = () => {
             <div>{row.currentInscriptos}{limit}</div>
             {percentage !== null && percentage >= 80 && (
               <small style={{ color: percentage >= 100 ? '#e74c3c' : '#f39c12' }}>
-                ({percentage}% full)
+                ({percentage}% lleno)
               </small>
             )}
           </div>
@@ -137,7 +137,7 @@ const DashboardPage = () => {
       width: '12%'
     },
     { 
-      header: 'Code', 
+      header: 'Código', 
       accessor: (row: Tournament) => (
         <span className="tournament-code">{row.codigo}</span>
       ),
@@ -153,7 +153,7 @@ const DashboardPage = () => {
           className="btn btn-success"
           style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#27ae60' }}
         >
-          Start
+          Iniciar
         </button>
       )}
       {tournament.estado === 'IN_PROGRESS' && (
@@ -163,21 +163,21 @@ const DashboardPage = () => {
             className="btn btn-secondary"
             style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#9b59b6' }}
           >
-            Copy Link
+            Copiar Link
           </button>
           <button 
             onClick={() => handleViewLeaderboard(tournament)} 
             className="btn btn-secondary"
             style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}
           >
-            Leaderboard
+            Tabla de Líderes
           </button>
           <button 
             onClick={() => handleFinalizeTournament(tournament)} 
             className="btn btn-danger"
             style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}
           >
-            Finalize
+            Finalizar
           </button>
         </>
       )}
@@ -187,31 +187,31 @@ const DashboardPage = () => {
           className="btn btn-secondary"
           style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}
         >
-          View Results
+          Ver Resultados
         </button>
       )}
     </>
   );
 
-  if (loading) return <div className="loading">Loading tournaments...</div>;
+  if (loading) return <div className="loading">Cargando torneos...</div>;
 
   return (
     <div>
       <div className="dashboard-header">
         <div>
           <h1>Dashboard</h1>
-          <p className="subtitle">Active Tournaments</p>
+          <p className="subtitle">Torneos Activos</p>
         </div>
         <div className="dashboard-stats">
           <div className="stat-card">
             <div className="stat-value">{tournaments.length}</div>
-            <div className="stat-label">Active Tournaments</div>
+            <div className="stat-label">Torneos Activos</div>
           </div>
           <div className="stat-card">
             <div className="stat-value">
               {tournaments.reduce((sum, t) => sum + t.currentInscriptos, 0)}
             </div>
-            <div className="stat-label">Total Players</div>
+            <div className="stat-label">Total de Jugadores</div>
           </div>
         </div>
       </div>
@@ -220,10 +220,10 @@ const DashboardPage = () => {
 
       {tournaments.length === 0 ? (
         <div className="empty-state">
-          <h2>No Active Tournaments</h2>
-          <p>Create a new tournament to get started</p>
+          <h2>No Torneos Activos</h2>
+          <p>Crea un nuevo torneo para comenzar</p>
           <button onClick={() => navigate('/tournaments')} className="btn btn-primary">
-            Go to Tournaments
+            Ir a Torneos
           </button>
         </div>
       ) : (
@@ -231,7 +231,7 @@ const DashboardPage = () => {
           data={tournaments} 
           columns={columns} 
           customActions={customActions}
-          emptyMessage="No active tournaments"
+          emptyMessage="No hay torneos activos"
         />
       )}
 
@@ -242,7 +242,7 @@ const DashboardPage = () => {
             setShowLinkModal(false);
             setSelectedTournament(null);
           }}
-          title="Tournament Started"
+          title="Torneo Iniciado"
           size="medium"
         >
           <div style={{ textAlign: 'center' }}>
@@ -250,10 +250,10 @@ const DashboardPage = () => {
               ✓
             </div>
             <h3 style={{ marginBottom: '1rem', color: '#2c3e50' }}>
-              {selectedTournament.nombre} is now active!
+              {selectedTournament.nombre} está ahora activo!
             </h3>
             <p style={{ color: '#7f8c8d', marginBottom: '1.5rem' }}>
-              Share this link with players so they can access their scorecards:
+              Comparte este link con los jugadores para que puedan acceder a sus tarjetas de puntuación:
             </p>
             <div style={{ 
               backgroundColor: '#f8f9fa', 
@@ -271,10 +271,10 @@ const DashboardPage = () => {
               className="btn btn-primary"
               style={{ marginBottom: '1rem' }}
             >
-              Copy Link to Clipboard
+              Copiar Link
             </button>
             <p style={{ color: '#7f8c8d', fontSize: '0.9rem' }}>
-              Players will need to enter their registration number to access their scorecard
+              Los jugadores necesitarán ingresar su matrícula para acceder a sus tarjetas
             </p>
           </div>
         </Modal>
@@ -287,8 +287,8 @@ const DashboardPage = () => {
         title={modalConfig.title}
         message={modalConfig.message}
         type={modalConfig.type}
-        confirmText={modalConfig.type === 'confirm' ? 'Yes, Finalize' : 'OK'}
-        cancelText="Cancel"
+        confirmText={modalConfig.type === 'confirm' ? 'Sí, Finalizar' : 'OK'}
+        cancelText="Cancelar"
       />
     </div>
   );

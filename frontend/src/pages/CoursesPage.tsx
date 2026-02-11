@@ -187,16 +187,16 @@ const CoursesPage = () => {
 
   const customActions = (course: Course) => (
     <>
-      <button onClick={() => handleEdit(course)} className="btn-edit">
+      <button onClick={() => handleEdit(course)} className="btn btn-edit">
         Editar
       </button>
       <button onClick={() => handleManageTees(course)} className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#9b59b6' }}>
         Gestionar Tees
       </button>
-      <button onClick={() => handleManageHoles(course)} className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}>
+      <button onClick={() => handleManageHoles(course)} className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#03a508' }}>
         Gestionar Hoyos
       </button>
-      <button onClick={() => handleDelete(course)} className="btn-delete">
+      <button onClick={() => handleDelete(course)} className="btn btn-delete">
         Eliminar
       </button>
     </>
@@ -209,7 +209,7 @@ const CoursesPage = () => {
       <div className="page-header">
         <h1>Campos de Golf</h1>
         <button onClick={handleCreate} className="btn btn-primary">
-          Crear Campo de Golf
+          Crear Campo
         </button>
       </div>
 
@@ -221,8 +221,18 @@ const CoursesPage = () => {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingCourse ? 'Editar Campo de Golf' : 'Crear Campo de Golf'}
+        footer={
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
+              Cancelar
+            </button>
+            <button type="submit" form="course-form" className="btn btn-primary">
+              {editingCourse ? 'Actualizar' : 'Crear'}
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmit}>
+        <form id="course-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Nombre del Campo de Golf *</label>
             <input
@@ -311,15 +321,6 @@ const CoursesPage = () => {
                 onChange={(e) => setFormData({ ...formData, slopeRating: e.target.value ? parseInt(e.target.value) : undefined })}
               />
             </div>
-          </div>
-
-          <div className="form-actions">
-            <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
-              Cancelar
-            </button>
-            <button type="submit" className="btn btn-primary">
-              {editingCourse ? 'Actualizar' : 'Crear'}
-            </button>
           </div>
         </form>
       </Modal>

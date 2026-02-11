@@ -200,8 +200,18 @@ const PlayersPage = () => {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingPlayer ? 'Editar Jugador' : 'Crear Jugador'}
+        footer={
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
+              Cancelar
+            </button>
+            <button type="submit" form="player-form" className="btn btn-primary">
+              {editingPlayer ? 'Actualizar' : 'Crear'}
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmit}>
+        <form id="player-form" onSubmit={handleSubmit}>
           <div className="form-row">
             <div className="form-group">
               <label>Nombre *</label>
@@ -282,15 +292,6 @@ const PlayersPage = () => {
               />
             </div>
           </div>
-
-          <div className="form-actions">
-            <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
-              Cancelar
-            </button>
-            <button type="submit" className="btn btn-primary">
-              {editingPlayer ? 'Actualizar' : 'Crear'}
-            </button>
-          </div>
         </form>
       </Modal>
 
@@ -298,6 +299,32 @@ const PlayersPage = () => {
         isOpen={showBulkUpdateModal}
         onClose={handleCloseBulkModal}
         title="Actualizar Jugadores"
+        footer={
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            {!bulkUpdateResult ? (
+              <>
+                <button 
+                  onClick={handleCloseBulkModal} 
+                  className="btn btn-cancel"
+                  disabled={isProcessing}
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleBulkUpdate} 
+                  className="btn btn-primary"
+                  disabled={!selectedFile || isProcessing}
+                >
+                  Procesar
+                </button>
+              </>
+            ) : (
+              <button onClick={handleCloseBulkModal} className="btn btn-primary">
+                Cerrar
+              </button>
+            )}
+          </div>
+        }
       >
         {!bulkUpdateResult ? (
           <div>
@@ -335,23 +362,6 @@ const PlayersPage = () => {
             )}
             
             {error && <div className="error-message">{error}</div>}
-            
-            <div className="form-actions" style={{ marginTop: '20px' }}>
-              <button 
-                onClick={handleCloseBulkModal} 
-                className="btn btn-cancel"
-                disabled={isProcessing}
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={handleBulkUpdate} 
-                className="btn btn-primary"
-                disabled={!selectedFile || isProcessing}
-              >
-                Procesar
-              </button>
-            </div>
           </div>
         ) : (
           <div>
@@ -382,12 +392,6 @@ const PlayersPage = () => {
                 </ul>
               </div>
             )}
-            
-            <div className="form-actions" style={{ marginTop: '30px' }}>
-              <button onClick={handleCloseBulkModal} className="btn btn-primary">
-                Cerrar
-              </button>
-            </div>
           </div>
         )}
       </Modal>

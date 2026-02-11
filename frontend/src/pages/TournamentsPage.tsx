@@ -345,8 +345,18 @@ const TournamentsPage = () => {
         onClose={() => setShowModal(false)}
         title={editingTournament ? 'Editar Torneo' : 'Crear Torneo'}
         size="large"
+        footer={
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
+              Cancelar
+            </button>
+            <button type="submit" form="tournament-form" className="btn btn-primary">
+              {editingTournament ? 'Actualizar' : 'Crear'}
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleSubmit}>
+        <form id="tournament-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Nombre del Torneo *</label>
             <input
@@ -486,7 +496,7 @@ const TournamentsPage = () => {
                 inputMode="decimal"
               />
             </div>
-            </div>
+          </div>
 
           <div className="form-group">
             <label>Categorías</label>
@@ -532,15 +542,6 @@ const TournamentsPage = () => {
             ))}
             <button type="button" onClick={addCategory} className="btn btn-secondary" style={{ marginTop: '0.5rem' }}>
               Agregar Categoría
-            </button>
-          </div>
-
-          <div className="form-actions">
-            <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
-              Cancelar
-            </button>
-            <button type="submit" className="btn btn-primary">
-              {editingTournament ? 'Actualizar' : 'Crear'}
             </button>
           </div>
         </form>

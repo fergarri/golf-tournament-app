@@ -12,6 +12,7 @@ interface ModalProps {
   cancelText?: string;
   size?: 'small' | 'medium' | 'large';
   children?: ReactNode;
+  footer?: ReactNode;
 }
 
 const Modal = ({
@@ -25,6 +26,7 @@ const Modal = ({
   cancelText = 'Cancel',
   size = 'small',
   children,
+  footer,
 }: ModalProps) => {
   useEffect(() => {
     if (isOpen) {
@@ -94,35 +96,36 @@ const Modal = ({
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className={`modal-container modal-${size}`} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-content">
-          {children ? (
-            // Custom content mode
-            <>
+        {children ? (
+          // Custom content mode with separate header, body, and footer
+          <>
+            <div className="modal-header">
               <h2 className="modal-title">{title}</h2>
-              <div className="modal-body">{children}</div>
-            </>
-          ) : (
-            // Alert/Confirm mode
-            <>
-              {getIcon()}
-              <h2 className="modal-title">{title}</h2>
-              <p className="modal-message">{message}</p>
-              <div className="modal-actions">
-                {type === 'confirm' && (
-                  <button className="modal-btn modal-btn-cancel" onClick={onClose}>
-                    {cancelText}
-                  </button>
-                )}
-                <button
-                  className={`modal-btn modal-btn-primary ${type === 'confirm' ? 'confirm' : ''}`}
-                  onClick={handleConfirm}
-                >
-                  {confirmText}
+            </div>
+            <div className="modal-body">{children}</div>
+            {footer && <div className="modal-footer">{footer}</div>}
+          </>
+        ) : (
+          // Alert/Confirm mode (centered content)
+          <div className="modal-content">
+            {getIcon()}
+            <h2 className="modal-title">{title}</h2>
+            <p className="modal-message">{message}</p>
+            <div className="modal-actions">
+              {type === 'confirm' && (
+                <button className="modal-btn modal-btn-cancel" onClick={onClose}>
+                  {cancelText}
                 </button>
-              </div>
-            </>
-          )}
-        </div>
+              )}
+              <button
+                className={`modal-btn modal-btn-primary ${type === 'confirm' ? 'confirm' : ''}`}
+                onClick={handleConfirm}
+              >
+                {confirmText}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

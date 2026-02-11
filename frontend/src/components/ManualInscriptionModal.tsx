@@ -96,7 +96,29 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Inscribir Jugadores - ${tournament.nombre}`} size="large">
+    <Modal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      title={`Inscribir Jugadores - ${tournament.nombre}`} 
+      size="large"
+      footer={
+        !loading && (
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button type="button" onClick={onClose} className="btn btn-cancel" disabled={saving}>
+              Cancelar
+            </button>
+            <button 
+              type="button" 
+              onClick={handleSave} 
+              className="btn btn-primary" 
+              disabled={saving || selectedPlayers.size === 0}
+            >
+              {saving ? 'Inscribiendo...' : `Inscribir ${selectedPlayers.size} Jugador(es)`}
+            </button>
+          </div>
+        )
+      }
+    >
       <div className="manual-inscription">
         {loading ? (
           <div className="loading">Cargando jugadores...</div>
@@ -163,20 +185,6 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
                 </div>
               </>
             )}
-
-            <div className="form-actions">
-              <button type="button" onClick={onClose} className="btn btn-cancel" disabled={saving}>
-                Cancelar
-              </button>
-              <button 
-                type="button" 
-                onClick={handleSave} 
-                className="btn btn-primary" 
-                disabled={saving || selectedPlayers.size === 0}
-              >
-                {saving ? 'Inscribiendo...' : `Inscribir ${selectedPlayers.size} Jugador(es)`}
-              </button>
-            </div>
           </>
         )}
       </div>

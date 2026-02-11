@@ -99,24 +99,41 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
   ];
 
   const customActions = (tee: CourseTee) => (
-    <>
-      <button onClick={() => handleEdit(tee)} className="btn-edit">
+    <div className="action-buttons">
+      <button onClick={() => handleEdit(tee)} className=" btn btn-edit">
         Editar
       </button>
       {tee.active && (
-        <button onClick={() => handleDeactivate(tee)} className="btn btn-danger" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}>
+        <button onClick={() => handleDeactivate(tee)} className="btn btn-danger">
           Desactivar
         </button>
       )}
-    </>
+    </div>
   );
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} title={`Manage Tees - ${course?.nombre}`} size="large">
+    <Modal 
+      isOpen={isOpen} 
+      onClose={handleClose} 
+      title={`Gestionar Tees - ${course?.nombre}`} 
+      size="large"
+      footer={
+        showForm && (
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button type="button" onClick={() => setShowForm(false)} className="btn btn-cancel">
+              Cancelar
+            </button>
+            <button type="submit" form="tee-form" className="btn btn-primary">
+              {editingTee ? 'Actualizar Tee' : 'Agregar Tee'}
+            </button>
+          </div>
+        )
+      }
+    >
       <div style={{ minHeight: '400px' }}>
         <div style={{ marginBottom: '1.5rem' }}>
           <button onClick={handleCreate} className="btn btn-primary">
-            Agregar Nuevo Tee
+            Agregar Tee
           </button>
         </div>
 
@@ -128,8 +145,8 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
 
         {showForm && (
           <div style={{ marginTop: '2rem', padding: '1.5rem', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
-            <h3 style={{ marginTop: 0 }}>{editingTee ? 'Editar Tee' : 'Agregar Nuevo Tee'}</h3>
-            <form onSubmit={handleSubmit}>
+            <h3 style={{ marginTop: 0 }}>{editingTee ? 'Editar Tee' : 'Agregar Tee'}</h3>
+            <form id="tee-form" onSubmit={handleSubmit}>
               <div className="form-row">
                 <div className="form-group">
                   <label>Nombre del Tee *</label>
@@ -150,14 +167,6 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
                     placeholder="e.g., Blanco, Rojo"
                   />
                 </div>
-              </div>
-              <div className="form-actions" style={{ marginTop: '1rem', borderTop: 'none', paddingTop: 0 }}>
-                <button type="button" onClick={() => setShowForm(false)} className="btn btn-cancel">
-                  Cancelar
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  {editingTee ? 'Actualizar Tee' : 'Agregar Tee'}
-                </button>
               </div>
             </form>
           </div>

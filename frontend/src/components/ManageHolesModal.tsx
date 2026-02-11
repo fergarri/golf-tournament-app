@@ -95,14 +95,29 @@ const ManageHolesModal = ({ isOpen, onClose, course, onSave }: ManageHolesModalP
 
   if (loading) {
     return (
-      <Modal isOpen={isOpen} onClose={onClose} title={`Manage Holes - ${course?.nombre}`} size="large">
+      <Modal isOpen={isOpen} onClose={onClose} title={`Gestionar Hoyos - ${course?.nombre}`} size="large">
         <div className="loading">Cargando hoyos...</div>
       </Modal>
     );
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Manage Holes - ${course?.nombre}`} size="large">
+    <Modal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      title={`Gestionar Hoyos - ${course?.nombre}`} 
+      size="large"
+      footer={
+        <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+          <button type="button" onClick={onClose} className="btn btn-cancel" disabled={saving}>
+            Cancelar
+          </button>
+          <button type="button" onClick={handleSave} className="btn btn-primary" disabled={saving}>
+            {saving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      }
+    >
       <div className="holes-manager">
         <div className="holes-summary">
           <p>
@@ -189,15 +204,6 @@ const ManageHolesModal = ({ isOpen, onClose, course, onSave }: ManageHolesModalP
               </tr>
             </tbody>
           </table>
-        </div>
-
-        <div className="form-actions">
-          <button type="button" onClick={onClose} className="btn btn-cancel" disabled={saving}>
-            Cancelar
-          </button>
-          <button type="button" onClick={handleSave} className="btn btn-primary" disabled={saving}>
-            {saving ? 'Guardando...' : 'Guardar Configuración de Hoyos'}
-          </button>
         </div>
       </div>
     </Modal>

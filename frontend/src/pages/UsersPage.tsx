@@ -42,7 +42,7 @@ const UsersPage = () => {
       setUsers(data);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error loading users');
+      setError(err.response?.data?.message || 'Error cargando usuarios');
     } finally {
       setLoading(false);
     }
@@ -56,7 +56,7 @@ const UsersPage = () => {
       setCreateData({ email: '', matricula: '', password: '', role: 'ADMIN' });
       loadUsers();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error creating user');
+      setError(err.response?.data?.message || 'Error creando usuario');
     }
   };
 
@@ -79,7 +79,7 @@ const UsersPage = () => {
       setSelectedUser(null);
       loadUsers();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error updating user');
+      setError(err.response?.data?.message || 'Error actualizando usuario');
     }
   };
 
@@ -97,56 +97,56 @@ const UsersPage = () => {
       setShowPasswordModal(false);
       setSelectedUser(null);
       setPasswordData({ newPassword: '' });
-      alert('Password changed successfully');
+      alert('Contraseña cambiada exitosamente');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error changing password');
+      setError(err.response?.data?.message || 'Error cambiando contraseña');
     }
   };
 
   const handleDelete = async (user: UserDetail) => {
-    if (!confirm(`Are you sure you want to delete ${user.email}?`)) return;
+    if (!confirm(`¿Estás seguro de querer eliminar ${user.email}?`)) return;
     try {
       await userService.delete(user.id);
       loadUsers();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error deleting user');
+      setError(err.response?.data?.message || 'Error eliminando usuario');
     }
   };
 
   const columns = [
     { header: 'Email', accessor: 'email' as keyof UserDetail },
-    { header: 'Registration', accessor: (row: UserDetail) => row.matricula || '-' },
+    { header: 'Matrícula', accessor: (row: UserDetail) => row.matricula || '-' },
     {
-      header: 'Role',
+      header: 'Rol',
       accessor: (row: UserDetail) => (
         <span className={`role-badge ${row.role.toLowerCase()}`}>{row.role}</span>
       ),
     },
-    { header: 'Created', accessor: (row: UserDetail) => new Date(row.createdAt).toLocaleDateString() },
+    { header: 'Creado', accessor: (row: UserDetail) => new Date(row.createdAt).toLocaleDateString() },
   ];
 
   const customActions = (user: UserDetail) => (
     <>
-      <button onClick={() => openEditModal(user)} className="btn-edit">
-        Edit
+      <button onClick={() => openEditModal(user)} className="btn btn-edit">
+        Editar
       </button>
       <button onClick={() => openPasswordModal(user)} className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}>
-        Password
+        Cambiar contraseña
       </button>
-      <button onClick={() => handleDelete(user)} className="btn-delete">
-        Delete
+      <button onClick={() => handleDelete(user)} className="btn btn-delete">
+        Eliminar
       </button>
     </>
   );
 
-  if (loading) return <div className="loading">Loading users...</div>;
+  if (loading) return <div className="loading">Cargando usuarios...</div>;
 
   return (
     <div>
       <div className="page-header">
-        <h1>User Management</h1>
+        <h1>Gestión de Usuarios</h1>
         <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
-          Create User
+          Crear Usuario
         </button>
       </div>
 
@@ -157,9 +157,19 @@ const UsersPage = () => {
       <Modal
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
-        title="Create New User"
+        title="Crear Nuevo Usuario"
+        footer={
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button type="button" onClick={() => setShowCreateModal(false)} className="btn btn-cancel">
+              Cancelar
+            </button>
+            <button type="submit" form="create-user-form" className="btn btn-primary">
+              Crear Usuario
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleCreate}>
+        <form id="create-user-form" onSubmit={handleCreate}>
           <div className="form-group">
             <label>Email *</label>
             <input
@@ -170,7 +180,7 @@ const UsersPage = () => {
             />
           </div>
           <div className="form-group">
-            <label>Registration Number</label>
+            <label>Número de Matrícula</label>
             <input
               type="text"
               value={createData.matricula}
@@ -188,7 +198,7 @@ const UsersPage = () => {
             />
           </div>
           <div className="form-group">
-            <label>Role *</label>
+            <label>Rol *</label>
             <select
               value={createData.role}
               onChange={(e) => setCreateData({ ...createData, role: e.target.value })}
@@ -198,23 +208,25 @@ const UsersPage = () => {
               <option value="USER">User</option>
             </select>
           </div>
-          <div className="form-actions">
-            <button type="button" onClick={() => setShowCreateModal(false)} className="btn btn-cancel">
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary">
-              Create User
-            </button>
-          </div>
         </form>
       </Modal>
 
       <Modal
         isOpen={showEditModal}
         onClose={() => setShowEditModal(false)}
-        title="Edit User"
+        title="Editar Usuario"
+        footer={
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button type="button" onClick={() => setShowEditModal(false)} className="btn btn-cancel">
+              Cancelar
+            </button>
+            <button type="submit" form="edit-user-form" className="btn btn-primary">
+              Actualizar
+            </button>
+          </div>
+        }
       >
-        <form onSubmit={handleEdit}>
+        <form id="edit-user-form" onSubmit={handleEdit}>
           <div className="form-group">
             <label>Email *</label>
             <input
@@ -225,7 +237,7 @@ const UsersPage = () => {
             />
           </div>
           <div className="form-group">
-            <label>Registration Number</label>
+            <label>Número de Matrícula</label>
             <input
               type="text"
               value={editData.matricula}
@@ -233,7 +245,7 @@ const UsersPage = () => {
             />
           </div>
           <div className="form-group">
-            <label>Role *</label>
+            <label>Rol *</label>
             <select
               value={editData.role}
               onChange={(e) => setEditData({ ...editData, role: e.target.value })}
@@ -243,43 +255,37 @@ const UsersPage = () => {
               <option value="USER">User</option>
             </select>
           </div>
-          <div className="form-actions">
-            <button type="button" onClick={() => setShowEditModal(false)} className="btn btn-cancel">
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary">
-              Update User
-            </button>
-          </div>
         </form>
       </Modal>
 
       <Modal
         isOpen={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
-        title="Change Password"
+        title="Cambiar Contraseña"
         size="small"
+        footer={
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button type="button" onClick={() => setShowPasswordModal(false)} className="btn btn-cancel">
+              Cancelar
+            </button>
+            <button type="submit" form="password-form" className="btn btn-primary">
+              Cambiar Contraseña
+            </button>
+          </div>
+        }
       >
-        <p style={{ color: '#7f8c8d', marginBottom: '1.5rem' }}>User: {selectedUser?.email}</p>
-        <form onSubmit={handleChangePassword}>
+        <p style={{ color: '#7f8c8d', marginBottom: '1.5rem' }}>Usuario: {selectedUser?.email}</p>
+        <form id="password-form" onSubmit={handleChangePassword}>
           <div className="form-group">
-            <label>New Password *</label>
+            <label>Nueva Contraseña *</label>
             <input
               type="password"
               value={passwordData.newPassword}
               onChange={(e) => setPasswordData({ newPassword: e.target.value })}
               required
               minLength={6}
-              placeholder="Enter new password (min 6 characters)"
+              placeholder="Ingrese nueva contraseña (mínimo 6 caracteres)"
             />
-          </div>
-          <div className="form-actions">
-            <button type="button" onClick={() => setShowPasswordModal(false)} className="btn btn-cancel">
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary">
-              Change Password
-            </button>
           </div>
         </form>
       </Modal>
