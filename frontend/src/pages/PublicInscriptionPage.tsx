@@ -96,12 +96,12 @@ const PublicInscriptionPage = () => {
         {success && inscriptionData ? (
           <div className="success-message">
             <div className="success-icon">✓</div>
-            <h2>Inscription Successful!</h2>
+            <h2>Inscripción Exitosa!</h2>
             <div className="inscription-details">
-              <p><strong>Player:</strong> {inscriptionData.player.nombre} {inscriptionData.player.apellido}</p>
-              <p><strong>Category:</strong> {inscriptionData.categoryName}</p>
+              <p><strong>Jugador:</strong> {inscriptionData.player.nombre} {inscriptionData.player.apellido}</p>
+              <p><strong>Categoría:</strong> {inscriptionData.categoryName}</p>
               <p><strong>Handicap Index:</strong> {inscriptionData.player.handicapIndex}</p>
-              <p><strong>Club:</strong> {inscriptionData.player.clubOrigen}</p>
+              <p><strong>Club de Origen:</strong> {inscriptionData.player.clubOrigen}</p>
             </div>
             <button 
               onClick={() => {
