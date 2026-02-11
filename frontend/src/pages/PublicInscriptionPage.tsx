@@ -115,20 +115,20 @@ const PublicInscriptionPage = () => {
           </div>
         ) : (
           <div className="inscription-form">
-            <h2>Tournament Inscription</h2>
+            <h2>Inscripción de Torneo</h2>
             <p className="inscription-instruction">
-              Enter your AAG registration number to inscribe
+              Ingrese su número de matrícula para inscribirse
             </p>
 
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label htmlFor="matricula">Registration Number (Matrícula AAG)</label>
+                <label htmlFor="matricula">Número de Matrícula (AAG)</label>
                 <input
                   id="matricula"
                   type="text"
                   value={matricula}
                   onChange={(e) => setMatricula(e.target.value)}
-                  placeholder="Enter your registration number"
+                  placeholder="Ingrese su número de matrícula"
                   required
                   autoFocus
                 />
@@ -137,14 +137,14 @@ const PublicInscriptionPage = () => {
               {error && <div className="error-message">{error}</div>}
 
               <button type="submit" className="btn btn-primary" disabled={submitting}>
-                {submitting ? 'Processing...' : 'Inscribe'}
+                {submitting ? 'Procesando...' : 'Inscribir'}
               </button>
             </form>
 
             <div className="tournament-info-footer">
-              <p><strong>Inscribed Players:</strong> {tournament.currentInscriptos}{tournament.limiteInscriptos ? ` / ${tournament.limiteInscriptos}` : ''}</p>
+              <p><strong>Jugadores Inscritos:</strong> {tournament.currentInscriptos}{tournament.limiteInscriptos ? ` / ${tournament.limiteInscriptos}` : ''}</p>
               {tournament.limiteInscriptos && tournament.currentInscriptos >= tournament.limiteInscriptos && (
-                <p className="full-warning">This tournament has reached its maximum capacity</p>
+                <p className="full-warning">Este torneo ha alcanzado su capacidad máxima</p>
               )}
             </div>
           </div>

@@ -40,18 +40,18 @@ public class InscriptionService {
 
         // Buscar el jugador en la base de datos por matrícula
         Player player = playerRepository.findByMatricula(request.getMatricula())
-                .orElseThrow(() -> new BadRequestException("El player no se encuentra registrado en la app"));
+                .orElseThrow(() -> new BadRequestException("El player no se encuentra registrado en la app. Por favor comunicarse con secretaria."));
 
         // Verificar si el jugador ya está inscrito en este torneo
         if (inscriptionRepository.existsByTournamentIdAndPlayerId(tournament.getId(), player.getId())) {
-            throw new BadRequestException("Player already inscribed in this tournament");
+            throw new BadRequestException("Jugador ya inscrito en este torneo");
         }
 
         final BigDecimal handicapIndex = player.getHandicapIndex();
         TournamentCategory category = categoryRepository
                 .findCategoryForHandicap(tournament.getId(), handicapIndex)
                 .orElseThrow(() -> new BadRequestException(
-                        "No category found for handicap index: " + handicapIndex));
+                        "No se encontró categoría para el handicap index: " + handicapIndex));
 
         TournamentInscription inscription = TournamentInscription.builder()
                 .tournament(tournament)
@@ -61,13 +61,13 @@ public class InscriptionService {
 
         inscription = inscriptionRepository.save(inscription);
 
-        log.info("Player {} inscribed in tournament {}", player.getId(), tournament.getId());
+        log.info("Jugador {} inscrito en torneo {}", player.getId(), tournament.getId());
 
         return InscriptionResponse.builder()
                 .inscriptionId(inscription.getId())
                 .player(convertPlayerToDTO(player))
                 .categoryName(category.getNombre())
-                .message("Successfully inscribed to tournament")
+                .message("Jugador inscrito en torneo")
                 .build();
     }
 
@@ -80,20 +80,20 @@ public class InscriptionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Player", "id", playerId));
 
         if (inscriptionRepository.existsByTournamentIdAndPlayerId(tournamentId, playerId)) {
-            throw new BadRequestException("Player already inscribed in this tournament");
+            throw new BadRequestException("Jugador ya inscrito en este torneo");
         }
 
         if (tournament.getLimiteInscriptos() != null) {
             Long currentInscriptos = inscriptionRepository.countByTournamentId(tournamentId);
             if (currentInscriptos >= tournament.getLimiteInscriptos()) {
-                throw new BadRequestException("Tournament has reached maximum inscriptions");
+                throw new BadRequestException("Torneo ha alcanzado su capacidad máxima");
             }
         }
 
         TournamentCategory category = categoryRepository
                 .findCategoryForHandicap(tournamentId, player.getHandicapIndex())
                 .orElseThrow(() -> new BadRequestException(
-                        "No category found for handicap index: " + player.getHandicapIndex()));
+                        "No se encontró categoría para el handicap index: " + player.getHandicapIndex()));
 
         TournamentInscription inscription = TournamentInscription.builder()
                 .tournament(tournament)
@@ -103,13 +103,13 @@ public class InscriptionService {
 
         inscription = inscriptionRepository.save(inscription);
 
-        log.info("Player {} manually inscribed in tournament {} by admin", playerId, tournamentId);
+        log.info("Jugador {} inscrito en torneo {} por admin", playerId, tournamentId);
 
         return InscriptionResponse.builder()
                 .inscriptionId(inscription.getId())
                 .player(convertPlayerToDTO(player))
                 .categoryName(category.getNombre())
-                .message("Player manually inscribed by admin")
+                .message("Jugador inscrito en torneo por admin")
                 .build();
     }
 
@@ -128,7 +128,7 @@ public class InscriptionService {
         inscription.setHandicapCourse(handicapCourse);
         inscriptionRepository.save(inscription);
 
-        log.info("Handicap course updated for inscription {}: {}", inscriptionId, handicapCourse);
+        log.info("Handicap actualizado para inscripción {}: {}", inscriptionId, handicapCourse);
     }
 
     @Transactional
@@ -137,7 +137,7 @@ public class InscriptionService {
             throw new ResourceNotFoundException("Inscription", "id", inscriptionId);
         }
         inscriptionRepository.deleteById(inscriptionId);
-        log.info("Inscription removed: {}", inscriptionId);
+        log.info("Inscripción eliminada: {}", inscriptionId);
     }
 
 
