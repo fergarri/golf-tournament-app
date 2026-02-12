@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { Tournament } from '../types';
-import Table from '../components/Table';
+import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
 import '../components/Form.css';
 import './DashboardPage.css';
@@ -145,53 +145,38 @@ const DashboardPage = () => {
     },
   ];
 
-  const customActions = (tournament: Tournament) => (
-    <>
-      {tournament.estado === 'PENDING' && (
-        <button 
-          onClick={() => handleStartTournament(tournament)} 
-          className="btn btn-success"
-          style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#27ae60' }}
-        >
-          Iniciar
-        </button>
-      )}
-      {tournament.estado === 'IN_PROGRESS' && (
-        <>
-          <button 
-            onClick={() => copyLink(getPlayLink(tournament.codigo))} 
-            className="btn btn-secondary"
-            style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#9b59b6' }}
-          >
-            Copiar Link
-          </button>
-          <button 
-            onClick={() => handleViewLeaderboard(tournament)} 
-            className="btn btn-secondary"
-            style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}
-          >
-            Tabla de Líderes
-          </button>
-          <button 
-            onClick={() => handleFinalizeTournament(tournament)} 
-            className="btn btn-danger"
-            style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}
-          >
-            Finalizar
-          </button>
-        </>
-      )}
-      {tournament.estado === 'FINALIZED' && (
-        <button 
-          onClick={() => handleViewLeaderboard(tournament)} 
-          className="btn btn-secondary"
-          style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}
-        >
-          Ver Resultados
-        </button>
-      )}
-    </>
-  );
+  const dashboardActions: TableAction<Tournament>[] = [
+    {
+      label: 'Iniciar',
+      onClick: handleStartTournament,
+      variant: 'primary',
+      show: (tournament) => tournament.estado === 'PENDING',
+    },
+    {
+      label: 'Copiar Link',
+      onClick: (tournament) => copyLink(getPlayLink(tournament.codigo)),
+      variant: 'secondary',
+      show: (tournament) => tournament.estado === 'IN_PROGRESS',
+    },
+    {
+      label: 'Tabla de Líderes',
+      onClick: handleViewLeaderboard,
+      variant: 'primary',
+      show: (tournament) => tournament.estado === 'IN_PROGRESS',
+    },
+    {
+      label: 'Finalizar',
+      onClick: handleFinalizeTournament,
+      variant: 'danger',
+      show: (tournament) => tournament.estado === 'IN_PROGRESS',
+    },
+    {
+      label: 'Ver Resultados',
+      onClick: handleViewLeaderboard,
+      variant: 'primary',
+      show: (tournament) => tournament.estado === 'FINALIZED',
+    },
+  ];
 
   if (loading) return <div className="loading">Cargando torneos...</div>;
 
@@ -230,7 +215,7 @@ const DashboardPage = () => {
         <Table 
           data={tournaments} 
           columns={columns} 
-          customActions={customActions}
+          actions={dashboardActions}
           emptyMessage="No hay torneos activos"
         />
       )}

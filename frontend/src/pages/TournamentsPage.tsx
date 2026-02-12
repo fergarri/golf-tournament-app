@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { courseService } from '../services/courseService';
 import { Tournament, Course, TournamentCategory } from '../types';
-import Table from '../components/Table';
+import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
 import '../components/Form.css';
@@ -16,6 +16,7 @@ const TournamentsPage = () => {
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
   const [showInscriptionModal, setShowInscriptionModal] = useState(false);
   const [showCreatedModal, setShowCreatedModal] = useState(false);
   const [selectedTournamentForLink, setSelectedTournamentForLink] = useState<Tournament | null>(null);
@@ -195,7 +196,7 @@ const TournamentsPage = () => {
 
   const copyLink = (link: string) => {
     navigator.clipboard.writeText(link);
-    alert('Link copied to clipboard!');
+    setShowCopyLinkModal(true);
   };
 
   const getPlayLink = (codigo: string) => {
@@ -280,52 +281,55 @@ const TournamentsPage = () => {
     },
   ];
 
-  const customActions = (tournament: Tournament) => (
-    <>
-      <button 
-        onClick={() => handleInscribePlayers(tournament)} 
-        className="btn btn-secondary"
-        style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#f39c12' }}
-      >
-        Inscribe
-      </button>
-      {tournament.estado === 'PENDING' && (
-        <button 
-          onClick={() => handleStartTournament(tournament)} 
-          className="btn btn-success"
-          style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#27ae60' }}
-        >
-          Start
-        </button>
-      )}
-      {tournament.estado === 'IN_PROGRESS' && (
-        <>
-          <button 
-            onClick={() => copyLink(getPlayLink(tournament.codigo))} 
-            className="btn btn-secondary"
-            style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#9b59b6' }}
-          >
-            Copy Link
-          </button>
-          <button 
-            onClick={() => handleViewLeaderboard(tournament)} 
-            className="btn btn-secondary"
-            style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}
-          >
-            Leaderboard
-          </button>
-        </>
-      )}
-      <button onClick={() => handleEdit(tournament)} className="btn-edit">
-        Edit
-      </button>
-      <button onClick={() => handleDelete(tournament)} className="btn-delete">
-        Delete
-      </button>
-    </>
-  );
+  const tournamentActions: TableAction<Tournament>[] = [
+    {
+      label: 'Inscribir',
+      onClick: handleInscribePlayers,
+      variant: 'secondary',
+    },
+    {
+      label: 'Link Inscripción',
+      onClick: (tournament) => copyLink(getInscriptionLink(tournament.codigo)),
+      variant: 'secondary',
+      show: (tournament) => tournament.estado === 'PENDING',
+    },
+    {
+      label: 'Iniciar Torneo',
+      onClick: handleStartTournament,
+      variant: 'primary',
+      show: (tournament) => tournament.estado === 'PENDING',
+    },
+    {
+      label: 'Link Inscripción',
+      onClick: (tournament) => copyLink(getInscriptionLink(tournament.codigo)),
+      variant: 'secondary',
+      show: (tournament) => tournament.estado === 'IN_PROGRESS',
+    },
+    {
+      label: 'Link Tarjetas',
+      onClick: (tournament) => copyLink(getPlayLink(tournament.codigo)),
+      variant: 'secondary',
+      show: (tournament) => tournament.estado === 'IN_PROGRESS',
+    },
+    {
+      label: 'Tabla de Líderes',
+      onClick: handleViewLeaderboard,
+      variant: 'primary',
+      show: (tournament) => tournament.estado === 'IN_PROGRESS',
+    },
+    {
+      label: 'Editar',
+      onClick: handleEdit,
+      variant: 'default',
+    },
+    {
+      label: 'Eliminar',
+      onClick: handleDelete,
+      variant: 'danger',
+    },
+  ];
 
-  if (loading) return <div className="loading">Loading tournaments...</div>;
+  if (loading) return <div className="loading">Cargando torneos...</div>;
 
   return (
     <div>
@@ -338,7 +342,27 @@ const TournamentsPage = () => {
 
       {error && <div className="error-message">{error}</div>}
 
-      <Table data={tournaments} columns={columns} customActions={customActions} />
+      <Table data={tournaments} columns={columns} actions={tournamentActions} />
+
+
+      <Modal
+        isOpen={showCopyLinkModal}
+        onClose={() => setShowCopyLinkModal(false)}
+        title="Link Copiado"
+        size="medium"
+      >
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ fontSize: '3rem', color: '#27ae60', marginBottom: '1rem' }}>✓</div>
+            <p>Link copiado al portapapeles</p>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <button onClick={() => setShowCopyLinkModal(false)} className="btn btn-primary">
+              Cerrar
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         isOpen={showModal}

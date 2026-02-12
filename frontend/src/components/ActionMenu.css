@@ -1,0 +1,151 @@
+.action-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.action-menu-trigger {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  padding: 0;
+}
+
+.action-menu-trigger:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.action-menu-trigger:active {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.action-menu-dots {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #5a6c7d;
+  line-height: 1;
+  user-select: none;
+}
+
+.action-menu-dropdown {
+  min-width: 160px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  z-index: 10000;
+  animation: slideDown 0.15s ease-out;
+}
+
+.action-menu-dropdown.open-upward {
+  animation: slideUp 0.15s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.action-menu-item {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: none;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  transition: background-color 0.15s;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.action-menu-item:hover {
+  background-color: #f8f9fa;
+}
+
+.action-menu-item:active {
+  background-color: #e9ecef;
+}
+
+.action-menu-item:first-child {
+  border-radius: 8px 8px 0 0;
+}
+
+.action-menu-item:last-child {
+  border-radius: 0 0 8px 8px;
+}
+
+.action-menu-item:only-child {
+  border-radius: 8px;
+}
+
+.action-menu-icon {
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+}
+
+/* Variants */
+.action-menu-item-primary {
+  color: #3498db;
+}
+
+.action-menu-item-primary:hover {
+  background-color: #e3f2fd;
+}
+
+.action-menu-item-secondary {
+  color: #9b59b6;
+}
+
+.action-menu-item-secondary:hover {
+  background-color: #f3e5f5;
+}
+
+.action-menu-item-danger {
+  color: #e74c3c;
+}
+
+.action-menu-item-danger:hover {
+  background-color: #ffebee;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .action-menu-dropdown {
+    min-width: 140px;
+  }
+
+  .action-menu-item {
+    padding: 0.65rem 0.875rem;
+    font-size: 0.9rem;
+  }
+}

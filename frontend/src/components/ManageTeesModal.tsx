@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Course, CourseTee } from '../types';
 import { courseService } from '../services/courseService';
 import Modal from './Modal';
-import Table from './Table';
+import Table, { TableAction } from './Table';
 import '../components/Form.css';
 
 interface ManageTeesModalProps {
@@ -98,18 +98,19 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
     },
   ];
 
-  const customActions = (tee: CourseTee) => (
-    <div className="action-buttons">
-      <button onClick={() => handleEdit(tee)} className=" btn btn-edit">
-        Editar
-      </button>
-      {tee.active && (
-        <button onClick={() => handleDeactivate(tee)} className="btn btn-danger">
-          Desactivar
-        </button>
-      )}
-    </div>
-  );
+  const teeActions: TableAction<CourseTee>[] = [
+    {
+      label: 'Editar',
+      onClick: handleEdit,
+      variant: 'primary',
+    },
+    {
+      label: 'Desactivar',
+      onClick: handleDeactivate,
+      variant: 'danger',
+      show: (tee) => tee.active,
+    },
+  ];
 
   return (
     <Modal 
@@ -140,7 +141,7 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
         {loading ? (
           <div className="loading">Cargando tees...</div>
         ) : (
-          <Table data={tees} columns={columns} customActions={customActions} emptyMessage="No hay tees configurados. Agrega tu primer tee." />
+          <Table data={tees} columns={columns} actions={teeActions} emptyMessage="No hay tees configurados. Agrega tu primer tee." />
         )}
 
         {showForm && (

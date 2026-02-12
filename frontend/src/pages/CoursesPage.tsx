@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { courseService } from '../services/courseService';
 import { locationService, Country, Province } from '../services/locationService';
 import { Course } from '../types';
-import Table from '../components/Table';
+import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
 import ManageHolesModal from '../components/ManageHolesModal';
 import ManageTeesModal from '../components/ManageTeesModal';
@@ -185,22 +185,28 @@ const CoursesPage = () => {
     { header: 'Slope', accessor: (row: Course) => row.slopeRating || '-' },
   ];
 
-  const customActions = (course: Course) => (
-    <>
-      <button onClick={() => handleEdit(course)} className="btn btn-edit">
-        Editar
-      </button>
-      <button onClick={() => handleManageTees(course)} className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#9b59b6' }}>
-        Gestionar Tees
-      </button>
-      <button onClick={() => handleManageHoles(course)} className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem', backgroundColor: '#03a508' }}>
-        Gestionar Hoyos
-      </button>
-      <button onClick={() => handleDelete(course)} className="btn btn-delete">
-        Eliminar
-      </button>
-    </>
-  );
+  const courseActions: TableAction<Course>[] = [
+    {
+      label: 'Editar',
+      onClick: handleEdit,
+      variant: 'primary',
+    },
+    {
+      label: 'Gestionar Tees',
+      onClick: handleManageTees,
+      variant: 'secondary',
+    },
+    {
+      label: 'Gestionar Hoyos',
+      onClick: handleManageHoles,
+      variant: 'secondary',
+    },
+    {
+      label: 'Eliminar',
+      onClick: handleDelete,
+      variant: 'danger',
+    },
+  ];
 
   if (loading) return <div className="loading">Cargando campos de golf...</div>;
 
@@ -215,7 +221,7 @@ const CoursesPage = () => {
 
       {error && <div className="error-message">{error}</div>}
 
-      <Table data={courses} columns={columns} customActions={customActions} />
+      <Table data={courses} columns={columns} actions={courseActions} />
 
       <Modal
         isOpen={showModal}

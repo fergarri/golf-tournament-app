@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import ActionMenu, { ActionMenuItem } from './ActionMenu';
 import './Table.css';
 
 interface Column<T> {
@@ -7,12 +8,21 @@ interface Column<T> {
   width?: string;
 }
 
+export interface TableAction<T> {
+  label: string;
+  onClick: (row: T) => void;
+  variant?: 'default' | 'primary' | 'secondary' | 'danger';
+  icon?: string;
+  show?: (row: T) => boolean;
+}
+
 interface TableProps<T> {
   data: T[];
   columns: Column<T>[];
   onEdit?: (row: T) => void;
   onDelete?: (row: T) => void;
   customActions?: (row: T) => React.ReactNode;
+  actions?: TableAction<T>[];
   emptyMessage?: string;
   getRowKey?: (row: T, index: number) => string | number;
 }
@@ -25,6 +35,7 @@ function Table<T>({
   onEdit,
   onDelete,
   customActions,
+  actions,
   emptyMessage = 'No data available',
   getRowKey,
 }: TableProps<T>) {
@@ -101,6 +112,41 @@ function Table<T>({
     }
   };
 
+  const buildMenuItems = (row: T): ActionMenuItem[] => {
+    const menuItems: ActionMenuItem[] = [];
+
+    if (actions) {
+      actions.forEach(action => {
+        if (!action.show || action.show(row)) {
+          menuItems.push({
+            label: action.label,
+            onClick: () => action.onClick(row),
+            variant: action.variant,
+            icon: action.icon,
+          });
+        }
+      });
+    } else {
+      // Fallback para mantener compatibilidad con onEdit/onDelete
+      if (onEdit) {
+        menuItems.push({
+          label: 'Editar',
+          onClick: () => onEdit(row),
+          variant: 'primary',
+        });
+      }
+      if (onDelete) {
+        menuItems.push({
+          label: 'Eliminar',
+          onClick: () => onDelete(row),
+          variant: 'danger',
+        });
+      }
+    }
+
+    return menuItems;
+  };
+
   return (
     <div className="table-container">
       <table className="data-table">
@@ -125,8 +171,8 @@ function Table<T>({
                 </div>
               </th>
             ))}
-            {(onEdit || onDelete || customActions) && (
-              <th style={{ width: '180px' }} className="non-sortable-header">
+            {(onEdit || onDelete || customActions || actions) && (
+              <th style={{ width: '60px' }} className="non-sortable-header">
                 Acciones
               </th>
             )}
@@ -135,7 +181,7 @@ function Table<T>({
         <tbody>
           {sortedData.length === 0 ? (
             <tr>
-              <td colSpan={columns.length + (onEdit || onDelete || customActions ? 1 : 0)} className="empty-row">
+              <td colSpan={columns.length + (onEdit || onDelete || customActions || actions ? 1 : 0)} className="empty-row">
                 {emptyMessage}
               </td>
             </tr>
@@ -145,24 +191,13 @@ function Table<T>({
                 {columns.map((column, colIndex) => (
                   <td key={colIndex}>{renderCell(row, column)}</td>
                 ))}
-                {(onEdit || onDelete || customActions) && (
+                {(onEdit || onDelete || customActions || actions) && (
                   <td>
                     <div className="action-buttons">
                       {customActions ? (
                         customActions(row)
                       ) : (
-                        <>
-                          {onEdit && (
-                            <button onClick={() => onEdit(row)} className="btn-edit">
-                              Editar
-                            </button>
-                          )}
-                          {onDelete && (
-                            <button onClick={() => onDelete(row)} className="btn-delete">
-                              Eliminar
-                            </button>
-                          )}
-                        </>
+                        <ActionMenu items={buildMenuItems(row)} />
                       )}
                     </div>
                   </td>

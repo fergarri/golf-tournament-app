@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { userService } from '../services/userService';
 import { UserDetail, CreateUserRequest } from '../types';
-import Table from '../components/Table';
+import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
 import '../components/Form.css';
 
@@ -125,19 +125,23 @@ const UsersPage = () => {
     { header: 'Creado', accessor: (row: UserDetail) => new Date(row.createdAt).toLocaleDateString() },
   ];
 
-  const customActions = (user: UserDetail) => (
-    <>
-      <button onClick={() => openEditModal(user)} className="btn btn-edit">
-        Editar
-      </button>
-      <button onClick={() => openPasswordModal(user)} className="btn btn-secondary" style={{ padding: '0.375rem 0.75rem', fontSize: '0.875rem' }}>
-        Cambiar contraseña
-      </button>
-      <button onClick={() => handleDelete(user)} className="btn btn-delete">
-        Eliminar
-      </button>
-    </>
-  );
+  const userActions: TableAction<UserDetail>[] = [
+    {
+      label: 'Editar',
+      onClick: openEditModal,
+      variant: 'primary',
+    },
+    {
+      label: 'Cambiar contraseña',
+      onClick: openPasswordModal,
+      variant: 'secondary',
+    },
+    {
+      label: 'Eliminar',
+      onClick: handleDelete,
+      variant: 'danger',
+    },
+  ];
 
   if (loading) return <div className="loading">Cargando usuarios...</div>;
 
@@ -152,7 +156,7 @@ const UsersPage = () => {
 
       {error && <div className="error-message">{error}</div>}
 
-      <Table data={users} columns={columns} customActions={customActions} />
+      <Table data={users} columns={columns} actions={userActions} />
 
       <Modal
         isOpen={showCreateModal}
