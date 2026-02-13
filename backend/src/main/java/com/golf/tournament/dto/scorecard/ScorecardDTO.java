@@ -24,6 +24,7 @@ public class ScorecardDTO {
     private BigDecimal handicapCourse;
     private Boolean delivered;
     private LocalDateTime deliveredAt;
+    private Boolean canceled;
     private List<HoleScoreDTO> holeScores;
     private Integer totalScore;
     private Integer totalPar;

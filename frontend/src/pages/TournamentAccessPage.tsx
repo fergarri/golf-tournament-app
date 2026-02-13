@@ -6,6 +6,7 @@ import { scorecardService } from '../services/scorecardService';
 import { courseService } from '../services/courseService';
 import { Tournament } from '../types';
 import Modal from '../components/Modal';
+import { formatDateSafe } from '../utils/dateUtils';
 import './TournamentAccessPage.css';
 
 const TournamentAccessPage = () => {
@@ -112,7 +113,7 @@ const TournamentAccessPage = () => {
           <h1>{tournament.nombre}</h1>
           <p className="tournament-course">{tournament.courseName}</p>
           <p className="tournament-date">
-            {new Date(tournament.fechaInicio).toLocaleDateString("es-AR", {day: "2-digit", month: "2-digit", year: "numeric",})}
+            {formatDateSafe(tournament.fechaInicio)}
           </p>
         </div>
 

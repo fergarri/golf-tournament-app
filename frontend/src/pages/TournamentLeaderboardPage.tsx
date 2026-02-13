@@ -5,6 +5,7 @@ import { leaderboardService } from '../services/leaderboardService';
 import { scorecardService } from '../services/scorecardService';
 import { Tournament, LeaderboardEntry, Scorecard } from '../types';
 import Table from '../components/Table';
+import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 
@@ -328,7 +329,7 @@ const TournamentLeaderboardPage = () => {
               <strong>Campo:</strong> {tournament?.courseName}
             </span>
             <span className="detail-item">
-              <strong>Fecha:</strong> {tournament?.fechaInicio ? new Date(tournament.fechaInicio).toLocaleDateString("es-AR", {day: "2-digit", month: "2-digit", year: "numeric",}) : ''}
+              <strong>Fecha:</strong> {tournament?.fechaInicio ? formatDateSafe(tournament.fechaInicio) : ''}
             </span>
             <span className="detail-item">
               <strong>Jugadores:</strong> {tournament?.currentInscriptos}

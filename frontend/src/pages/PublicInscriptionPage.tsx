@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { inscriptionService } from '../services/inscriptionService';
 import { Tournament } from '../types';
+import { formatDateSafe } from '../utils/dateUtils';
 import './PublicInscriptionPage.css';
 
 const PublicInscriptionPage = () => {
@@ -88,8 +89,8 @@ const PublicInscriptionPage = () => {
           <h1>{tournament.nombre}</h1>
           <p className="tournament-course">{tournament.courseName}</p>
           <p className="tournament-date">
-            {new Date(tournament.fechaInicio).toLocaleDateString()}
-            {tournament.fechaFin && ` - ${new Date(tournament.fechaFin).toLocaleDateString()}`}
+            {formatDateSafe(tournament.fechaInicio)}
+            {tournament.fechaFin && ` - ${formatDateSafe(tournament.fechaFin)}`}
           </p>
         </div>
 

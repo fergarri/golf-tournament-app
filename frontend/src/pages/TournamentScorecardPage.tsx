@@ -6,6 +6,7 @@ import { scorecardService } from '../services/scorecardService';
 import { playerService } from '../services/playerService';
 import { Tournament, Hole, Scorecard, Player } from '../types';
 import Modal from '../components/Modal';
+import { formatDateSafe } from '../utils/dateUtils';
 import './TournamentScorecardPage.css';
 
 const TournamentScorecardPage = () => {
@@ -370,6 +371,37 @@ const TournamentScorecardPage = () => {
     }
   };
 
+  const handleCancelScorecard = async () => {
+    if (!scorecard) return;
+    
+    // Mostrar modal de confirmación
+    showModal(
+      'Confirmar Cancelación',
+      '¿Está seguro que desea cancelar su tarjeta? Si confirma podrá perjudicar a su marcador.',
+      'confirm',
+      async () => {
+        try {
+          await scorecardService.cancelScorecard(scorecard.id);
+
+          // Limpiar localStorage
+          if (tournament) {
+            const storageKey = `scorecard_${tournament.id}_${matricula}`;
+            localStorage.removeItem(storageKey);
+          }
+
+          showModal('Éxito', 'Tarjeta cancelada correctamente', 'success');
+          await loadData();
+        } catch (err: any) {
+          showModal(
+            'Error',
+            err.response?.data?.message || 'Error cancelando tarjeta. Por favor intente nuevamente.',
+            'error'
+          );
+        }
+      }
+    );
+  };
+
   const handleDeliverScorecard = () => {
     if (!scorecard) {
       showModal(
@@ -429,15 +461,21 @@ const TournamentScorecardPage = () => {
   return (
     <div className="scorecard-container">
       <div className="scorecard-header">
-        <h1>{tournament.nombre}</h1>
-        <p className="course-name">{tournament.courseName}</p>
-        <p className="tournament-date">{new Date(tournament.fechaInicio + "T00:00:00").toLocaleDateString("es-AR", {day: "2-digit", month: "2-digit", year: "numeric",})}</p>
-        <p className="player-matricula">
-          Matrícula: <strong>{matricula}</strong>
-          {player && <span> - {player.nombre} {player.apellido}</span>}
+        <h1>Torneo: {tournament.nombre}</h1>
+        <p className="course-name">
+          <span style={{ fontWeight: 'bold', color: '#000000' }}>Campo:</span> {tournament.courseName}
+        </p>
+        <p className="tournament-date">
+          <span style={{ fontWeight: 'bold', color: '#000000' }}>Fecha:</span> {formatDateSafe(tournament.fechaInicio)}
+        </p>
+        <p className="player-name">
+          <span style={{ fontWeight: 'bold', color: '#000000' }}>Jugador:</span> {player?.nombre} {player?.apellido}
         </p>
         <p className="player-matricula">
-          Handicap Course: <strong>{handicapCourse}</strong>
+          <span style={{ fontWeight: 'bold', color: '#000000' }}>Matrícula:</span> {matricula}
+        </p>
+        <p className="player-matricula">
+          <strong><span style={{ fontWeight: 'bold', color: '#000000' }}>Handicap Course:</span> {handicapCourse}</strong>
         </p>
         {scorecard?.delivered && (
           <div className="delivered-badge">
@@ -462,7 +500,7 @@ const TournamentScorecardPage = () => {
           <table className="scorecard-table">
             <thead>
               <tr className="header-row">
-                <th className="sticky-col">{selectedTee.grupo} - {selectedTee.nombre}</th>
+                <th className="sticky-col">{selectedTee.nombre} {selectedTee.grupo ? `- ${selectedTee.grupo}` : ''}</th>
                 {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
                     <td key={hole.numeroHoyo} className="distance-cell">
                       {hole.distancesByTee?.[teeId] || '-'}
@@ -625,13 +663,22 @@ const TournamentScorecardPage = () => {
             </strong>
           </div>
         </div>
-        <button 
-          onClick={handleDeliverScorecard} 
-          className="btn btn-deliver"
-          disabled={scorecard?.delivered || false}
-        >
-          {scorecard?.delivered ? 'Ya entregada' : 'Entregar tarjeta'}
-        </button>
+        <div className="scorecard-actions-buttons">
+          <button 
+            onClick={handleCancelScorecard} 
+            className="btn btn-cancel"
+            disabled={scorecard?.delivered || scorecard?.canceled || false}
+          >
+            {scorecard?.delivered ? 'Ya entregada' : scorecard?.canceled ? 'Cancelada' : 'Cancelar tarjeta'}
+          </button>
+          <button 
+            onClick={handleDeliverScorecard} 
+            className="btn btn-deliver"
+            disabled={scorecard?.delivered || scorecard?.canceled || false}
+          >
+            {scorecard?.delivered ? 'Ya entregada' : scorecard?.canceled ? 'Cancelada' : 'Entregar tarjeta'}
+          </button>
+        </div>
       </div>
 
       <Modal
@@ -641,7 +688,7 @@ const TournamentScorecardPage = () => {
         title={modalConfig.title}
         message={modalConfig.message}
         type={modalConfig.type}
-        confirmText={modalConfig.type === 'confirm' ? 'Si, Enviar' : 'OK'}
+        confirmText={modalConfig.type === 'confirm' ? 'Confirmar' : 'OK'}
         cancelText="Cancelar"
       />
 

@@ -51,6 +51,11 @@ export const scorecardService = {
     return response.data;
   },
 
+  cancelScorecard: async (scorecardId: number): Promise<Scorecard> => {
+    const response = await api.post<Scorecard>(`/scorecards/${scorecardId}/cancel`);
+    return response.data;
+  },
+
   assignMarker: async (scorecardId: number, markerId: number): Promise<Scorecard> => {
     const response = await api.patch<Scorecard>(
       `/scorecards/${scorecardId}/marker/${markerId}`

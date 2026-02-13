@@ -188,6 +188,42 @@ public class ScorecardService {
         return convertToDTO(scorecard);
     }
 
+    @Transactional
+    public ScorecardDTO cancelScorecard(Long scorecardId) {
+        Scorecard scorecard = scorecardRepository.findById(scorecardId)
+                .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+
+        // Validar que ya esté entregada o cancelada
+        if (scorecard.getDelivered()) {
+            throw new BadRequestException("No se puede cancelar una tarjeta ya entregada");
+        }
+
+        if (scorecard.getCanceled()) {
+            throw new BadRequestException("La tarjeta ya está cancelada");
+        }
+
+        // Verificar que NO tenga todos los hoyos cargados
+        List<HoleScore> allScores = holeScoreRepository.findByScorecardId(scorecardId);
+        
+        if (!allScores.isEmpty()) {
+            boolean allPlayerScoresFilled = allScores.stream()
+                    .allMatch(hs -> hs.getGolpesPropio() != null);
+            
+            if (allPlayerScoresFilled) {
+                throw new BadRequestException("No se puede cancelar una tarjeta con todos los hoyos completos. Debe entregarla.");
+            }
+        }
+
+        // Marcar como cancelada
+        scorecard.setCanceled(true);
+        scorecard.setDeliveredAt(LocalDateTime.now());
+        scorecard = scorecardRepository.save(scorecard);
+
+        log.info("Tarjeta {} cancelada para jugador {}", scorecardId, scorecard.getPlayer().getId());
+
+        return convertToDTO(scorecard);
+    }
+
     @Transactional(readOnly = true)
     public List<ScorecardDTO> getTournamentScorecards(Long tournamentId) {
         return scorecardRepository.findByTournamentId(tournamentId).stream()
@@ -208,6 +244,7 @@ public class ScorecardService {
                 .player(player)
                 .handicapCourse(handicapCourse)
                 .delivered(false)
+                .canceled(false)
                 .build();
 
         scorecard = scorecardRepository.save(scorecard);
@@ -251,6 +288,7 @@ public class ScorecardService {
                 .handicapCourse(scorecard.getHandicapCourse())
                 .delivered(scorecard.getDelivered())
                 .deliveredAt(scorecard.getDeliveredAt())
+                .canceled(scorecard.getCanceled())
                 .holeScores(holeScores)
                 .totalScore(totalScore > 0 ? totalScore : null)
                 .totalPar(totalPar)

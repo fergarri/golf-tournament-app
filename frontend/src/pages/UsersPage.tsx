@@ -3,6 +3,7 @@ import { userService } from '../services/userService';
 import { UserDetail, CreateUserRequest } from '../types';
 import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
+import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
 
 const UsersPage = () => {
@@ -122,7 +123,7 @@ const UsersPage = () => {
         <span className={`role-badge ${row.role.toLowerCase()}`}>{row.role}</span>
       ),
     },
-    { header: 'Creado', accessor: (row: UserDetail) => new Date(row.createdAt).toLocaleDateString() },
+    { header: 'Creado', accessor: (row: UserDetail) => formatDateSafe(row.createdAt) },
   ];
 
   const userActions: TableAction<UserDetail>[] = [

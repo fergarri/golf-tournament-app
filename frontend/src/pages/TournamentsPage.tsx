@@ -6,6 +6,7 @@ import { Tournament, Course, TournamentCategory } from '../types';
 import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
+import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
 
 const TournamentsPage = () => {
@@ -265,11 +266,7 @@ const TournamentsPage = () => {
     { header: 'Código', accessor: 'codigo' as keyof Tournament },
     { header: 'Campo', accessor: 'courseName' as keyof Tournament },
     { header: 'Tipo', accessor: 'tipo' as keyof Tournament },
-    { header: 'Fecha Inicio', accessor: (row: Tournament) => new Date(row.fechaInicio).toLocaleDateString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    }) },
+    { header: 'Fecha Inicio', accessor: (row: Tournament) => formatDateSafe(row.fechaInicio) },
     { header: 'Inscriptos', accessor: (row: Tournament) => `${row.currentInscriptos}${row.limiteInscriptos ? `/${row.limiteInscriptos}` : ''}` },
     { 
       header: 'Estado', 

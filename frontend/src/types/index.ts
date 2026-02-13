@@ -118,6 +118,7 @@ export interface Scorecard {
   handicapCourse?: number;
   delivered: boolean;
   deliveredAt?: string;
+  canceled: boolean;
   holeScores: HoleScore[];
   totalScore?: number;
   totalPar: number;

@@ -4,6 +4,7 @@ import { tournamentService } from '../services/tournamentService';
 import { Tournament } from '../types';
 import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
+import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
 import './DashboardPage.css';
 
@@ -113,7 +114,7 @@ const DashboardPage = () => {
     { header: 'Campo', accessor: 'courseName' as keyof Tournament, width: '20%' },
     { 
       header: 'Fecha de Inicio', 
-      accessor: (row: Tournament) => new Date(row.fechaInicio).toLocaleDateString(),
+      accessor: (row: Tournament) => formatDateSafe(row.fechaInicio),
       width: '12%'
     },
     {

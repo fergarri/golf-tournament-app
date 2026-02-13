@@ -65,4 +65,9 @@ public class ScorecardController {
     public ResponseEntity<ScorecardDTO> deliverScorecard(@PathVariable Long scorecardId) {
         return ResponseEntity.ok(scorecardService.deliverScorecard(scorecardId));
     }
+
+    @PostMapping("/{scorecardId}/cancel")
+    public ResponseEntity<ScorecardDTO> cancelScorecard(@PathVariable Long scorecardId) {
+        return ResponseEntity.ok(scorecardService.cancelScorecard(scorecardId));
+    }
 }

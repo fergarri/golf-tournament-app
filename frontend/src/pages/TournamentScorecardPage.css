@@ -5,10 +5,10 @@
 }
 
 .scorecard-header {
-  background: white;
+  background: #b1daea;
   padding: 1.5rem;
   border-radius: 12px;
-  text-align: center;
+  text-align: justify;
   margin-bottom: 1rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -19,22 +19,10 @@
   font-size: 1.5rem;
 }
 
-.course-name {
-  color: #27ae60;
+.course-name, .player-name, .tournament-date, .player-matricula, .handicap-course {
+  color: #000000;
   font-weight: 600;
   margin: 0.25rem 0;
-}
-
-.tournament-date {
-  color: #7f8c8d;
-  margin: 0.25rem 0;
-  font-size: 0.9rem;
-}
-
-.player-matricula {
-  margin: 0.5rem 0 0 0;
-  color: #2c3e50;
-  font-size: 0.95rem;
 }
 
 .auto-save-indicator {
@@ -315,7 +303,7 @@
 }
 
 .scorecard-actions {
-  background: white;
+  background: #b1daea;
   padding: 1.5rem;
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
@@ -338,7 +326,7 @@
 }
 
 .summary-item span {
-  color: #7f8c8d;
+  color: #2c3e50;
   font-size: 0.9rem;
 }
 
@@ -355,11 +343,28 @@
   color: #e74c3c;
 }
 
+.btn-cancel {
+  background: linear-gradient(135deg, #b70707 0%, #b70707 100%);
+  color: white;
+  border: none;
+  padding: 1rem 1rem;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.scorecard-actions-buttons .btn {
+  margin: 5px 10px;
+}
+
 .btn-deliver {
   background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
   color: white;
   border: none;
-  padding: 1rem 2rem;
+  padding: 1rem 1rem;
   border-radius: 8px;
   font-size: 1.1rem;
   font-weight: 700;
@@ -425,7 +430,7 @@
     flex-direction: column;
   }
 
-  .btn-deliver {
+  .btn-deliver, .btn-cancel {
     width: 100%;
   }
 
