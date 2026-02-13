@@ -53,6 +53,7 @@ public class SecurityConfig {
                                 "/inscriptions/tournaments/*",
                                 "/scorecards/**",
                                 "/courses/*/holes",
+                                "/courses/*/tees",
                                 "/locations/**"
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
