@@ -332,6 +332,9 @@ const TournamentLeaderboardPage = () => {
               <strong>Fecha:</strong> {tournament?.fechaInicio ? formatDateSafe(tournament.fechaInicio) : ''}
             </span>
             <span className="detail-item">
+              <strong>Estado:</strong> {tournament?.estado === 'IN_PROGRESS' ? 'En Proceso' : tournament?.estado === 'FINALIZED' ? 'Finalizado' : 'Pendiente'}
+            </span>
+            <span className="detail-item">
               <strong>Jugadores:</strong> {tournament?.currentInscriptos}
             </span>
             <span className="detail-item">

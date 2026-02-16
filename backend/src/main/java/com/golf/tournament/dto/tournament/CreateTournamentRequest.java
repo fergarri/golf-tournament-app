@@ -36,9 +36,6 @@ public class CreateTournamentRequest {
     private Integer limiteInscriptos;
     private BigDecimal valorInscripcion;
     
-    @NotNull(message = "Tee configuration is required")
-    private TournamentTeeConfigDTO teeConfig;
-    
     @NotNull(message = "At least one category is required")
     private List<TournamentCategoryDTO> categories;
 }

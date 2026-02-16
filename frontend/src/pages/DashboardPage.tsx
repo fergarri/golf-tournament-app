@@ -37,11 +37,8 @@ const DashboardPage = () => {
     try {
       setLoading(true);
       const data = await tournamentService.getAll();
-      const todayMidnight = new Date();
       const activeTournaments = data.filter(t => {
-        const endDate = t.fechaFin ? new Date(t.fechaFin + 'T00:00:00') : new Date(t.fechaInicio + 'T00:00:00');
-        todayMidnight.setHours(0, 0, 0, 0);
-        return endDate >= todayMidnight;
+        return t.estado === 'IN_PROGRESS';
       });
       setTournaments(activeTournaments);
       setError('');

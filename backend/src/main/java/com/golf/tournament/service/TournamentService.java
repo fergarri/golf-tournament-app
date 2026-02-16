@@ -21,10 +21,8 @@ public class TournamentService {
 
     private final TournamentRepository tournamentRepository;
     private final CourseRepository courseRepository;
-    private final CourseTeeRepository courseTeeRepository;
     private final TournamentCategoryRepository tournamentCategoryRepository;
     private final TournamentInscriptionRepository tournamentInscriptionRepository;
-    private final TournamentTeeConfigRepository tournamentTeeConfigRepository;
 
     private static final String CODIGO_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int CODIGO_LENGTH = 8;
@@ -56,8 +54,6 @@ public class TournamentService {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
 
-        validateTeeConfiguration(request.getTeeConfig());
-
         String codigo = generateUniqueCodigo();
 
         Tournament tournament = Tournament.builder()
@@ -73,8 +69,6 @@ public class TournamentService {
                 .build();
 
         tournament = tournamentRepository.save(tournament);
-
-        saveTeeConfig(tournament, request.getTeeConfig());
 
         for (TournamentCategoryDTO categoryDTO : request.getCategories()) {
             TournamentCategory category = TournamentCategory.builder()
@@ -97,8 +91,6 @@ public class TournamentService {
 
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
-
-        validateTeeConfiguration(request.getTeeConfig());
 
         tournament.setNombre(request.getNombre());
         tournament.setTipo(request.getTipo());
@@ -123,8 +115,6 @@ public class TournamentService {
             tournamentCategoryRepository.save(category);
         }
 
-        updateTeeConfig(tournament, request.getTeeConfig());
-
         log.info("Tournament updated with id: {}", tournament.getId());
         return convertToDTO(tournament);
     }
@@ -136,75 +126,6 @@ public class TournamentService {
         }
         tournamentRepository.deleteById(id);
         log.info("Tournament deleted with id: {}", id);
-    }
-
-    private void validateTeeConfiguration(TournamentTeeConfigDTO teeConfig) {
-        CourseTee tee1 = courseTeeRepository.findById(teeConfig.getCourseTeeIdPrimeros9())
-                .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeConfig.getCourseTeeIdPrimeros9()));
-
-        if (!tee1.getActive()) {
-            throw new BadRequestException("Selected tee for first 9 holes is not active");
-        }
-
-        if (teeConfig.getCourseTeeIdSegundos9() != null) {
-            CourseTee tee2 = courseTeeRepository.findById(teeConfig.getCourseTeeIdSegundos9())
-                    .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeConfig.getCourseTeeIdSegundos9()));
-
-            if (!tee2.getActive()) {
-                throw new BadRequestException("Selected tee for second 9 holes is not active");
-            }
-
-            if (tee1.getGrupo() != null && tee2.getGrupo() != null &&
-                    !tee1.getGrupo().equals(tee2.getGrupo())) {
-                throw new BadRequestException("Both tees must be from the same group");
-            }
-        }
-    }
-
-    private void saveTeeConfig(Tournament tournament, TournamentTeeConfigDTO configDTO) {
-        CourseTee tee1 = courseTeeRepository.findById(configDTO.getCourseTeeIdPrimeros9())
-                .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", configDTO.getCourseTeeIdPrimeros9()));
-
-        CourseTee tee2 = null;
-        if (configDTO.getCourseTeeIdSegundos9() != null) {
-            tee2 = courseTeeRepository.findById(configDTO.getCourseTeeIdSegundos9())
-                    .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", configDTO.getCourseTeeIdSegundos9()));
-        }
-
-        TournamentTeeConfig config = TournamentTeeConfig.builder()
-                .tournament(tournament)
-                .courseTeeIdPrimeros9(tee1)
-                .courseTeeIdSegundos9(tee2)
-                .build();
-
-        tournamentTeeConfigRepository.save(config);
-    }
-
-    private void updateTeeConfig(Tournament tournament, TournamentTeeConfigDTO configDTO) {
-        CourseTee tee1 = courseTeeRepository.findById(configDTO.getCourseTeeIdPrimeros9())
-                .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", configDTO.getCourseTeeIdPrimeros9()));
-
-        CourseTee tee2 = null;
-        if (configDTO.getCourseTeeIdSegundos9() != null) {
-            tee2 = courseTeeRepository.findById(configDTO.getCourseTeeIdSegundos9())
-                    .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", configDTO.getCourseTeeIdSegundos9()));
-        }
-
-        TournamentTeeConfig existingConfig = tournamentTeeConfigRepository.findByTournamentId(tournament.getId())
-                .orElse(null);
-
-        if (existingConfig != null) {
-            existingConfig.setCourseTeeIdPrimeros9(tee1);
-            existingConfig.setCourseTeeIdSegundos9(tee2);
-            tournamentTeeConfigRepository.save(existingConfig);
-        } else {
-            TournamentTeeConfig config = TournamentTeeConfig.builder()
-                    .tournament(tournament)
-                    .courseTeeIdPrimeros9(tee1)
-                    .courseTeeIdSegundos9(tee2)
-                    .build();
-            tournamentTeeConfigRepository.save(config);
-        }
     }
 
     private String generateUniqueCodigo() {
@@ -231,16 +152,6 @@ public class TournamentService {
                 .map(this::convertCategoryToDTO)
                 .collect(Collectors.toList());
 
-        TournamentTeeConfigDTO teeConfigDTO = null;
-        if (tournament.getTeeConfig() != null) {
-            teeConfigDTO = TournamentTeeConfigDTO.builder()
-                    .id(tournament.getTeeConfig().getId())
-                    .courseTeeIdPrimeros9(tournament.getTeeConfig().getCourseTeeIdPrimeros9().getId())
-                    .courseTeeIdSegundos9(tournament.getTeeConfig().getCourseTeeIdSegundos9() != null ?
-                            tournament.getTeeConfig().getCourseTeeIdSegundos9().getId() : null)
-                    .build();
-        }
-
         return TournamentDTO.builder()
                 .id(tournament.getId())
                 .nombre(tournament.getNombre())
@@ -256,7 +167,6 @@ public class TournamentService {
                 .valorInscripcion(tournament.getValorInscripcion())
                 .currentInscriptos(inscriptos.intValue())
                 .categories(categories)
-                .teeConfig(teeConfigDTO)
                 .build();
     }
 

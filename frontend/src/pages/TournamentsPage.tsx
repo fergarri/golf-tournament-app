@@ -259,7 +259,7 @@ const TournamentsPage = () => {
     });
   };
 
-  const selectedCourse = courses.find((c) => c.id === parseInt(formData.courseId));
+  // const selectedCourse = courses.find((c) => c.id === parseInt(formData.courseId));
 
   const columns = [
     { header: 'Nombre', accessor: 'nombre' as keyof Tournament },
@@ -283,24 +283,19 @@ const TournamentsPage = () => {
       label: 'Inscribir',
       onClick: handleInscribePlayers,
       variant: 'secondary',
+      show: (tournament) => tournament.estado === 'PENDING',
     },
     {
       label: 'Link Inscripción',
       onClick: (tournament) => copyLink(getInscriptionLink(tournament.codigo)),
       variant: 'secondary',
-      show: (tournament) => tournament.estado === 'PENDING',
+      show: (tournament) => tournament.estado === 'PENDING' || tournament.estado === 'IN_PROGRESS',
     },
     {
       label: 'Iniciar Torneo',
       onClick: handleStartTournament,
       variant: 'primary',
       show: (tournament) => tournament.estado === 'PENDING',
-    },
-    {
-      label: 'Link Inscripción',
-      onClick: (tournament) => copyLink(getInscriptionLink(tournament.codigo)),
-      variant: 'secondary',
-      show: (tournament) => tournament.estado === 'IN_PROGRESS',
     },
     {
       label: 'Link Tarjetas',
@@ -312,7 +307,6 @@ const TournamentsPage = () => {
       label: 'Tabla de Líderes',
       onClick: handleViewLeaderboard,
       variant: 'primary',
-      show: (tournament) => tournament.estado === 'IN_PROGRESS',
     },
     {
       label: 'Editar',
@@ -428,7 +422,7 @@ const TournamentsPage = () => {
             </select>
           </div>
 
-          {selectedCourse && selectedCourse.tees && selectedCourse.tees.length > 0 && (
+          {/* {selectedCourse && selectedCourse.tees && selectedCourse.tees.length > 0 && (
             <div className="form-row">
               <div className="form-group">
                 <label>Tee para los primeros 9 hoyos *</label>
@@ -474,7 +468,7 @@ const TournamentsPage = () => {
                 </select>
               </div>
             </div>
-          )}
+          )} */}
 
           <div className="form-row">
             <div className="form-group">

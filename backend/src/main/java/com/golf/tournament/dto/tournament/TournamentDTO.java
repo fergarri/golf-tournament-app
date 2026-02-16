@@ -29,5 +29,4 @@ public class TournamentDTO {
     private BigDecimal valorInscripcion;
     private Integer currentInscriptos;
     private List<TournamentCategoryDTO> categories;
-    private TournamentTeeConfigDTO teeConfig;
 }

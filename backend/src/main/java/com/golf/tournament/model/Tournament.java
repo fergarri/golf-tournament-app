@@ -60,9 +60,6 @@ public class Tournament {
     @Column(name = "valor_inscripcion", precision = 10, scale = 2)
     private BigDecimal valorInscripcion;
 
-    @OneToOne(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
-    private TournamentTeeConfig teeConfig;
-
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TournamentCategory> categories = new ArrayList<>();
