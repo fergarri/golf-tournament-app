@@ -28,6 +28,7 @@ public class ScorecardService {
     private final HoleRepository holeRepository;
     private final HoleScoreRepository holeScoreRepository;
     private final TournamentInscriptionRepository inscriptionRepository;
+    private final TournamentCategoryRepository categoryRepository;
     private final HandicapConversionRepository handicapConversionRepository;
     private final CourseTeeRepository courseTeeRepository;
 
@@ -35,6 +36,11 @@ public class ScorecardService {
     public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId, Long teeId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
+
+        // Validar que el torneo NO esté finalizado
+        if ("FINALIZED".equals(tournament.getEstado())) {
+            throw new BadRequestException("El torneo ha finalizado. No se puede acceder a la tarjeta.");
+        }
 
         Player player = playerRepository.findById(playerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Player", "id", playerId));
@@ -70,13 +76,75 @@ public class ScorecardService {
                 .orElseGet(() -> createNewScorecard(tournament, player, handicapCourse));
 
         // Update handicap course if it's different and scorecard not delivered
+        boolean handicapChanged = false;
         if (scorecard.getHandicapCourse() == null || 
             (!scorecard.getDelivered() && !scorecard.getHandicapCourse().equals(handicapCourse))) {
             scorecard.setHandicapCourse(handicapCourse);
             scorecard = scorecardRepository.save(scorecard);
+            handicapChanged = true;
+        }
+
+        // Assign category to inscription when handicap is set/changed
+        if (handicapChanged || scorecard.getHandicapCourse() != null) {
+            assignCategoryToInscription(tournamentId, playerId, scorecard.getHandicapCourse());
         }
 
         return convertToDTO(scorecard);
+    }
+
+    /**
+     * Assigns the appropriate category to a player's inscription based on their handicap course.
+     */
+    private void assignCategoryToInscription(Long tournamentId, Long playerId, BigDecimal handicapCourse) {
+        // Get player's inscription
+        TournamentInscription inscription = inscriptionRepository
+                .findByTournamentIdAndPlayerId(tournamentId, playerId)
+                .orElse(null);
+        
+        if (inscription == null) {
+            log.warn("Inscription not found for player {} in tournament {}", playerId, tournamentId);
+            return;
+        }
+        
+        // Get tournament categories
+        List<TournamentCategory> categories = categoryRepository.findByTournamentId(tournamentId);
+        
+        // Find matching category
+        TournamentCategory matchingCategory = findCategoryForHandicap(handicapCourse, categories);
+        
+        // Update inscription category
+        inscription.setCategory(matchingCategory);
+        inscriptionRepository.save(inscription);
+        
+        if (matchingCategory != null) {
+            log.debug("Assigned category {} to player {} in tournament {}", 
+                     matchingCategory.getNombre(), playerId, tournamentId);
+        } else {
+            log.debug("No matching category for player {} in tournament {} (handicap: {})", 
+                     playerId, tournamentId, handicapCourse);
+        }
+    }
+
+    /**
+     * Finds the appropriate category for a given handicap course value.
+     * Returns null if the handicap doesn't fall within any category range.
+     */
+    private TournamentCategory findCategoryForHandicap(BigDecimal handicapCourse, 
+                                                       List<TournamentCategory> categories) {
+        if (handicapCourse == null || categories == null || categories.isEmpty()) {
+            return null;
+        }
+
+        for (TournamentCategory category : categories) {
+            // Check if handicapCourse is within the category range (inclusive)
+            if (handicapCourse.compareTo(category.getHandicapMin()) >= 0 &&
+                handicapCourse.compareTo(category.getHandicapMax()) <= 0) {
+                return category;
+            }
+        }
+
+        // No category found for this handicap
+        return null;
     }
 
     @Transactional
@@ -166,6 +234,11 @@ public class ScorecardService {
     public ScorecardDTO deliverScorecard(Long scorecardId) {
         Scorecard scorecard = scorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+
+        // Validar que el torneo NO esté finalizado
+        if ("FINALIZED".equals(scorecard.getTournament().getEstado())) {
+            throw new BadRequestException("Imposible entregar la tarjeta. Torneo cerrado.");
+        }
 
         List<HoleScore> allScores = holeScoreRepository.findByScorecardId(scorecardId);
         if (allScores.isEmpty()) {

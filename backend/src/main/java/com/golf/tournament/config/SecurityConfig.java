@@ -54,7 +54,8 @@ public class SecurityConfig {
                                 "/scorecards/**",
                                 "/courses/*/holes",
                                 "/courses/*/tees",
-                                "/locations/**"
+                                "/locations/**",
+                                "/leaderboard/public/*"
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

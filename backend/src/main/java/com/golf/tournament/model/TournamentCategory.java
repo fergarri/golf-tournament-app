@@ -35,7 +35,9 @@ public class TournamentCategory {
     @Column(name = "handicap_max", nullable = false, precision = 4, scale = 1)
     private BigDecimal handicapMax;
 
-    @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)
+    // No cascade to prevent deletion of inscriptions when category is deleted
+    // Inscriptions will remain with category = null
+    @OneToMany(mappedBy = "category")
     @Builder.Default
     private List<TournamentInscription> inscriptions = new ArrayList<>();
 }

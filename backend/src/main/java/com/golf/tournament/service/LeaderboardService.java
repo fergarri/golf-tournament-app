@@ -13,7 +13,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
@@ -26,10 +25,36 @@ public class LeaderboardService {
     private final TournamentInscriptionRepository inscriptionRepository;
     private final TournamentCategoryRepository categoryRepository;
 
+    /**
+     * Determines the category for a player based on their handicap course.
+     * Returns the category if the handicap falls within its range, null otherwise.
+     */
+    private TournamentCategory determineCategory(BigDecimal handicapCourse, List<TournamentCategory> categories) {
+        if (handicapCourse == null || categories == null || categories.isEmpty()) {
+            return null;
+        }
+
+        for (TournamentCategory category : categories) {
+            // Check if handicapCourse is within the category range
+            if (handicapCourse.compareTo(category.getHandicapMin()) >= 0 &&
+                handicapCourse.compareTo(category.getHandicapMax()) <= 0) {
+                return category;
+            }
+        }
+
+        // No category found for this handicap
+        return null;
+    }
+
     @Transactional(readOnly = true)
     public List<LeaderboardEntryDTO> getLeaderboard(Long tournamentId, Long categoryId) {
-        Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
+        // Verify tournament exists
+        if (!tournamentRepository.existsById(tournamentId)) {
+            throw new ResourceNotFoundException("Tournament", "id", tournamentId);
+        }
+
+        // Get ALL tournament categories for calculating player categories
+        List<TournamentCategory> allCategories = categoryRepository.findByTournamentId(tournamentId);
 
         // Get ALL tournament inscriptions instead of just scorecards
         List<TournamentInscription> inscriptions = inscriptionRepository.findByTournamentId(tournamentId);
@@ -38,12 +63,6 @@ public class LeaderboardService {
         List<LeaderboardEntryDTO> entriesWithoutScores = new ArrayList<>();
 
         for (TournamentInscription inscription : inscriptions) {
-            // Filter by category if specified
-            if (categoryId != null && inscription.getCategory() != null &&
-                    !inscription.getCategory().getId().equals(categoryId)) {
-                continue;
-            }
-
             // Try to find scorecard for this player
             Scorecard scorecard = scorecardRepository
                     .findByTournamentIdAndPlayerId(tournamentId, inscription.getPlayer().getId())
@@ -70,6 +89,11 @@ public class LeaderboardService {
                 BigDecimal scoreNeto = BigDecimal.valueOf(totalScore).subtract(handicapCourse);
                 BigDecimal scoreToPar = scoreNeto.subtract(BigDecimal.valueOf(totalPar));
 
+                // Calculate category based on handicapCourse
+                TournamentCategory calculatedCategory = determineCategory(handicapCourse, allCategories);
+                Long calculatedCategoryId = calculatedCategory != null ? calculatedCategory.getId() : null;
+                String calculatedCategoryName = calculatedCategory != null ? calculatedCategory.getNombre() : null;
+
                 LeaderboardEntryDTO entry = LeaderboardEntryDTO.builder()
                         .scorecardId(scorecard.getId())
                         .playerId(player.getId())
@@ -77,7 +101,8 @@ public class LeaderboardService {
                         .playerName(player.getNombre() + " " + player.getApellido())
                         .matricula(player.getMatricula())
                         .clubOrigen(player.getClubOrigen())
-                        .categoryName(inscription.getCategory() != null ? inscription.getCategory().getNombre() : null)
+                        .categoryId(calculatedCategoryId)
+                        .categoryName(calculatedCategoryName)
                         .scoreGross(totalScore)
                         .scoreNeto(scoreNeto)
                         .totalPar(totalPar)
@@ -90,11 +115,15 @@ public class LeaderboardService {
                 entriesWithScores.add(entry);
             } else {
                 // Player has not delivered scorecard or no scorecard exists
-                // Show only basic info: player name, matricula, HCP
+                // Use inscription category as fallback
                 BigDecimal handicapCourse = inscription.getHandicapCourse() != null ?
                         inscription.getHandicapCourse() : 
                         (scorecard != null && scorecard.getHandicapCourse() != null ? 
                                 scorecard.getHandicapCourse() : BigDecimal.ZERO);
+
+                // Use inscription category as fallback
+                Long fallbackCategoryId = inscription.getCategory() != null ? inscription.getCategory().getId() : null;
+                String fallbackCategoryName = inscription.getCategory() != null ? inscription.getCategory().getNombre() : null;
 
                 LeaderboardEntryDTO entry = LeaderboardEntryDTO.builder()
                         .scorecardId(scorecard != null ? scorecard.getId() : null)
@@ -103,7 +132,8 @@ public class LeaderboardService {
                         .playerName(player.getApellido() + " " + player.getNombre())
                         .matricula(player.getMatricula())
                         .clubOrigen(player.getClubOrigen())
-                        .categoryName(null) // No mostrar categoría si no ha entregado
+                        .categoryId(fallbackCategoryId)
+                        .categoryName(fallbackCategoryName)
                         .handicapCourse(handicapCourse)
                         .delivered(false)
                         .pagado(inscription.getPagado() != null ? inscription.getPagado() : false)
@@ -119,9 +149,8 @@ public class LeaderboardService {
         // Sort players without scores by player name
         entriesWithoutScores.sort(Comparator.comparing(LeaderboardEntryDTO::getPlayerName));
 
-        // Assign positions only to players with delivered scorecards
-        AtomicInteger position = new AtomicInteger(1);
-        entriesWithScores.forEach(entry -> entry.setPosition(position.getAndIncrement()));
+        // Do NOT assign positions here - they will be calculated in the frontend
+        // based on the selected category filter to ensure proper ranking per category
 
         // Combine lists: first players with scores, then players without scores
         List<LeaderboardEntryDTO> allEntries = new ArrayList<>();

@@ -23,6 +23,7 @@ public class TournamentService {
     private final CourseRepository courseRepository;
     private final TournamentCategoryRepository tournamentCategoryRepository;
     private final TournamentInscriptionRepository tournamentInscriptionRepository;
+    private final ScorecardRepository scorecardRepository;
 
     private static final String CODIGO_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int CODIGO_LENGTH = 8;
@@ -92,6 +93,7 @@ public class TournamentService {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
 
+        // Update tournament basic fields
         tournament.setNombre(request.getNombre());
         tournament.setTipo(request.getTipo());
         tournament.setModalidad(request.getModalidad());
@@ -102,21 +104,88 @@ public class TournamentService {
         tournament.setValorInscripcion(request.getValorInscripcion());
         tournament = tournamentRepository.save(tournament);
 
-        tournamentCategoryRepository.deleteAll(tournament.getCategories());
-        tournament.getCategories().clear();
+        // Smart UPDATE/CREATE/DELETE of categories
+        boolean categoriesChanged = updateTournamentCategories(tournament, request.getCategories());
 
-        for (TournamentCategoryDTO categoryDTO : request.getCategories()) {
-            TournamentCategory category = TournamentCategory.builder()
-                    .tournament(tournament)
-                    .nombre(categoryDTO.getNombre())
-                    .handicapMin(categoryDTO.getHandicapMin())
-                    .handicapMax(categoryDTO.getHandicapMax())
-                    .build();
-            tournamentCategoryRepository.save(category);
+        // If categories changed, reassign all inscriptions
+        if (categoriesChanged) {
+            reassignInscriptionCategories(tournament.getId());
         }
 
-        log.info("Tournament updated with id: {}", tournament.getId());
+        log.info("Tournament updated with id: {}, categories changed: {}", tournament.getId(), categoriesChanged);
         return convertToDTO(tournament);
+    }
+
+    /**
+     * Smart update of tournament categories: UPDATE existing, CREATE new, DELETE removed.
+     * Returns true if any category was modified, created, or deleted.
+     */
+    private boolean updateTournamentCategories(Tournament tournament, List<TournamentCategoryDTO> requestCategories) {
+        boolean categoriesChanged = false;
+        
+        // Get existing categories and create a map by ID for quick lookup
+        List<TournamentCategory> existingCategories = tournamentCategoryRepository.findByTournamentId(tournament.getId());
+        java.util.Map<Long, TournamentCategory> existingCategoriesMap = existingCategories.stream()
+                .collect(java.util.stream.Collectors.toMap(TournamentCategory::getId, cat -> cat));
+        
+        // Track which existing categories were processed
+        java.util.Set<Long> processedCategoryIds = new java.util.HashSet<>();
+        
+        // Process requested categories: UPDATE existing or CREATE new
+        for (TournamentCategoryDTO categoryDTO : requestCategories) {
+            if (categoryDTO.getId() != null && existingCategoriesMap.containsKey(categoryDTO.getId())) {
+                // UPDATE existing category
+                TournamentCategory existingCategory = existingCategoriesMap.get(categoryDTO.getId());
+                
+                boolean fieldChanged = false;
+                
+                if (!existingCategory.getNombre().equals(categoryDTO.getNombre())) {
+                    existingCategory.setNombre(categoryDTO.getNombre());
+                    fieldChanged = true;
+                }
+                
+                if (existingCategory.getHandicapMin().compareTo(categoryDTO.getHandicapMin()) != 0) {
+                    existingCategory.setHandicapMin(categoryDTO.getHandicapMin());
+                    fieldChanged = true;
+                }
+                
+                if (existingCategory.getHandicapMax().compareTo(categoryDTO.getHandicapMax()) != 0) {
+                    existingCategory.setHandicapMax(categoryDTO.getHandicapMax());
+                    fieldChanged = true;
+                }
+                
+                if (fieldChanged) {
+                    tournamentCategoryRepository.save(existingCategory);
+                    categoriesChanged = true;
+                    log.debug("Updated category {} for tournament {}", existingCategory.getId(), tournament.getId());
+                }
+                
+                processedCategoryIds.add(categoryDTO.getId());
+                
+            } else {
+                // CREATE new category (no ID or ID not found)
+                TournamentCategory newCategory = TournamentCategory.builder()
+                        .tournament(tournament)
+                        .nombre(categoryDTO.getNombre())
+                        .handicapMin(categoryDTO.getHandicapMin())
+                        .handicapMax(categoryDTO.getHandicapMax())
+                        .build();
+                tournamentCategoryRepository.save(newCategory);
+                categoriesChanged = true;
+                log.debug("Created new category for tournament {}", tournament.getId());
+            }
+        }
+        
+        // DELETE categories that were not in the request
+        for (TournamentCategory existingCategory : existingCategories) {
+            if (!processedCategoryIds.contains(existingCategory.getId())) {
+                tournamentCategoryRepository.delete(existingCategory);
+                categoriesChanged = true;
+                log.debug("Deleted category {} from tournament {}", existingCategory.getId(), tournament.getId());
+            }
+        }
+        
+        return categoriesChanged;
     }
 
     @Transactional
@@ -126,6 +195,77 @@ public class TournamentService {
         }
         tournamentRepository.deleteById(id);
         log.info("Tournament deleted with id: {}", id);
+    }
+
+    /**
+     * Finds the appropriate category for a given handicap course value.
+     * Returns null if the handicap doesn't fall within any category range.
+     */
+    private TournamentCategory findCategoryForHandicap(java.math.BigDecimal handicapCourse, 
+                                                       List<TournamentCategory> categories) {
+        if (handicapCourse == null || categories == null || categories.isEmpty()) {
+            return null;
+        }
+
+        for (TournamentCategory category : categories) {
+            // Check if handicapCourse is within the category range (inclusive)
+            if (handicapCourse.compareTo(category.getHandicapMin()) >= 0 &&
+                handicapCourse.compareTo(category.getHandicapMax()) <= 0) {
+                return category;
+            }
+        }
+
+        // No category found for this handicap
+        return null;
+    }
+
+    /**
+     * Reassigns categories to all inscriptions in a tournament based on their scorecard's handicapCourse.
+     * Only processes inscriptions that have a scorecard with a defined handicapCourse.
+     * Inscriptions without scorecard or handicapCourse will have category = null.
+     */
+    private void reassignInscriptionCategories(Long tournamentId) {
+        log.info("Starting category reassignment for tournament {}", tournamentId);
+        
+        // Get all inscriptions for this tournament
+        List<TournamentInscription> inscriptions = tournamentInscriptionRepository.findByTournamentId(tournamentId);
+        
+        // Get all current categories for this tournament
+        List<TournamentCategory> categories = tournamentCategoryRepository.findByTournamentId(tournamentId);
+        
+        int reassignedCount = 0;
+        int withoutCategoryCount = 0;
+        
+        for (TournamentInscription inscription : inscriptions) {
+            // Try to find scorecard for this player
+            Scorecard scorecard = scorecardRepository
+                    .findByTournamentIdAndPlayerId(tournamentId, inscription.getPlayer().getId())
+                    .orElse(null);
+            
+            TournamentCategory newCategory = null;
+            
+            // Only assign category if scorecard exists AND has handicapCourse
+            if (scorecard != null && scorecard.getHandicapCourse() != null) {
+                newCategory = findCategoryForHandicap(scorecard.getHandicapCourse(), categories);
+                
+                if (newCategory != null) {
+                    reassignedCount++;
+                } else {
+                    withoutCategoryCount++;
+                }
+            } else {
+                withoutCategoryCount++;
+            }
+            
+            // Update inscription category (may be null)
+            inscription.setCategory(newCategory);
+        }
+        
+        // Save all updated inscriptions
+        tournamentInscriptionRepository.saveAll(inscriptions);
+        
+        log.info("Category reassignment completed for tournament {}: {} assigned, {} without category", 
+                 tournamentId, reassignedCount, withoutCategoryCount);
     }
 
     private String generateUniqueCodigo() {

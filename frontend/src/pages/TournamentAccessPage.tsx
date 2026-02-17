@@ -52,6 +52,11 @@ const TournamentAccessPage = () => {
       return;
     }
 
+    if (tournament?.estado === "FINALIZED") {
+      setError('Imposible acceder a la tarjeta. El torneo ha finalizado.');
+      return;
+    }
+
     if (!selectedTeeId) {
       setError('Por favor seleccione un tee');
       return;
@@ -148,7 +153,7 @@ const TournamentAccessPage = () => {
                 <option value="">Seleccione un tee</option>
                 {courseTees.map((tee) => (
                   <option key={tee.id} value={tee.id}>
-                    {tee.grupo} - {tee.nombre}
+                    {!tee.grupo ? tee.nombre : `${tee.grupo} - ${tee.nombre}`}
                   </option>
                 ))}
               </select>

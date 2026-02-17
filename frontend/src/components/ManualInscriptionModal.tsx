@@ -79,6 +79,12 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
       return;
     }
 
+    // Validar que el torneo esté en estado PENDING
+    if (tournament.estado === "IN_PROGRESS" || tournament.estado === "FINALIZED") {
+      setError('Imposible inscribir jugadores. La inscripción está cerrada.');
+      return;
+    }
+
     try {
       setSaving(true);
       const promises = Array.from(selectedPlayers).map(playerId =>

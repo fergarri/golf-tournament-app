@@ -124,7 +124,6 @@ const TournamentsPage = () => {
       fechaFin: tournament.fechaFin || '',
       limiteInscriptos: tournament.limiteInscriptos || '',
       valorInscripcion: tournament.valorInscripcion ? formatCurrency(tournament.valorInscripcion) : '',
-      teeConfig: tournament.teeConfig,
       categories: tournament.categories,
     });
     setShowModal(true);
@@ -138,12 +137,6 @@ const TournamentsPage = () => {
         courseId: parseInt(formData.courseId),
         limiteInscriptos: formData.limiteInscriptos ? parseInt(formData.limiteInscriptos) : null,
         valorInscripcion: parseCurrency(formData.valorInscripcion),
-        teeConfig: {
-          courseTeeIdPrimeros9: parseInt(formData.teeConfig.courseTeeIdPrimeros9),
-          courseTeeIdSegundos9: formData.teeConfig.courseTeeIdSegundos9
-            ? parseInt(formData.teeConfig.courseTeeIdSegundos9)
-            : null,
-        },
       };
 
       if (editingTournament) {
@@ -168,6 +161,33 @@ const TournamentsPage = () => {
 
   const getInscriptionLink = (codigo: string) => {
     return `${window.location.origin}/inscribe/${codigo}`;
+  };
+
+  const loadTournaments = async () => {
+    try {
+      setLoading(true);
+      const data = await tournamentService.getAll();
+      const activeTournaments = data.filter(t => {
+        return t.estado === 'IN_PROGRESS';
+      });
+      setTournaments(activeTournaments);
+      setError('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error cargando torneos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleFinalizeTournament = async (tournament: Tournament) => {
+    if (!confirm(`¿Estás seguro de querer finalizar ${tournament.nombre}? Esto cerrará el torneo y mostrará los resultados finales.`)) return;
+    try {
+      await tournamentService.finalize(tournament.id);
+      await loadTournaments();
+      navigate(`/tournaments/${tournament.id}/leaderboard?final=true`);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error finalizando torneo');
+    }
   };
 
   const handleDelete = async (tournament: Tournament) => {
@@ -202,6 +222,10 @@ const TournamentsPage = () => {
 
   const getPlayLink = (codigo: string) => {
     return `${window.location.origin}/play/${codigo}`;
+  };
+
+  const getResultsLink = (codigo: string) => {
+    return `${window.location.origin}/results/${codigo}`;
   };
 
   const addCategory = () => {
@@ -304,6 +328,12 @@ const TournamentsPage = () => {
       show: (tournament) => tournament.estado === 'IN_PROGRESS',
     },
     {
+      label: 'Link Resultados',
+      onClick: (tournament) => copyLink(getResultsLink(tournament.codigo)),
+      variant: 'secondary',
+      show: (tournament) => tournament.estado === 'FINALIZED',
+    },
+    {
       label: 'Tabla de Líderes',
       onClick: handleViewLeaderboard,
       variant: 'primary',
@@ -312,6 +342,12 @@ const TournamentsPage = () => {
       label: 'Editar',
       onClick: handleEdit,
       variant: 'default',
+    },
+    {
+      label: 'Finalizar',
+      onClick: handleFinalizeTournament,
+      variant: 'danger',
+      show: (tournament) => tournament.estado === 'IN_PROGRESS',
     },
     {
       label: 'Eliminar',

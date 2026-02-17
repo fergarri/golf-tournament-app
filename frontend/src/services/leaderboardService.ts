@@ -18,6 +18,11 @@ export const leaderboardService = {
     const response = await api.get<LeaderboardEntry[]>(url);
     return response.data;
   },
+
+  getPublicLeaderboard: async (codigo: string): Promise<LeaderboardEntry[]> => {
+    const response = await api.get<LeaderboardEntry[]>(`/leaderboard/public/${codigo}`);
+    return response.data;
+  },
   
   updatePayments: async (tournamentId: number, payments: PaymentUpdate[]): Promise<void> => {
     const request: UpdatePaymentRequest = { payments };

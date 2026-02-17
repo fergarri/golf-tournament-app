@@ -142,6 +142,7 @@ export interface LeaderboardEntry {
   playerName: string;
   matricula: string;
   clubOrigen?: string;
+  categoryId?: number | null; // ID de la categoría calculada (null para "Sin Categoría")
   categoryName?: string;
   scoreGross: number;
   scoreNeto: number;

@@ -10,6 +10,7 @@ import TournamentLeaderboardPage from './pages/TournamentLeaderboardPage'
 import TournamentAccessPage from './pages/TournamentAccessPage'
 import TournamentScorecardPage from './pages/TournamentScorecardPage'
 import PublicInscriptionPage from './pages/PublicInscriptionPage'
+import PublicLeaderboardPage from './pages/PublicLeaderboardPage'
 import ScorecardPage from './pages/ScorecardPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import ProtectedRoute from './components/ProtectedRoute'
@@ -37,6 +38,7 @@ function App() {
         <Route path="/play/:codigo/scorecard" element={<TournamentScorecardPage />} />
         <Route path="/tournaments/:codigo/scorecard" element={<ScorecardPage />} />
         <Route path="/tournaments/:codigo/leaderboard" element={<LeaderboardPage />} />
+        <Route path="/results/:codigo" element={<PublicLeaderboardPage />} />
       </Routes>
     </AuthProvider>
   )

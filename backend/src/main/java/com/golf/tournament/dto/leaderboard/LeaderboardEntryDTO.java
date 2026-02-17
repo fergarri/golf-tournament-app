@@ -20,6 +20,7 @@ public class LeaderboardEntryDTO {
     private String playerName;
     private String matricula;
     private String clubOrigen;
+    private Long categoryId; // ID de la categoría calculada (puede ser null para "Sin Categoría")
     private String categoryName;
     private Integer scoreGross;
     private BigDecimal scoreNeto;

@@ -41,6 +41,11 @@ const PublicInscriptionPage = () => {
       return;
     }
 
+    if (tournament?.estado === "IN_PROGRESS" || tournament?.estado === "FINALIZED") {
+      setError('Imposible inscribirse. Inscripcion cerrada.');
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError('');
@@ -100,7 +105,6 @@ const PublicInscriptionPage = () => {
             <h2>Inscripción Exitosa!</h2>
             <div className="inscription-details">
               <p><strong>Jugador:</strong> {inscriptionData.player.nombre} {inscriptionData.player.apellido}</p>
-              <p><strong>Categoría:</strong> {inscriptionData.categoryName}</p>
               <p><strong>Handicap Index:</strong> {inscriptionData.player.handicapIndex}</p>
               <p><strong>Club de Origen:</strong> {inscriptionData.player.clubOrigen}</p>
             </div>

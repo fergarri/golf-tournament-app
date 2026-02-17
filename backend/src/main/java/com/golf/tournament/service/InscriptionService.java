@@ -24,12 +24,16 @@ public class InscriptionService {
     private final TournamentRepository tournamentRepository;
     private final PlayerRepository playerRepository;
     private final TournamentInscriptionRepository inscriptionRepository;
-    private final TournamentCategoryRepository categoryRepository;
 
     @Transactional
     public InscriptionResponse inscribePlayer(String codigo, InscriptionRequest request) {
         Tournament tournament = tournamentRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "codigo", codigo));
+
+        // Validar que el torneo esté en estado PENDING
+        if ("IN_PROGRESS".equals(tournament.getEstado()) || "FINALIZED".equals(tournament.getEstado())) {
+            throw new BadRequestException("Imposible inscribirse. Inscripcion cerrada.");
+        }
 
         if (tournament.getLimiteInscriptos() != null) {
             Long currentInscriptos = inscriptionRepository.countByTournamentId(tournament.getId());
@@ -47,16 +51,10 @@ public class InscriptionService {
             throw new BadRequestException("Jugador ya inscrito en este torneo");
         }
 
-        final BigDecimal handicapIndex = player.getHandicapIndex();
-        TournamentCategory category = categoryRepository
-                .findCategoryForHandicap(tournament.getId(), handicapIndex)
-                .orElseThrow(() -> new BadRequestException(
-                        "No se encontró categoría para el handicap index: " + handicapIndex));
-
         TournamentInscription inscription = TournamentInscription.builder()
                 .tournament(tournament)
                 .player(player)
-                .category(category)
+                .category(null)
                 .build();
 
         inscription = inscriptionRepository.save(inscription);
@@ -66,7 +64,7 @@ public class InscriptionService {
         return InscriptionResponse.builder()
                 .inscriptionId(inscription.getId())
                 .player(convertPlayerToDTO(player))
-                .categoryName(category.getNombre())
+                .categoryName(null)
                 .message("Jugador inscrito en torneo")
                 .build();
     }
@@ -83,6 +81,11 @@ public class InscriptionService {
             throw new BadRequestException("Jugador ya inscrito en este torneo");
         }
 
+        // Validar que el torneo esté en estado PENDING
+        if ("IN_PROGRESS".equals(tournament.getEstado()) || "FINALIZED".equals(tournament.getEstado())) {
+            throw new BadRequestException("Imposible inscribir jugadores. Inscripcion cerrada.");
+        }
+        
         if (tournament.getLimiteInscriptos() != null) {
             Long currentInscriptos = inscriptionRepository.countByTournamentId(tournamentId);
             if (currentInscriptos >= tournament.getLimiteInscriptos()) {
@@ -90,15 +93,10 @@ public class InscriptionService {
             }
         }
 
-        TournamentCategory category = categoryRepository
-                .findCategoryForHandicap(tournamentId, player.getHandicapIndex())
-                .orElseThrow(() -> new BadRequestException(
-                        "No se encontró categoría para el handicap index: " + player.getHandicapIndex()));
-
         TournamentInscription inscription = TournamentInscription.builder()
                 .tournament(tournament)
                 .player(player)
-                .category(category)
+                .category(null)
                 .build();
 
         inscription = inscriptionRepository.save(inscription);
@@ -108,7 +106,7 @@ public class InscriptionService {
         return InscriptionResponse.builder()
                 .inscriptionId(inscription.getId())
                 .player(convertPlayerToDTO(player))
-                .categoryName(category.getNombre())
+                .categoryName(null)
                 .message("Jugador inscrito en torneo por admin")
                 .build();
     }

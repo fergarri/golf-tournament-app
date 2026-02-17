@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { leaderboardService } from '../services/leaderboardService';
 import { scorecardService } from '../services/scorecardService';
 import { Tournament, LeaderboardEntry, Scorecard } from '../types';
 import Table from '../components/Table';
+import Tabs, { Tab } from '../components/Tabs';
 import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
@@ -17,7 +18,7 @@ const TournamentLeaderboardPage = () => {
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('general'); // 'general', categoryId, or 'sin-categoria'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingScorecardId, setEditingScorecardId] = useState<number | null>(null);
@@ -26,17 +27,18 @@ const TournamentLeaderboardPage = () => {
   const [paymentChanges, setPaymentChanges] = useState<Map<number, boolean>>(new Map());
   const [savingPayments, setSavingPayments] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
 
   useEffect(() => {
     loadData();
     
-    // Poll for updates every 10 seconds for real-time updates
+    // Poll for updates every 100 seconds for real-time updates
     const interval = setInterval(() => {
       loadData();
     }, 100000); // 100 seconds
 
     return () => clearInterval(interval);
-  }, [id, selectedCategory]);
+  }, [id]); // Removed selectedCategory from dependencies since we filter in frontend
 
   const loadData = async () => {
     if (!id) return;
@@ -45,10 +47,8 @@ const TournamentLeaderboardPage = () => {
       const tournamentData = await tournamentService.getById(parseInt(id));
       setTournament(tournamentData);
 
-      const leaderboardData = await leaderboardService.getLeaderboard(
-        parseInt(id),
-        selectedCategory || undefined
-      );
+      // Always fetch all players - filtering is done in frontend
+      const leaderboardData = await leaderboardService.getLeaderboard(parseInt(id));
       setLeaderboard(leaderboardData);
       setError('');
     } catch (err: any) {
@@ -57,6 +57,80 @@ const TournamentLeaderboardPage = () => {
       setLoading(false);
     }
   };
+
+  // Build tabs based on tournament categories
+  const tabs = useMemo((): Tab[] => {
+    if (!tournament || !tournament.categories) return [];
+
+    const tabsList: Tab[] = [];
+    
+    // Always add "General" tab first
+    tabsList.push({
+      id: 'general',
+      label: 'General',
+      count: leaderboard.length,
+    });
+
+    // Sort categories by handicap range (min to max)
+    const sortedCategories = [...tournament.categories].sort((a, b) => 
+      a.handicapMin - b.handicapMin
+    );
+
+    // Add tab for each category
+    sortedCategories.forEach(category => {
+      if (!category.id) return; // Skip categories without id
+      
+      const count = leaderboard.filter(entry => entry.categoryId === category.id).length;
+      tabsList.push({
+        id: category.id.toString(),
+        label: `${category.nombre} (${category.handicapMin}-${category.handicapMax})`,
+        count,
+      });
+    });
+
+    // Add "Sin Categoría" tab only if there are players without category
+    const withoutCategoryCount = leaderboard.filter(entry => entry.categoryId === null || entry.categoryId === undefined).length;
+    if (withoutCategoryCount > 0) {
+      tabsList.push({
+        id: 'sin-categoria',
+        label: 'Sin Categoría',
+        count: withoutCategoryCount,
+      });
+    }
+
+    return tabsList;
+  }, [tournament, leaderboard]);
+
+  // Filter leaderboard based on active tab and recalculate positions per category
+  const filteredByCategory = useMemo(() => {
+    let filtered: LeaderboardEntry[] = [];
+    
+    // Filter by active tab
+    if (activeTab === 'general') {
+      filtered = [...leaderboard];
+    } else if (activeTab === 'sin-categoria') {
+      filtered = leaderboard.filter(entry => entry.categoryId === null || entry.categoryId === undefined);
+    } else {
+      // Filter by specific category ID
+      const categoryId = parseInt(activeTab);
+      filtered = leaderboard.filter(entry => entry.categoryId === categoryId);
+    }
+    
+    // Separate players with delivered scorecards from those without
+    const withDeliveredScores = filtered.filter(entry => entry.delivered);
+    const withoutDeliveredScores = filtered.filter(entry => !entry.delivered);
+    
+    // Assign positions ONLY for players with delivered scorecards
+    // Position is calculated per category (each tab has its own ranking 1, 2, 3...)
+    // "Sin Categoría" tab does NOT have positions
+    const withDeliveredAndPositions = withDeliveredScores.map((entry, index) => ({
+      ...entry,
+      position: activeTab !== 'sin-categoria' ? index + 1 : 0
+    }));
+    
+    // Combine: delivered first (sorted by score), then undelivered (sorted by name)
+    return [...withDeliveredAndPositions, ...withoutDeliveredScores];
+  }, [leaderboard, activeTab]);
 
   const getScoreToPar = (scoreToPar: number) => {
     if (scoreToPar === 0) return 'E';
@@ -207,17 +281,28 @@ const TournamentLeaderboardPage = () => {
     }
   };
 
+  const getResultsLink = (codigo: string) => {
+    return `${window.location.origin}/results/${codigo}`;
+  };
+
+  const copyResultsLink = () => {
+    if (!tournament?.codigo) return;
+    navigator.clipboard.writeText(getResultsLink(tournament.codigo));
+    setShowCopyLinkModal(true);
+  };
+
+  // Apply search filter to the category-filtered leaderboard
   const filteredLeaderboard = searchQuery
-    ? leaderboard.filter((entry: LeaderboardEntry) =>
+    ? filteredByCategory.filter((entry: LeaderboardEntry) =>
         `${entry.playerName} ${entry.matricula} ${entry.clubOrigen || ''}`.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : leaderboard;
+    : filteredByCategory;
 
   const columns = [
     {
       header: 'Pos',
       accessor: (row: LeaderboardEntry) => (
-        row.delivered ? (
+        row.delivered && row.position && row.position > 0 ? (
           <span className={`position ${getPositionClass(row.position)}`}>{row.position}</span>
         ) : (
           <span>-</span>
@@ -303,6 +388,23 @@ const TournamentLeaderboardPage = () => {
           <button onClick={loadData} className="btn-refresh" disabled={loading}>
             {loading ? '⟳ Actualizando...' : '⟳ Actualizar'}
           </button>
+          {tournament?.estado === 'FINALIZED' && (
+            <button 
+              onClick={copyResultsLink} 
+              className="btn-copy-link"
+              style={{
+                backgroundColor: '#3498db',
+                color: 'white',
+                padding: '10px 20px',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              📋 Link Resultados
+            </button>
+          )}
           <button 
             onClick={handleSavePayments} 
             className="btn-save-payments" 
@@ -349,22 +451,12 @@ const TournamentLeaderboardPage = () => {
         </div>
       </div>
 
-      {tournament && tournament.categories && tournament.categories.length > 1 && (
-        <div className="category-filter">
-          <label>Filtrar por Categoría:</label>
-          <select
-            value={selectedCategory || ''}
-            onChange={(e) => setSelectedCategory(e.target.value ? parseInt(e.target.value) : null)}
-            className="category-select"
-          >
-            <option value="">Todas las Categorías</option>
-            {tournament.categories.map((cat) => (
-              <option key={cat.id} value={cat.id}>
-                {cat.nombre} (HCP {cat.handicapMin}-{cat.handicapMax})
-              </option>
-            ))}
-          </select>
-        </div>
+      {tournament && tabs.length > 0 && (
+        <Tabs 
+          tabs={tabs} 
+          activeTab={activeTab} 
+          onTabChange={setActiveTab} 
+        />
       )}
 
       <div className="search-container" style={{ marginBottom: '1.5rem' }}>
@@ -391,7 +483,7 @@ const TournamentLeaderboardPage = () => {
             fontSize: '0.875rem', 
             color: '#7f8c8d' 
           }}>
-            Mostrando {filteredLeaderboard.length} de {leaderboard.length} jugadores
+            Mostrando {filteredLeaderboard.length} de {filteredByCategory.length} jugadores
           </p>
         )}
       </div>
@@ -416,13 +508,41 @@ const TournamentLeaderboardPage = () => {
           <div className="update-info">
             <span className="live-indicator"></span>
             <span>Actualizando en tiempo real cada 100 segundos</span>
-            {leaderboard.filter(entry => entry.delivered).length > 0 && (
+            {filteredByCategory.filter(entry => entry.delivered).length > 0 && (
               <span style={{ marginLeft: '20px' }}>
-                • Tarjetas entregadas: {leaderboard.filter(entry => entry.delivered).length} de {leaderboard.length}
+                • Tarjetas entregadas: {filteredByCategory.filter(entry => entry.delivered).length} de {filteredByCategory.length}
               </span>
             )}
           </div>
         </>
+      )}
+
+      {/* Copy Link Modal */}
+      {showCopyLinkModal && (
+        <div className="modal-overlay" onClick={() => setShowCopyLinkModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div style={{ fontSize: '3rem', color: '#27ae60', marginBottom: '1rem' }}>✓</div>
+            <h3 style={{ marginBottom: '0.5rem' }}>Link Copiado</h3>
+            <p style={{ color: '#7f8c8d', marginBottom: '1.5rem' }}>
+              El link de resultados ha sido copiado al portapapeles
+            </p>
+            <button 
+              onClick={() => setShowCopyLinkModal(false)} 
+              className="btn-primary"
+              style={{
+                backgroundColor: '#3498db',
+                color: 'white',
+                padding: '10px 20px',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Edit Scorecard Modal */}
