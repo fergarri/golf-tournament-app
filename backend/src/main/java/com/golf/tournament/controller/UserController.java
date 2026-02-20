@@ -4,6 +4,7 @@ import com.golf.tournament.dto.user.ChangePasswordRequest;
 import com.golf.tournament.dto.user.CreateUserRequest;
 import com.golf.tournament.dto.user.UpdateUserRequest;
 import com.golf.tournament.dto.user.UserDTO;
+import com.golf.tournament.model.Role;
 import com.golf.tournament.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -12,15 +13,24 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Arrays;
 import java.util.List;
 
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@PreAuthorize("hasAuthority('TOTAL')")
 public class UserController {
 
     private final UserService userService;
+
+    @GetMapping("/roles")
+    public ResponseEntity<List<String>> getAvailableRoles() {
+        List<String> roles = Arrays.stream(Role.values())
+                .map(Role::name)
+                .toList();
+        return ResponseEntity.ok(roles);
+    }
 
     @GetMapping
     public ResponseEntity<List<UserDTO>> getAllUsers() {

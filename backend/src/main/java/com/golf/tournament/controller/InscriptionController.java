@@ -28,7 +28,7 @@ public class InscriptionController {
     }
 
     @PostMapping("/admin/tournaments/{tournamentId}/players/{playerId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<InscriptionResponse> inscribePlayerManual(
             @PathVariable Long tournamentId,
             @PathVariable Long playerId) {
@@ -37,13 +37,13 @@ public class InscriptionController {
     }
 
     @GetMapping("/tournaments/{tournamentId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<List<InscriptionResponse>> getTournamentInscriptions(@PathVariable Long tournamentId) {
         return ResponseEntity.ok(inscriptionService.getTournamentInscriptions(tournamentId));
     }
 
     @PatchMapping("/{inscriptionId}/handicap-course")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<Void> updateHandicapCourse(
             @PathVariable Long inscriptionId,
             @RequestParam BigDecimal handicapCourse) {
@@ -52,7 +52,7 @@ public class InscriptionController {
     }
 
     @DeleteMapping("/{inscriptionId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<Void> removeInscription(@PathVariable Long inscriptionId) {
         inscriptionService.removeInscription(inscriptionId);
         return ResponseEntity.noContent().build();

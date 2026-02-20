@@ -1,6 +1,7 @@
 export interface User {
   email: string;
   role: string;
+  permissions: string[];
 }
 
 export interface UserDetail {
@@ -34,6 +35,7 @@ export interface LoginResponse {
   type: string;
   email: string;
   role: string;
+  permissions: string[];
 }
 
 export interface Player {
@@ -151,4 +153,45 @@ export interface LeaderboardEntry {
   handicapCourse?: number;
   delivered?: boolean; // Indica si el jugador entregó su tarjeta
   pagado?: boolean; // Indica si el jugador pagó su inscripción
+}
+
+// Tournament Admin types
+
+export interface TournamentAdmin {
+  id: number;
+  nombre: string;
+  fecha: string;
+  tournamentId?: number;
+  tournamentNombre?: string;
+  valorInscripcion: number;
+  cantidadCuotas: number;
+  estado: string;
+  currentInscriptos: number;
+  totalRecaudado: number;
+}
+
+export interface TournamentAdminDetail {
+  id: number;
+  nombre: string;
+  fecha: string;
+  cantidadCuotas: number;
+  valorInscripcion: number;
+  currentInscriptos: number;
+  totalRecaudado: number;
+  inscriptions: TournamentAdminInscriptionDetail[];
+}
+
+export interface TournamentAdminInscriptionDetail {
+  inscriptionId: number;
+  playerId: number;
+  playerName: string;
+  telefono?: string;
+  email?: string;
+  payments: TournamentAdminPaymentDetail[];
+}
+
+export interface TournamentAdminPaymentDetail {
+  paymentId: number;
+  cuotaNumber: number;
+  pagado: boolean;
 }

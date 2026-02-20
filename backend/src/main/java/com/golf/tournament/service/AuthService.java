@@ -4,6 +4,7 @@ import com.golf.tournament.config.JwtUtil;
 import com.golf.tournament.dto.auth.LoginRequest;
 import com.golf.tournament.dto.auth.LoginResponse;
 import com.golf.tournament.exception.UnauthorizedException;
+import com.golf.tournament.model.Permission;
 import com.golf.tournament.model.User;
 import com.golf.tournament.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +48,10 @@ public class AuthService {
                     .token(token)
                     .type("Bearer")
                     .email(user.getEmail())
-                    .role(user.getRole())
+                    .role(user.getRole().name())
+                    .permissions(user.getRole().getPermissions().stream()
+                            .map(Permission::name)
+                            .toList())
                     .build();
 
         } catch (Exception e) {

@@ -38,21 +38,17 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     
-    // Evitar bucles infinitos si ya estamos en login
     if (window.location.pathname === '/login') {
       return Promise.reject(error);
     }
 
-    // 401 o 403 indican problemas de autenticación
-    // (El interceptor de request ya debería manejar tokens expirados,
-    // pero esto es un respaldo por si el servidor invalida el token)
-    if (status === 401 || status === 403) {
-      console.log(`⚠️ Error ${status} detectado - redirigiendo al login`);
+    if (status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
 
+    // 403 = sin permisos, no hacer logout; dejar que el componente lo maneje
     return Promise.reject(error);
   }
 );

@@ -8,6 +8,7 @@ import '../components/Form.css';
 
 const UsersPage = () => {
   const [users, setUsers] = useState<UserDetail[]>([]);
+  const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -34,6 +35,7 @@ const UsersPage = () => {
 
   useEffect(() => {
     loadUsers();
+    loadRoles();
   }, []);
 
   const loadUsers = async () => {
@@ -46,6 +48,15 @@ const UsersPage = () => {
       setError(err.response?.data?.message || 'Error cargando usuarios');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadRoles = async () => {
+    try {
+      const data = await userService.getRoles();
+      setRoles(data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error cargando roles');
     }
   };
 
@@ -209,8 +220,9 @@ const UsersPage = () => {
               onChange={(e) => setCreateData({ ...createData, role: e.target.value })}
               required
             >
-              <option value="ADMIN">Admin</option>
-              <option value="USER">User</option>
+              {roles.map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
             </select>
           </div>
         </form>
@@ -256,8 +268,9 @@ const UsersPage = () => {
               onChange={(e) => setEditData({ ...editData, role: e.target.value })}
               required
             >
-              <option value="ADMIN">Admin</option>
-              <option value="USER">User</option>
+              {roles.map((role) => (
+                <option key={role} value={role}>{role}</option>
+              ))}
             </select>
           </div>
         </form>

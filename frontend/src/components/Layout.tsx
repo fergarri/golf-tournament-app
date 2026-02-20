@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import './Layout.css';
 
 const Layout = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission } = useAuth();
 
   return (
     <div className="layout">
@@ -13,10 +13,19 @@ const Layout = () => {
         </div>
         <div className="navbar-links">
           <Link to="/">Dashboard</Link>
-          <Link to="/tournaments">Torneos</Link>
-          <Link to="/players">Jugadores</Link>
-          <Link to="/courses">Campos</Link>
-          <Link to="/users">Usuarios</Link>
+          {hasPermission('GAMES') && (
+            <>
+              <Link to="/tournaments">Torneos</Link>
+              <Link to="/players">Jugadores</Link>
+              <Link to="/courses">Campos</Link>
+            </>
+          )}
+          {hasPermission('TOTAL') && (
+            <Link to="/users">Usuarios</Link>
+          )}
+          {hasPermission('ADMINISTRATION') && (
+            <Link to="/administration">Administración</Link>
+          )}
         </div>
         <div className="navbar-user">
           <span>{user?.email}</span>

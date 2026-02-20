@@ -20,11 +20,13 @@ public class TournamentController {
     private final TournamentService tournamentService;
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<List<TournamentDTO>> getAllTournaments() {
         return ResponseEntity.ok(tournamentService.getAllTournaments());
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<TournamentDTO> getTournamentById(@PathVariable Long id) {
         return ResponseEntity.ok(tournamentService.getTournamentById(id));
     }
@@ -35,14 +37,14 @@ public class TournamentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<TournamentDTO> createTournament(@Valid @RequestBody CreateTournamentRequest request) {
         TournamentDTO tournament = tournamentService.createTournament(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(tournament);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<TournamentDTO> updateTournament(
             @PathVariable Long id,
             @Valid @RequestBody CreateTournamentRequest request) {
@@ -50,20 +52,20 @@ public class TournamentController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<Void> deleteTournament(@PathVariable Long id) {
         tournamentService.deleteTournament(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/start")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<TournamentDTO> startTournament(@PathVariable Long id) {
         return ResponseEntity.ok(tournamentService.startTournament(id));
     }
 
     @PostMapping("/{id}/finalize")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<TournamentDTO> finalizeTournament(@PathVariable Long id) {
         return ResponseEntity.ok(tournamentService.finalizeTournament(id));
     }

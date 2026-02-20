@@ -57,7 +57,6 @@ public class SecurityConfig {
                                 "/locations/**",
                                 "/leaderboard/public/*"
                         ).permitAll()
-                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

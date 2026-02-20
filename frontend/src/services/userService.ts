@@ -2,6 +2,11 @@ import api from './api';
 import { UserDetail, CreateUserRequest, UpdateUserRequest, ChangePasswordRequest } from '../types';
 
 export const userService = {
+  getRoles: async (): Promise<string[]> => {
+    const response = await api.get<string[]>('/users/roles');
+    return response.data;
+  },
+
   getAll: async (): Promise<UserDetail[]> => {
     const response = await api.get<UserDetail[]>('/users');
     return response.data;

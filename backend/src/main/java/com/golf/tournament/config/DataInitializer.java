@@ -1,5 +1,6 @@
 package com.golf.tournament.config;
 
+import com.golf.tournament.model.Role;
 import com.golf.tournament.model.User;
 import com.golf.tournament.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -18,14 +19,13 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        // Check both email and matricula to avoid duplicate key violations
         if (!userRepository.existsByEmail("admin@golftournament.com") && 
             !userRepository.existsByMatricula("ADMIN001")) {
             User admin = User.builder()
                     .email("admin@golftournament.com")
                     .matricula("ADMIN001")
                     .password(passwordEncoder.encode("admin123"))
-                    .role("ADMIN")
+                    .role(Role.ADMIN)
                     .build();
             
             userRepository.save(admin);

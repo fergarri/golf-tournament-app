@@ -8,6 +8,7 @@ interface AuthContextType {
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   isLoading: boolean;
+  hasPermission: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +21,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
     if (currentUser) {
+      if (!currentUser.permissions) {
+        authService.logout();
+        setIsLoading(false);
+        navigate('/login');
+        return;
+      }
       setUser(currentUser);
       if (window.location.pathname === '/login') {
         navigate('/');
@@ -31,7 +38,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (username: string, password: string) => {
     try {
       const response = await authService.login(username, password);
-      const userData = { email: response.email, role: response.role };
+      const userData: User = {
+        email: response.email,
+        role: response.role,
+        permissions: response.permissions,
+      };
       
       localStorage.setItem('token', response.token);
       localStorage.setItem('user', JSON.stringify(userData));
@@ -49,8 +60,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     navigate('/login');
   };
 
+  const hasPermission = (permission: string): boolean => {
+    if (!user || !user.permissions) return false;
+    return user.permissions.includes('TOTAL') || user.permissions.includes(permission);
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, hasPermission }}>
       {children}
     </AuthContext.Provider>
   );

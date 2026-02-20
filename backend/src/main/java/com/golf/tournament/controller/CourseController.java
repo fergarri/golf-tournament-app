@@ -37,14 +37,14 @@ public class CourseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<CourseDTO> createCourse(@Valid @RequestBody CreateCourseRequest request) {
         CourseDTO course = courseService.createCourse(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(course);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<CourseDTO> updateCourse(
             @PathVariable Long id,
             @Valid @RequestBody CreateCourseRequest request) {
@@ -52,7 +52,7 @@ public class CourseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<Void> deleteCourse(@PathVariable Long id) {
         courseService.deleteCourse(id);
         return ResponseEntity.noContent().build();
@@ -64,7 +64,7 @@ public class CourseController {
     }
 
     @PostMapping("/{courseId}/tees")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<CourseTeeDTO> addTee(
             @PathVariable Long courseId,
             @RequestBody CourseTeeDTO teeDTO) {
@@ -73,7 +73,7 @@ public class CourseController {
     }
 
     @PutMapping("/tees/{teeId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<CourseTeeDTO> updateTee(
             @PathVariable Long teeId,
             @RequestBody CourseTeeDTO teeDTO) {
@@ -81,7 +81,7 @@ public class CourseController {
     }
 
     @DeleteMapping("/tees/{teeId}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<Void> deactivateTee(@PathVariable Long teeId) {
         courseService.deactivateTee(teeId);
         return ResponseEntity.noContent().build();
@@ -93,7 +93,7 @@ public class CourseController {
     }
 
     @PostMapping("/{courseId}/holes")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<HoleDTO> addOrUpdateHole(
             @PathVariable Long courseId,
             @RequestBody HoleDTO holeDTO) {

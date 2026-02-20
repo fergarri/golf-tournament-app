@@ -4,8 +4,10 @@ import com.golf.tournament.dto.user.ChangePasswordRequest;
 import com.golf.tournament.dto.user.CreateUserRequest;
 import com.golf.tournament.dto.user.UpdateUserRequest;
 import com.golf.tournament.dto.user.UserDTO;
+import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.DuplicateResourceException;
 import com.golf.tournament.exception.ResourceNotFoundException;
+import com.golf.tournament.model.Role;
 import com.golf.tournament.model.User;
 import com.golf.tournament.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -50,11 +52,13 @@ public class UserService {
             throw new DuplicateResourceException("User", "matricula", request.getMatricula());
         }
 
+        Role role = parseRole(request.getRole());
+
         User user = User.builder()
                 .email(request.getEmail())
                 .matricula(request.getMatricula())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(request.getRole())
+                .role(role)
                 .build();
 
         user = userRepository.save(user);
@@ -80,7 +84,7 @@ public class UserService {
 
         user.setEmail(request.getEmail());
         user.setMatricula(request.getMatricula());
-        user.setRole(request.getRole());
+        user.setRole(parseRole(request.getRole()));
 
         user = userRepository.save(user);
         log.info("User updated with id: {}", user.getId());
@@ -106,12 +110,20 @@ public class UserService {
         log.info("User deleted with id: {}", id);
     }
 
+    private Role parseRole(String roleName) {
+        try {
+            return Role.valueOf(roleName);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Rol no válido: " + roleName);
+        }
+    }
+
     private UserDTO convertToDTO(User user) {
         return UserDTO.builder()
                 .id(user.getId())
                 .email(user.getEmail())
                 .matricula(user.getMatricula())
-                .role(user.getRole())
+                .role(user.getRole().name())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

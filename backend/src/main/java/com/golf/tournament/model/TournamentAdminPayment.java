@@ -11,30 +11,29 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users")
+@Table(name = "tournament_admin_payments", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"inscription_id", "cuota_number"})
+})
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class User {
+public class TournamentAdminPayment {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
-    private String email;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inscription_id", nullable = false)
+    private TournamentAdminInscription inscription;
 
-    @Column(length = 50, unique = true)
-    private String matricula;
+    @Column(name = "cuota_number", nullable = false)
+    private Integer cuotaNumber;
 
     @Column(nullable = false)
-    private String password;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
     @Builder.Default
-    private Role role = Role.ADMIN;
+    private Boolean pagado = false;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

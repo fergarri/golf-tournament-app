@@ -6,6 +6,7 @@ import com.golf.tournament.service.LeaderboardService;
 import com.golf.tournament.service.TournamentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ public class LeaderboardController {
     private final TournamentService tournamentService;
 
     @GetMapping("/tournaments/{tournamentId}")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<List<LeaderboardEntryDTO>> getLeaderboard(@PathVariable Long tournamentId) {
         // Always return all players with their calculated categoryId
         // Frontend will handle filtering by category
@@ -51,6 +53,7 @@ public class LeaderboardController {
     }
 
     @PutMapping("/tournaments/{tournamentId}/payments")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<Void> updatePayments(
             @PathVariable Long tournamentId,
             @RequestBody UpdatePaymentRequest request) {

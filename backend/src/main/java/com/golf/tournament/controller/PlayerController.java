@@ -23,13 +23,13 @@ public class PlayerController {
     private final PlayerService playerService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<List<PlayerDTO>> getAllPlayers() {
         return ResponseEntity.ok(playerService.getAllPlayers());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<PlayerDTO> getPlayerById(@PathVariable Long id) {
         return ResponseEntity.ok(playerService.getPlayerById(id));
     }
@@ -40,20 +40,20 @@ public class PlayerController {
     }
 
     @GetMapping("/search")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<List<PlayerDTO>> searchPlayers(@RequestParam String query) {
         return ResponseEntity.ok(playerService.searchPlayers(query));
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<PlayerDTO> createPlayer(@Valid @RequestBody CreatePlayerRequest request) {
         PlayerDTO player = playerService.createPlayer(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(player);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<PlayerDTO> updatePlayer(
             @PathVariable Long id,
             @Valid @RequestBody CreatePlayerRequest request) {
@@ -61,14 +61,14 @@ public class PlayerController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<Void> deletePlayer(@PathVariable Long id) {
         playerService.deletePlayer(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/bulk-update")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<BulkUpdateResponse> bulkUpdatePlayers(
             @RequestParam("file") MultipartFile file) {
         
