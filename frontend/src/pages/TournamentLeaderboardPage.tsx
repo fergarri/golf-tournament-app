@@ -382,8 +382,8 @@ const TournamentLeaderboardPage = () => {
     <div className="leaderboard-page">
       <div className="leaderboard-header">
         <div className="header-actions">
-          <button onClick={() => navigate('/')} className="btn-back">
-            ← Volver al Dashboard
+          <button onClick={() => navigate('/tournaments')} className="btn-back">
+            ← Volver a Torneos
           </button>
           <button onClick={loadData} className="btn-refresh" disabled={loading}>
             {loading ? '⟳ Actualizando...' : '⟳ Actualizar'}

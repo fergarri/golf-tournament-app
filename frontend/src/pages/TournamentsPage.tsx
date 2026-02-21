@@ -307,7 +307,7 @@ const TournamentsPage = () => {
       label: 'Inscribir',
       onClick: handleInscribePlayers,
       variant: 'secondary',
-      show: (tournament) => tournament.estado === 'PENDING',
+      show: (tournament) => tournament.estado === 'PENDING' || tournament.estado === 'IN_PROGRESS',
     },
     {
       label: 'Link Inscripción',
