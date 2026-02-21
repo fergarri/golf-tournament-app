@@ -132,13 +132,19 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
           <>
             <div className="inscription-header">
               <div className="search-box">
-                <input
-                  type="text"
-                  placeholder="Buscar jugadores por nombre o matrícula..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="search-input"
-                />
+                <div className="search-input-wrapper" style={{ width: '100%' }}>
+                  <input
+                    type="text"
+                    placeholder="Buscar jugadores por nombre o matrícula..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="search-input"
+                    style={{ paddingRight: '2rem' }}
+                  />
+                  {searchQuery && (
+                    <button className="search-clear-btn" onClick={() => setSearchQuery('')} type="button">×</button>
+                  )}
+                </div>
               </div>
               <div className="inscription-stats">
                 <p><strong>Jugadores disponibles:</strong> {availablePlayers.length}</p>

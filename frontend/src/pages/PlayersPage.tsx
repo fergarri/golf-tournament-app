@@ -165,24 +165,29 @@ const PlayersPage = () => {
       {error && <div className="error-message">{error}</div>}
 
       <div className="search-container" style={{ marginBottom: '1.5rem' }}>
-        <input
-          type="text"
-          placeholder="Buscar jugadores por nombre, apellido o matrícula"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="search-input"
-          style={{
-            width: '50%',
-            padding: '0.75rem 1rem',
-            fontSize: '1rem',
-            border: '2px solid #e0e0e0',
-            borderRadius: '8px',
-            outline: 'none',
-            transition: 'border-color 0.2s',
-          }}
-          onFocus={(e) => e.target.style.borderColor = '#3498db'}
-          onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-        />
+        <div className="search-input-wrapper" style={{ width: '50%' }}>
+          <input
+            type="text"
+            placeholder="Buscar jugadores por nombre, apellido o matrícula"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+            style={{
+              width: '100%',
+              padding: '0.75rem 2rem 0.75rem 1rem',
+              fontSize: '1rem',
+              border: '2px solid #e0e0e0',
+              borderRadius: '8px',
+              outline: 'none',
+              transition: 'border-color 0.2s',
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#3498db'}
+            onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+          />
+          {searchQuery && (
+            <button className="search-clear-btn" onClick={() => setSearchQuery('')} type="button">×</button>
+          )}
+        </div>
         {searchQuery && (
           <p style={{ 
             marginTop: '0.5rem', 

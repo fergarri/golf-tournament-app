@@ -96,3 +96,26 @@ input[type="number"] {
   background-color: #d4edda;
   color: #155724;
 }
+
+.search-input-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.search-input-wrapper .search-clear-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  color: #999;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.search-input-wrapper .search-clear-btn:hover {
+  color: #333;
+}

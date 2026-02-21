@@ -3,7 +3,8 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { leaderboardService } from '../services/leaderboardService';
 import { scorecardService } from '../services/scorecardService';
-import { Tournament, LeaderboardEntry, Scorecard } from '../types';
+import { courseService } from '../services/courseService';
+import { Tournament, LeaderboardEntry, Scorecard, CourseTee } from '../types';
 import Table from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import { formatDateSafe } from '../utils/dateUtils';
@@ -28,6 +29,12 @@ const TournamentLeaderboardPage = () => {
   const [savingPayments, setSavingPayments] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
+  const [markAsDelivered, setMarkAsDelivered] = useState(false);
+  const [showEnableScorecardModal, setShowEnableScorecardModal] = useState(false);
+  const [enableScorecardPlayer, setEnableScorecardPlayer] = useState<LeaderboardEntry | null>(null);
+  const [courseTees, setCourseTees] = useState<CourseTee[]>([]);
+  const [selectedTeeId, setSelectedTeeId] = useState<number | ''>('');
+  const [enablingScorecard, setEnablingScorecard] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -145,9 +152,50 @@ const TournamentLeaderboardPage = () => {
     return '';
   };
 
+  const handleEnableScorecard = async (entry: LeaderboardEntry) => {
+    setEnableScorecardPlayer(entry);
+    setSelectedTeeId('');
+    try {
+      if (tournament?.courseId) {
+        const tees = await courseService.getTees(tournament.courseId);
+        const activeTees = tees.filter((t: CourseTee) => t.active);
+        setCourseTees(activeTees);
+        if (activeTees.length === 1) {
+          setSelectedTeeId(activeTees[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Error loading tees:', err);
+    }
+    setShowEnableScorecardModal(true);
+  };
+
+  const handleConfirmEnableScorecard = async () => {
+    if (!enableScorecardPlayer || !tournament || !selectedTeeId) return;
+    try {
+      setEnablingScorecard(true);
+      const scorecard = await scorecardService.getOrCreate(
+        tournament.id,
+        enableScorecardPlayer.playerId,
+        selectedTeeId as number
+      );
+      setShowEnableScorecardModal(false);
+      setEnableScorecardPlayer(null);
+      setMarkAsDelivered(false);
+      setEditingScorecard(scorecard);
+      setEditingScorecardId(scorecard.id);
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al habilitar la tarjeta');
+    } finally {
+      setEnablingScorecard(false);
+    }
+  };
+
   const handleEditScorecard = async (scorecardId: number) => {
     try {
       const scorecard = await scorecardService.getById(scorecardId);
+      setMarkAsDelivered(scorecard.delivered);
       setEditingScorecard(scorecard);
       setEditingScorecardId(scorecardId);
     } catch (err) {
@@ -178,7 +226,6 @@ const TournamentLeaderboardPage = () => {
     try {
       setSavingScorecard(true);
       
-      // Update all hole scores in a single request
       const holeScores = editingScorecard.holeScores.map(hs => ({
         holeId: hs.holeId,
         golpesPropio: hs.golpesPropio || undefined,
@@ -189,14 +236,15 @@ const TournamentLeaderboardPage = () => {
         holeScores
       });
 
-      // Reload leaderboard data
+      if (markAsDelivered && !editingScorecard.delivered) {
+        await scorecardService.deliverScorecard(editingScorecard.id);
+      }
+
       await loadData();
-      
-      // Close modal
       handleCloseModal();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving scorecard:', err);
-      setError('Error al guardar los cambios');
+      setError(err.response?.data?.message || 'Error al guardar los cambios');
     } finally {
       setSavingScorecard(false);
     }
@@ -361,7 +409,7 @@ const TournamentLeaderboardPage = () => {
     {
       header: 'Acciones',
       accessor: (row: LeaderboardEntry) => (
-        row.delivered && row.scorecardId ? (
+        row.scorecardId ? (
           <button
             onClick={() => handleEditScorecard(row.scorecardId)}
             className="btn-edit"
@@ -369,10 +417,16 @@ const TournamentLeaderboardPage = () => {
             Editar
           </button>
         ) : (
-          <span>-</span>
+          <button
+            onClick={() => handleEnableScorecard(row)}
+            className="btn-edit"
+            style={{ backgroundColor: '#27ae60', borderColor: '#27ae60' }}
+          >
+            Habilitar Tarjeta
+          </button>
         )
       ),
-      width: '8%',
+      width: '12%',
     },
   ];
 
@@ -460,23 +514,28 @@ const TournamentLeaderboardPage = () => {
       )}
 
       <div className="search-container" style={{ marginBottom: '1.5rem' }}>
-        <input
-          type="text"
-          placeholder="Buscar jugadores por nombre, matrícula o club"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="search-input"
-          style={{
-            width: '50%',
-            padding: '0.75rem 1rem',
-            fontSize: '1rem',
-            border: '1px solid #e0e0e0',
-            borderRadius: '4px',
-            transition: 'border-color 0.3s',
-          }}
-          onFocus={(e) => e.target.style.borderColor = '#3498db'}
-          onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
-        />
+        <div className="search-input-wrapper" style={{ width: '50%' }}>
+          <input
+            type="text"
+            placeholder="Buscar jugadores por nombre, matrícula o club"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="search-input"
+            style={{
+              width: '100%',
+              padding: '0.75rem 2rem 0.75rem 1rem',
+              fontSize: '1rem',
+              border: '1px solid #e0e0e0',
+              borderRadius: '4px',
+              transition: 'border-color 0.3s',
+            }}
+            onFocus={(e) => e.target.style.borderColor = '#3498db'}
+            onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+          />
+          {searchQuery && (
+            <button className="search-clear-btn" onClick={() => setSearchQuery('')} type="button">×</button>
+          )}
+        </div>
         {searchQuery && (
           <p style={{ 
             marginTop: '0.5rem', 
@@ -541,6 +600,57 @@ const TournamentLeaderboardPage = () => {
             >
               Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Enable Scorecard Modal */}
+      {showEnableScorecardModal && enableScorecardPlayer && (
+        <div className="modal-overlay" onClick={() => setShowEnableScorecardModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+            <div className="modal-header">
+              <h2>Habilitar Tarjeta</h2>
+              <button className="modal-close" onClick={() => setShowEnableScorecardModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ marginBottom: '1rem' }}>
+                Se creará una tarjeta vacía para <strong>{enableScorecardPlayer.playerName}</strong>.
+              </p>
+              <div className="form-group">
+                <label>Tee *</label>
+                <select
+                  value={selectedTeeId}
+                  onChange={(e) => setSelectedTeeId(parseInt(e.target.value))}
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    fontSize: '1rem',
+                    border: '1px solid #e0e0e0',
+                    borderRadius: '4px',
+                  }}
+                >
+                  <option value="">Seleccionar tee</option>
+                  {courseTees.map((tee) => (
+                    <option key={tee.id} value={tee.id}>
+                      {tee.nombre} {tee.grupo ? `(${tee.grupo})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button onClick={() => setShowEnableScorecardModal(false)} className="btn-cancel">
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmEnableScorecard}
+                className="btn-save"
+                disabled={!selectedTeeId || enablingScorecard}
+              >
+                {enablingScorecard ? 'Habilitando...' : 'Confirmar'}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -615,17 +725,29 @@ const TournamentLeaderboardPage = () => {
               </div>
             </div>
             
-            <div className="modal-footer">
-              <button onClick={handleCloseModal} className="btn-cancel">
-                Cancelar
-              </button>
-              <button 
-                onClick={handleSaveScorecard} 
-                className="btn-save"
-                disabled={savingScorecard}
-              >
-                {savingScorecard ? 'Guardando...' : 'Guardar Cambios'}
-              </button>
+            <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: editingScorecard.holeScores.every(hs => hs.golpesPropio != null && hs.golpesPropio > 0) ? 'pointer' : 'not-allowed', color: editingScorecard.holeScores.every(hs => hs.golpesPropio != null && hs.golpesPropio > 0) ? '#2c3e50' : '#bdc3c7' }}>
+                <input
+                  type="checkbox"
+                  checked={markAsDelivered}
+                  onChange={(e) => setMarkAsDelivered(e.target.checked)}
+                  disabled={!editingScorecard.holeScores.every(hs => hs.golpesPropio != null && hs.golpesPropio > 0) || editingScorecard.delivered}
+                  style={{ width: '18px', height: '18px', cursor: 'inherit' }}
+                />
+                Entregada
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button onClick={handleCloseModal} className="btn-cancel">
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleSaveScorecard} 
+                  className="btn-save"
+                  disabled={savingScorecard}
+                >
+                  {savingScorecard ? 'Guardando...' : 'Guardar Cambios'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
