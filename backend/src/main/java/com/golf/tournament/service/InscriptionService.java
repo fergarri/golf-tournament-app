@@ -82,7 +82,7 @@ public class InscriptionService {
         }
 
         // Validar que el torneo esté en estado PENDING
-        if ("IN_PROGRESS".equals(tournament.getEstado()) || "FINALIZED".equals(tournament.getEstado())) {
+        if ("FINALIZED".equals(tournament.getEstado())) {
             throw new BadRequestException("Imposible inscribir jugadores. Inscripcion cerrada.");
         }
         
