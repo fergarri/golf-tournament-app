@@ -15,7 +15,7 @@ public interface HandicapConversionRepository extends JpaRepository<HandicapConv
     @Query("SELECT hc FROM HandicapConversion hc " +
            "WHERE hc.tee.id = :teeId " +
            "AND :handicapIndex >= hc.hcpIndexFrom " +
-           "AND :handicapIndex < hc.hcpIndexTo")
+           "AND :handicapIndex <= hc.hcpIndexTo")
     Optional<HandicapConversion> findByTeeAndHandicapIndex(
         @Param("teeId") Long teeId,
         @Param("handicapIndex") BigDecimal handicapIndex
