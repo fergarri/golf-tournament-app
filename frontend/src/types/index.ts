@@ -92,6 +92,7 @@ export interface Tournament {
   fechaFin?: string;
   limiteInscriptos?: number;
   valorInscripcion?: number;
+  doublePoints?: boolean;
   currentInscriptos: number;
   categories: TournamentCategory[];
   teeConfig: TournamentTeeConfig;
@@ -118,9 +119,8 @@ export interface Scorecard {
   markerId?: number;
   markerName?: string;
   handicapCourse?: number;
-  delivered: boolean;
+  status: string;
   deliveredAt?: string;
-  canceled: boolean;
   holeScores: HoleScore[];
   totalScore?: number;
   totalPar: number;
@@ -144,15 +144,45 @@ export interface LeaderboardEntry {
   playerName: string;
   matricula: string;
   clubOrigen?: string;
-  categoryId?: number | null; // ID de la categoría calculada (null para "Sin Categoría")
+  categoryId?: number | null;
   categoryName?: string;
   scoreGross: number;
   scoreNeto: number;
   totalPar: number;
   scoreToPar: number;
   handicapCourse?: number;
-  delivered?: boolean; // Indica si el jugador entregó su tarjeta
-  pagado?: boolean; // Indica si el jugador pagó su inscripción
+  status?: string;
+  pagado?: boolean;
+}
+
+export interface FrutalesScore {
+  scorecardId?: number;
+  playerId: number;
+  playerName: string;
+  matricula: string;
+  position?: number;
+  handicapIndex?: number;
+  handicapCourse?: number;
+  scoreGross?: number;
+  scoreNeto?: number;
+  status: string;
+  birdieCount: number;
+  eagleCount: number;
+  aceCount: number;
+  positionPoints: number;
+  birdiePoints: number;
+  eaglePoints: number;
+  acePoints: number;
+  participationPoints: number;
+  totalPoints: number;
+}
+
+export interface InscriptionResponse {
+  inscriptionId: number;
+  player: Player;
+  categoryName?: string | null;
+  handicapCourse?: number;
+  message?: string;
 }
 
 // Tournament Admin types

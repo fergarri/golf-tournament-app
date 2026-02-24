@@ -22,9 +22,8 @@ public class ScorecardDTO {
     private Long markerId;
     private String markerName;
     private BigDecimal handicapCourse;
-    private Boolean delivered;
+    private String status;
     private LocalDateTime deliveredAt;
-    private Boolean canceled;
     private List<HoleScoreDTO> holeScores;
     private Integer totalScore;
     private Integer totalPar;

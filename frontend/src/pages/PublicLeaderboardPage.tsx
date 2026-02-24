@@ -60,7 +60,7 @@ const PublicLeaderboardPage = () => {
     tabsList.push({
       id: 'general',
       label: 'General',
-      count: leaderboard.filter(entry => entry.delivered).length,
+      count: leaderboard.filter(entry => entry.status === 'DELIVERED').length,
     });
 
     // Sort categories by handicap range (min to max)
@@ -73,7 +73,7 @@ const PublicLeaderboardPage = () => {
       if (!category.id) return;
       
       const count = leaderboard.filter(entry => 
-        entry.categoryId === category.id && entry.delivered
+        entry.categoryId === category.id && entry.status === 'DELIVERED'
       ).length;
       
       tabsList.push({
@@ -94,12 +94,12 @@ const PublicLeaderboardPage = () => {
     
     // Filter by active tab
     if (activeTab === 'general') {
-      filtered = leaderboard.filter(entry => entry.delivered);
+      filtered = leaderboard.filter(entry => entry.status === 'DELIVERED');
     } else {
       // Filter by specific category ID
       const categoryId = parseInt(activeTab);
       filtered = leaderboard.filter(entry => 
-        entry.categoryId === categoryId && entry.delivered
+        entry.categoryId === categoryId && entry.status === 'DELIVERED'
       );
     }
     

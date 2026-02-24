@@ -42,16 +42,13 @@ public class Scorecard {
     @Column(name = "handicap_course", precision = 4, scale = 2)
     private BigDecimal handicapCourse;
 
-    @Column(nullable = false)
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     @Builder.Default
-    private Boolean delivered = false;
+    private ScorecardStatus status = ScorecardStatus.IN_PROGRESS;
 
     @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
-
-    @Column(nullable = false)
-    @Builder.Default
-    private Boolean canceled = false;
 
     @OneToMany(mappedBy = "scorecard", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

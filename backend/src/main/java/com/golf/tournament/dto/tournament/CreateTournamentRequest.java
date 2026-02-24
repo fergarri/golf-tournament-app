@@ -35,6 +35,7 @@ public class CreateTournamentRequest {
     private LocalDate fechaFin;
     private Integer limiteInscriptos;
     private BigDecimal valorInscripcion;
+    private Boolean doublePoints;
     
     @NotNull(message = "At least one category is required")
     private List<TournamentCategoryDTO> categories;

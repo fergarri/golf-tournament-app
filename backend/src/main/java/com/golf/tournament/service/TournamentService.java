@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,6 +58,8 @@ public class TournamentService {
 
         String codigo = generateUniqueCodigo();
 
+        Boolean doublePoints = "FRUTALES".equals(request.getTipo()) && Boolean.TRUE.equals(request.getDoublePoints());
+
         Tournament tournament = Tournament.builder()
                 .nombre(request.getNombre())
                 .codigo(codigo)
@@ -67,6 +70,7 @@ public class TournamentService {
                 .fechaFin(request.getFechaFin())
                 .limiteInscriptos(request.getLimiteInscriptos())
                 .valorInscripcion(request.getValorInscripcion())
+                .doublePoints(doublePoints)
                 .build();
 
         tournament = tournamentRepository.save(tournament);
@@ -93,7 +97,6 @@ public class TournamentService {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
 
-        // Update tournament basic fields
         tournament.setNombre(request.getNombre());
         tournament.setTipo(request.getTipo());
         tournament.setModalidad(request.getModalidad());
@@ -102,6 +105,7 @@ public class TournamentService {
         tournament.setFechaFin(request.getFechaFin());
         tournament.setLimiteInscriptos(request.getLimiteInscriptos());
         tournament.setValorInscripcion(request.getValorInscripcion());
+        tournament.setDoublePoints("FRUTALES".equals(request.getTipo()) && Boolean.TRUE.equals(request.getDoublePoints()));
         tournament = tournamentRepository.save(tournament);
 
         // Smart UPDATE/CREATE/DELETE of categories
@@ -305,6 +309,7 @@ public class TournamentService {
                 .fechaFin(tournament.getFechaFin())
                 .limiteInscriptos(tournament.getLimiteInscriptos())
                 .valorInscripcion(tournament.getValorInscripcion())
+                .doublePoints(tournament.getDoublePoints())
                 .currentInscriptos(inscriptos.intValue())
                 .categories(categories)
                 .build();
@@ -329,6 +334,22 @@ public class TournamentService {
     public TournamentDTO finalizeTournament(Long id) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
+
+        // Convert any in-progress scorecards to CANCELLED before finalizing.
+        List<Scorecard> inProgressScorecards = scorecardRepository
+                .findByTournamentIdAndStatus(id, ScorecardStatus.IN_PROGRESS);
+
+        if (!inProgressScorecards.isEmpty()) {
+            LocalDateTime now = LocalDateTime.now();
+            for (Scorecard scorecard : inProgressScorecards) {
+                scorecard.setStatus(ScorecardStatus.CANCELLED);
+                if (scorecard.getDeliveredAt() == null) {
+                    scorecard.setDeliveredAt(now);
+                }
+            }
+            scorecardRepository.saveAll(inProgressScorecards);
+            scorecardRepository.flush();
+        }
 
         tournament.setEstado("FINALIZED");
         tournament = tournamentRepository.save(tournament);

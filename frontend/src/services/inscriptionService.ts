@@ -1,4 +1,5 @@
 import api from './api';
+import { InscriptionResponse } from '../types';
 
 export const inscriptionService = {
   inscribePlayer: async (codigo: string, matricula: string) => {
@@ -11,8 +12,8 @@ export const inscriptionService = {
     return response.data;
   },
 
-  getTournamentInscriptions: async (tournamentId: number) => {
-    const response = await api.get(`/inscriptions/tournaments/${tournamentId}`);
+  getTournamentInscriptions: async (tournamentId: number): Promise<InscriptionResponse[]> => {
+    const response = await api.get<InscriptionResponse[]>(`/inscriptions/tournaments/${tournamentId}`);
     return response.data;
   },
 

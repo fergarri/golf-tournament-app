@@ -11,22 +11,25 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LeaderboardEntryDTO {
-    
-    private Integer position;
+public class FrutalesScoreDTO {
+
     private Long scorecardId;
     private Long playerId;
-    private Long inscriptionId;
     private String playerName;
     private String matricula;
-    private String clubOrigen;
-    private Long categoryId;
-    private String categoryName;
+    private Integer position;
+    private BigDecimal handicapIndex;
+    private BigDecimal handicapCourse;
     private Integer scoreGross;
     private BigDecimal scoreNeto;
-    private Integer totalPar;
-    private BigDecimal scoreToPar;
-    private BigDecimal handicapCourse;
     private String status;
-    private Boolean pagado;
+    private Integer birdieCount;
+    private Integer eagleCount;
+    private Integer aceCount;
+    private Integer positionPoints;
+    private Integer birdiePoints;
+    private Integer eaglePoints;
+    private Integer acePoints;
+    private Integer participationPoints;
+    private Integer totalPoints;
 }

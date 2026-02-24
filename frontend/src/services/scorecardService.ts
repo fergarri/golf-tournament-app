@@ -62,4 +62,14 @@ export const scorecardService = {
     );
     return response.data;
   },
+
+  disqualifyScorecard: async (scorecardId: number): Promise<Scorecard> => {
+    const response = await api.post<Scorecard>(`/scorecards/${scorecardId}/disqualify`);
+    return response.data;
+  },
+
+  undoDisqualifyScorecard: async (scorecardId: number): Promise<Scorecard> => {
+    const response = await api.post<Scorecard>(`/scorecards/${scorecardId}/undo-disqualify`);
+    return response.data;
+  },
 };

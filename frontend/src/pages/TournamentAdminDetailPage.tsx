@@ -213,6 +213,7 @@ const TournamentAdminDetailPage = () => {
             <table className="data-table">
               <thead>
                 <tr>
+                  <th style={{ width: '60px', textAlign: 'center' }}>#</th>
                   <th>Jugador</th>
                   <th>Teléfono</th>
                   <th>Email</th>
@@ -226,13 +227,14 @@ const TournamentAdminDetailPage = () => {
               <tbody>
                 {filteredInscriptions.length === 0 ? (
                   <tr>
-                    <td colSpan={3 + cuotaColumns.length} className="empty-row">
+                    <td colSpan={4 + cuotaColumns.length} className="empty-row">
                       No hay jugadores que coincidan con la búsqueda
                     </td>
                   </tr>
                 ) : (
-                  filteredInscriptions.map((inscription) => (
+                  filteredInscriptions.map((inscription, index) => (
                     <tr key={inscription.inscriptionId}>
+                      <td style={{ textAlign: 'center', fontWeight: 600 }}>{index + 1}</td>
                       <td>{inscription.playerName}</td>
                       <td>{inscription.telefono || '-'}</td>
                       <td>{inscription.email || '-'}</td>

@@ -1,7 +1,9 @@
 package com.golf.tournament.controller;
 
+import com.golf.tournament.dto.leaderboard.FrutalesScoreDTO;
 import com.golf.tournament.dto.leaderboard.LeaderboardEntryDTO;
 import com.golf.tournament.dto.leaderboard.UpdatePaymentRequest;
+import com.golf.tournament.service.FrutalesScoreService;
 import com.golf.tournament.service.LeaderboardService;
 import com.golf.tournament.service.TournamentService;
 import lombok.RequiredArgsConstructor;
@@ -18,37 +20,26 @@ import java.util.stream.Collectors;
 public class LeaderboardController {
 
     private final LeaderboardService leaderboardService;
+    private final FrutalesScoreService frutalesScoreService;
     private final TournamentService tournamentService;
 
     @GetMapping("/tournaments/{tournamentId}")
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<List<LeaderboardEntryDTO>> getLeaderboard(@PathVariable Long tournamentId) {
-        // Always return all players with their calculated categoryId
-        // Frontend will handle filtering by category
         return ResponseEntity.ok(leaderboardService.getLeaderboard(tournamentId, null));
     }
 
-    /**
-     * Public endpoint for viewing tournament results by tournament code.
-     * This endpoint is accessible without authentication and returns only
-     * information appropriate for public viewing (no payment status).
-     */
     @GetMapping("/public/{codigo}")
     public ResponseEntity<List<LeaderboardEntryDTO>> getPublicLeaderboard(@PathVariable String codigo) {
-        // Get tournament by code first
         var tournament = tournamentService.getTournamentByCodigo(codigo);
-        
-        // Return leaderboard for that tournament
         return ResponseEntity.ok(leaderboardService.getLeaderboard(tournament.getId(), null));
     }
 
-    // Deprecated: Kept for backwards compatibility but not used anymore
-    @GetMapping("/tournaments/{tournamentId}/categories/{categoryId}")
     @Deprecated
+    @GetMapping("/tournaments/{tournamentId}/categories/{categoryId}")
     public ResponseEntity<List<LeaderboardEntryDTO>> getLeaderboardByCategory(
             @PathVariable Long tournamentId,
             @PathVariable Long categoryId) {
-        // Return all players - filtering is now done on frontend
         return ResponseEntity.ok(leaderboardService.getLeaderboard(tournamentId, null));
     }
 
@@ -68,5 +59,23 @@ public class LeaderboardController {
         
         leaderboardService.updatePayments(tournamentId, inscriptionIds, pagadoValues);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/tournaments/{tournamentId}/frutales")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    public ResponseEntity<List<FrutalesScoreDTO>> getFrutalesLeaderboard(@PathVariable Long tournamentId) {
+        return ResponseEntity.ok(frutalesScoreService.getScores(tournamentId));
+    }
+
+    @PostMapping("/tournaments/{tournamentId}/frutales/calculate")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    public ResponseEntity<List<FrutalesScoreDTO>> calculateFrutalesScores(@PathVariable Long tournamentId) {
+        return ResponseEntity.ok(frutalesScoreService.calculateScores(tournamentId));
+    }
+
+    @GetMapping("/public/{codigo}/frutales")
+    public ResponseEntity<List<FrutalesScoreDTO>> getPublicFrutalesLeaderboard(@PathVariable String codigo) {
+        var tournament = tournamentService.getTournamentByCodigo(codigo);
+        return ResponseEntity.ok(frutalesScoreService.getScores(tournament.getId()));
     }
 }

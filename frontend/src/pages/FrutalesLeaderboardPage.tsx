@@ -4,48 +4,109 @@ import { tournamentService } from '../services/tournamentService';
 import { leaderboardService } from '../services/leaderboardService';
 import { scorecardService } from '../services/scorecardService';
 import { courseService } from '../services/courseService';
-import { Tournament, LeaderboardEntry, Scorecard, CourseTee } from '../types';
+import { inscriptionService } from '../services/inscriptionService';
+import { Tournament, FrutalesScore, Scorecard, CourseTee, LeaderboardEntry, InscriptionResponse } from '../types';
 import Table from '../components/Table';
-import Tabs, { Tab } from '../components/Tabs';
 import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 
-const TournamentLeaderboardPage = () => {
+const FrutalesLeaderboardPage = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isFinal = searchParams.get('final') === 'true';
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('general'); // 'general', categoryId, or 'sin-categoria'
+  const [frutalesScores, setFrutalesScores] = useState<FrutalesScore[]>([]);
   const [loading, setLoading] = useState(true);
+  const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState('');
   const [editingScorecardId, setEditingScorecardId] = useState<number | null>(null);
   const [editingScorecard, setEditingScorecard] = useState<Scorecard | null>(null);
   const [savingScorecard, setSavingScorecard] = useState(false);
-  const [paymentChanges, setPaymentChanges] = useState<Map<number, boolean>>(new Map());
-  const [savingPayments, setSavingPayments] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [showEnableScorecardModal, setShowEnableScorecardModal] = useState(false);
-  const [enableScorecardPlayer, setEnableScorecardPlayer] = useState<LeaderboardEntry | null>(null);
+  const [enableScorecardPlayer, setEnableScorecardPlayer] = useState<FrutalesScore | null>(null);
   const [courseTees, setCourseTees] = useState<CourseTee[]>([]);
   const [selectedTeeId, setSelectedTeeId] = useState<number | ''>('');
   const [enablingScorecard, setEnablingScorecard] = useState(false);
+  const [finalizing, setFinalizing] = useState(false);
+
+  const mergeScoresWithInscriptions = (
+    scores: FrutalesScore[],
+    entries: LeaderboardEntry[],
+    inscriptions: InscriptionResponse[]
+  ): FrutalesScore[] => {
+    const scoreByPlayerId = new Map<number, FrutalesScore>(scores.map((score) => [score.playerId, score]));
+    const entryByPlayerId = new Map<number, LeaderboardEntry>(entries.map((entry) => [entry.playerId, entry]));
+
+    const uniqueInscriptions = Array.from(
+      new Map(inscriptions.map((ins) => [ins.player.id, ins])).values()
+    );
+
+    const mergedByPlayer = new Map<number, FrutalesScore>();
+
+    for (const inscription of uniqueInscriptions) {
+      const playerId = inscription.player.id;
+      const calculated = scoreByPlayerId.get(playerId);
+      const entry = entryByPlayerId.get(playerId);
+      const hasScorecard = Boolean(entry?.scorecardId || calculated?.scorecardId);
+
+      const base: FrutalesScore = {
+        scorecardId: calculated?.scorecardId || entry?.scorecardId || undefined,
+        playerId,
+        playerName: calculated?.playerName || `${inscription.player.apellido} ${inscription.player.nombre}`,
+        matricula: calculated?.matricula || inscription.player.matricula,
+        position: calculated?.position,
+        handicapIndex: calculated?.handicapIndex ?? inscription.player.handicapIndex,
+        handicapCourse: calculated?.handicapCourse ?? entry?.handicapCourse ?? inscription.handicapCourse,
+        scoreGross: calculated?.scoreGross ?? entry?.scoreGross,
+        scoreNeto: calculated?.scoreNeto ?? entry?.scoreNeto,
+        status: calculated?.status || entry?.status || 'IN_PROGRESS',
+        birdieCount: calculated?.birdieCount || 0,
+        eagleCount: calculated?.eagleCount || 0,
+        aceCount: calculated?.aceCount || 0,
+        positionPoints: calculated?.positionPoints || 0,
+        birdiePoints: calculated?.birdiePoints || 0,
+        eaglePoints: calculated?.eaglePoints || 0,
+        acePoints: calculated?.acePoints || 0,
+        participationPoints: calculated?.participationPoints || 0,
+        totalPoints: calculated?.totalPoints || 0,
+      };
+
+      if (!hasScorecard && !calculated) {
+        base.status = 'IN_PROGRESS';
+        base.scoreGross = undefined;
+        base.scoreNeto = undefined;
+      }
+
+      mergedByPlayer.set(playerId, base);
+    }
+
+    if (scores.length === 0) {
+      return Array.from(mergedByPlayer.values()).sort((a, b) => a.playerName.localeCompare(b.playerName));
+    }
+
+    const orderedCalculated: FrutalesScore[] = scores
+      .map((score) => mergedByPlayer.get(score.playerId))
+      .filter((score): score is FrutalesScore => Boolean(score));
+
+    const calculatedIds = new Set(scores.map((score) => score.playerId));
+    const missingCalculated = Array.from(mergedByPlayer.values())
+      .filter((entry) => !calculatedIds.has(entry.playerId))
+      .sort((a, b) => a.playerName.localeCompare(b.playerName));
+
+    const calculatedWithoutInscription = scores.filter((score) => !mergedByPlayer.has(score.playerId));
+
+    return [...orderedCalculated, ...missingCalculated, ...calculatedWithoutInscription];
+  };
 
   useEffect(() => {
     loadData();
-    
-    // Poll for updates every 100 seconds for real-time updates
-    const interval = setInterval(() => {
-      loadData();
-    }, 100000); // 100 seconds
-
-    return () => clearInterval(interval);
-  }, [id]); // Removed selectedCategory from dependencies since we filter in frontend
+  }, [id]);
 
   const loadData = async () => {
     if (!id) return;
@@ -54,9 +115,13 @@ const TournamentLeaderboardPage = () => {
       const tournamentData = await tournamentService.getById(parseInt(id));
       setTournament(tournamentData);
 
-      // Always fetch all players - filtering is done in frontend
-      const leaderboardData = await leaderboardService.getLeaderboard(parseInt(id));
-      setLeaderboard(leaderboardData);
+      const [entries, scores, inscriptions] = await Promise.all([
+        leaderboardService.getLeaderboard(parseInt(id)),
+        leaderboardService.getFrutalesScores(parseInt(id)),
+        inscriptionService.getTournamentInscriptions(parseInt(id)),
+      ]);
+
+      setFrutalesScores(mergeScoresWithInscriptions(scores, entries, inscriptions));
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error loading leaderboard');
@@ -65,84 +130,42 @@ const TournamentLeaderboardPage = () => {
     }
   };
 
-  // Build tabs based on tournament categories
-  const tabs = useMemo((): Tab[] => {
-    if (!tournament || !tournament.categories) return [];
+  const handleCalculateScores = async () => {
+    if (!id) return;
+    try {
+      setCalculating(true);
+      const [entries, scores, inscriptions] = await Promise.all([
+        leaderboardService.getLeaderboard(parseInt(id)),
+        leaderboardService.calculateFrutalesScores(parseInt(id)),
+        inscriptionService.getTournamentInscriptions(parseInt(id)),
+      ]);
+      setFrutalesScores(mergeScoresWithInscriptions(scores, entries, inscriptions));
+      setError('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al calcular puntos');
+    } finally {
+      setCalculating(false);
+    }
+  };
 
-    const tabsList: Tab[] = [];
-    
-    // Always add "General" tab first
-    tabsList.push({
-      id: 'general',
-      label: 'General',
-      count: leaderboard.length,
-    });
-
-    // Sort categories by handicap range (min to max)
-    const sortedCategories = [...tournament.categories].sort((a, b) => 
-      a.handicapMin - b.handicapMin
+  const handleFinalizeTournament = async () => {
+    if (!id || !tournament) return;
+    const confirmed = window.confirm(
+      'Al finalizar el torneo, las tarjetas IN_PROGRESS pasarán a CANCELLED. ¿Desea continuar?'
     );
+    if (!confirmed) return;
 
-    // Add tab for each category
-    sortedCategories.forEach(category => {
-      if (!category.id) return; // Skip categories without id
-      
-      const count = leaderboard.filter(entry => entry.categoryId === category.id).length;
-      tabsList.push({
-        id: category.id.toString(),
-        label: `${category.nombre} (${category.handicapMin}-${category.handicapMax})`,
-        count,
-      });
-    });
-
-    // Add "Sin Categoría" tab only if there are players without category
-    const withoutCategoryCount = leaderboard.filter(entry => entry.categoryId === null || entry.categoryId === undefined).length;
-    if (withoutCategoryCount > 0) {
-      tabsList.push({
-        id: 'sin-categoria',
-        label: 'Sin Categoría',
-        count: withoutCategoryCount,
-      });
+    try {
+      setFinalizing(true);
+      const updatedTournament = await tournamentService.finalize(parseInt(id));
+      setTournament(updatedTournament);
+      setError('');
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al finalizar torneo');
+    } finally {
+      setFinalizing(false);
     }
-
-    return tabsList;
-  }, [tournament, leaderboard]);
-
-  // Filter leaderboard based on active tab and recalculate positions per category
-  const filteredByCategory = useMemo(() => {
-    let filtered: LeaderboardEntry[] = [];
-    
-    // Filter by active tab
-    if (activeTab === 'general') {
-      filtered = [...leaderboard];
-    } else if (activeTab === 'sin-categoria') {
-      filtered = leaderboard.filter(entry => entry.categoryId === null || entry.categoryId === undefined);
-    } else {
-      // Filter by specific category ID
-      const categoryId = parseInt(activeTab);
-      filtered = leaderboard.filter(entry => entry.categoryId === categoryId);
-    }
-    
-    // Separate players with delivered scorecards from those without
-    const withDeliveredScores = filtered.filter(entry => entry.status === 'DELIVERED');
-    const withoutDeliveredScores = filtered.filter(entry => entry.status !== 'DELIVERED');
-    
-    // Assign positions ONLY for players with delivered scorecards
-    // Position is calculated per category (each tab has its own ranking 1, 2, 3...)
-    // "Sin Categoría" tab does NOT have positions
-    const withDeliveredAndPositions = withDeliveredScores.map((entry, index) => ({
-      ...entry,
-      position: activeTab !== 'sin-categoria' ? index + 1 : 0
-    }));
-    
-    // Combine: delivered first (sorted by score), then undelivered (sorted by name)
-    return [...withDeliveredAndPositions, ...withoutDeliveredScores];
-  }, [leaderboard, activeTab]);
-
-  const getScoreToPar = (scoreToPar: number) => {
-    if (scoreToPar === 0) return 'E';
-    if (scoreToPar > 0) return `+${scoreToPar}`;
-    return `${scoreToPar}`;
   };
 
   const getPositionClass = (position: number) => {
@@ -152,7 +175,7 @@ const TournamentLeaderboardPage = () => {
     return '';
   };
 
-  const handleEnableScorecard = async (entry: LeaderboardEntry) => {
+  const handleEnableScorecard = async (entry: FrutalesScore) => {
     setEnableScorecardPlayer(entry);
     setSelectedTeeId('');
     try {
@@ -211,7 +234,6 @@ const TournamentLeaderboardPage = () => {
 
   const handleScoreChange = (holeScoreId: number, newScore: number) => {
     if (!editingScorecard) return;
-    
     setEditingScorecard({
       ...editingScorecard,
       holeScores: editingScorecard.holeScores.map(hs =>
@@ -222,19 +244,15 @@ const TournamentLeaderboardPage = () => {
 
   const handleSaveScorecard = async () => {
     if (!editingScorecard) return;
-
     try {
       setSavingScorecard(true);
-      
       const holeScores = editingScorecard.holeScores.map(hs => ({
         holeId: hs.holeId,
         golpesPropio: hs.golpesPropio || undefined,
         golpesMarcador: hs.golpesMarcador || undefined
       }));
 
-      await scorecardService.updateScorecard(editingScorecard.id, {
-        holeScores
-      });
+      await scorecardService.updateScorecard(editingScorecard.id, { holeScores });
 
       if (markAsDelivered && editingScorecard.status !== 'DELIVERED') {
         await scorecardService.deliverScorecard(editingScorecard.id);
@@ -250,87 +268,8 @@ const TournamentLeaderboardPage = () => {
     }
   };
 
-  const handlePaymentChange = (inscriptionId: number, pagado: boolean) => {
-    // Encontrar el entry original en el leaderboard para comparar con el valor del servidor
-    const originalEntry = leaderboard.find(entry => entry.inscriptionId === inscriptionId);
-    const originalPagado = originalEntry?.pagado || false;
-    
-    setPaymentChanges((prev: Map<number, boolean>) => {
-      const newMap = new Map(prev);
-      
-      // Si el nuevo valor es igual al original del servidor, remover el cambio
-      if (pagado === originalPagado) {
-        newMap.delete(inscriptionId);
-      } else {
-        // Si es diferente, agregar/actualizar el cambio
-        newMap.set(inscriptionId, pagado);
-      }
-      
-      return newMap;
-    });
-  };
-
-  const getPaymentStatus = (entry: LeaderboardEntry): boolean => {
-    // Si hay un cambio pendiente, usar ese valor
-    if (paymentChanges.has(entry.inscriptionId)) {
-      return paymentChanges.get(entry.inscriptionId)!;
-    }
-    // Si no hay cambio, usar el valor actual del servidor
-    return entry.pagado || false;
-  };
-
-  const formatCurrency = (amount: number): string => {
-    return new Intl.NumberFormat('es-AR', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
-  };
-  
-  const calculateTotalPaid = (): number => {
-    if (!tournament?.valorInscripcion) return 0;
-    
-    let total = 0;
-    leaderboard.forEach((entry: LeaderboardEntry) => {
-      const isPaid = getPaymentStatus(entry);
-      if (isPaid) {
-        total += tournament.valorInscripcion || 0;
-      }
-    });
-    
-    return total;
-  };
-
-  const handleSavePayments = async () => {
-    if (!id || paymentChanges.size === 0) return;
-
-    try {
-      setSavingPayments(true);
-      
-      // Convertir el Map a un array de PaymentUpdate
-      const payments = Array.from(paymentChanges.entries()).map(([inscriptionId, pagado]) => ({
-        inscriptionId,
-        pagado
-      }));
-
-      await leaderboardService.updatePayments(parseInt(id), payments);
-
-      // Limpiar los cambios pendientes
-      setPaymentChanges(new Map());
-
-      // Recargar datos
-      await loadData();
-      
-      setError('');
-    } catch (err: any) {
-      console.error('Error saving payments:', err);
-      setError(err.response?.data?.message || 'Error al guardar los pagos');
-    } finally {
-      setSavingPayments(false);
-    }
-  };
-
   const getResultsLink = (codigo: string) => {
-    return `${window.location.origin}/results/${codigo}`;
+    return `${window.location.origin}/frutales-results/${codigo}`;
   };
 
   const copyResultsLink = () => {
@@ -339,84 +278,118 @@ const TournamentLeaderboardPage = () => {
     setShowCopyLinkModal(true);
   };
 
-  // Apply search filter to the category-filtered leaderboard
-  const filteredLeaderboard = searchQuery
-    ? filteredByCategory.filter((entry: LeaderboardEntry) =>
-        `${entry.playerName} ${entry.matricula} ${entry.clubOrigen || ''}`.toLowerCase().includes(searchQuery.toLowerCase())
+  const getStatusLabel = (status: string, hasScorecard: boolean) => {
+    if (status === 'DISQUALIFIED') return 'DS';
+    if (!hasScorecard) return null;
+    if (status !== 'DELIVERED') return 'NM';
+    return null;
+  };
+
+  const filteredScores = searchQuery
+    ? frutalesScores.filter((entry: FrutalesScore) =>
+        `${entry.playerName} ${entry.matricula}`.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : filteredByCategory;
+    : frutalesScores;
+
+  const daPlayerIds = useMemo(() => {
+    const byNeto = new Map<string, number[]>();
+    for (const entry of frutalesScores) {
+      if (entry.status !== 'DELIVERED' || entry.scoreNeto == null) continue;
+      const key = entry.scoreNeto.toString();
+      const ids = byNeto.get(key) || [];
+      ids.push(entry.playerId);
+      byNeto.set(key, ids);
+    }
+
+    const result = new Set<number>();
+    for (const ids of byNeto.values()) {
+      if (ids.length > 1) {
+        ids.forEach((id) => result.add(id));
+      }
+    }
+    return result;
+  }, [frutalesScores]);
 
   const columns = [
     {
       header: 'Pos',
-      accessor: (row: LeaderboardEntry) => (
-        row.status === 'DELIVERED' && row.position && row.position > 0 ? (
-          <span className={`position ${getPositionClass(row.position)}`}>{row.position}</span>
-        ) : (
-          <span>-</span>
-        )
-      ),
+      accessor: (row: FrutalesScore) => {
+        if (row.status === 'DISQUALIFIED') return <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>DS</span>;
+        if (row.position) return <span className={`position ${getPositionClass(row.position)}`}>{row.position}</span>;
+        return <span>-</span>;
+      },
       width: '60px',
     },
-    { header: 'Jugador', accessor: 'playerName' as keyof LeaderboardEntry, width: '15%' },
-    { header: 'Matrícula', accessor: 'matricula' as keyof LeaderboardEntry, width: '10%' },
+    { header: 'Jugador', accessor: 'playerName' as keyof FrutalesScore, width: '15%' },
+    { header: 'Matrícula', accessor: 'matricula' as keyof FrutalesScore, width: '8%' },
     {
-      header: 'HCP',
-      accessor: (row: LeaderboardEntry) => row.handicapCourse?.toFixed(1) || '-',
-      width: '8%',
-    },
-    { 
-      header: 'Score Gross', 
-      accessor: (row: LeaderboardEntry) => row.status === 'DELIVERED' ? row.scoreGross : '-',
-      width: '10%' 
-    },
-    { 
-      header: 'Score Neto', 
-      accessor: (row: LeaderboardEntry) => row.status === 'DELIVERED' ? <strong>{row.scoreNeto}</strong> : '-', 
-      width: '10%' 
+      header: 'HCP I.',
+      accessor: (row: FrutalesScore) => row.handicapIndex?.toFixed(1) || '-',
+      width: '7%',
     },
     {
-      header: 'To Par',
-      accessor: (row: LeaderboardEntry) => (
-        row.status === 'DELIVERED' ? (
-          <span className={`score-to-par ${row.scoreToPar < 0 ? 'under-par' : row.scoreToPar > 0 ? 'over-par' : 'even-par'}`}>
-            {getScoreToPar(row.scoreToPar)}
-          </span>
-        ) : (
-          <span>-</span>
-        )
-      ),
-      width: '8%',
-    },
-    { header: 'Club', accessor: (row: LeaderboardEntry) => row.clubOrigen || '-', width: '10%' },
-    { 
-      header: 'Categoría', 
-      accessor: (row: LeaderboardEntry) => row.status === 'DELIVERED' ? (row.categoryName || '-') : '-',
-      width: '10%' 
+      header: 'HCP C.',
+      accessor: (row: FrutalesScore) => row.handicapCourse?.toFixed(1) || '-',
+      width: '7%',
     },
     {
-      header: 'Pagado',
-      accessor: (row: LeaderboardEntry) => (
-        <input
-          type="checkbox"
-          checked={getPaymentStatus(row)}
-          onChange={(e) => handlePaymentChange(row.inscriptionId, e.target.checked)}
-          style={{ cursor: 'pointer', width: '18px', height: '18px' }}
-        />
+      header: 'Gross',
+      accessor: (row: FrutalesScore) => {
+        const label = getStatusLabel(row.status, Boolean(row.scorecardId));
+        if (label) return <span style={{ color: label === 'DS' ? '#e74c3c' : '#f39c12', fontWeight: 'bold' }}>{label}</span>;
+        return row.scoreGross || '-';
+      },
+      width: '6%',
+    },
+    {
+      header: 'Neto',
+      accessor: (row: FrutalesScore) => {
+        const label = getStatusLabel(row.status, Boolean(row.scorecardId));
+        if (label) return <span style={{ color: label === 'DS' ? '#e74c3c' : '#f39c12', fontWeight: 'bold' }}>{label}</span>;
+        return row.scoreNeto != null ? <strong>{row.scoreNeto}</strong> : '-';
+      },
+      width: '6%',
+    },
+    {
+      header: 'Birdie',
+      accessor: (row: FrutalesScore) => row.birdieCount || '-',
+      width: '5%',
+    },
+    {
+      header: 'Aguila',
+      accessor: (row: FrutalesScore) => row.eagleCount || '-',
+      width: '5%',
+    },
+    {
+      header: 'Ace',
+      accessor: (row: FrutalesScore) => row.aceCount || '-',
+      width: '5%',
+    },
+    {
+      header: 'Puntos',
+      accessor: (row: FrutalesScore) => (
+        <strong style={{ color: '#2980b9' }}>
+          {row.totalPoints}
+          {daPlayerIds.has(row.playerId) ? ' (DA)' : ''}
+        </strong>
       ),
       width: '7%',
     },
     {
       header: 'Acciones',
-      accessor: (row: LeaderboardEntry) => (
-        row.scorecardId ? (
+      accessor: (row: FrutalesScore) => (
+        row.scorecardId != null ? (
           <button
-            onClick={() => handleEditScorecard(row.scorecardId)}
+            onClick={() => {
+              if (row.scorecardId != null) {
+                handleEditScorecard(row.scorecardId);
+              }
+            }}
             className="btn-edit"
           >
             Editar
           </button>
-        ) : (
+        ) : tournament?.estado !== 'FINALIZED' ? (
           <button
             onClick={() => handleEnableScorecard(row)}
             className="btn-edit"
@@ -424,9 +397,11 @@ const TournamentLeaderboardPage = () => {
           >
             Habilitar Tarjeta
           </button>
+        ) : (
+          <span style={{ color: '#95a5a6', fontSize: '0.9rem' }}>-</span>
         )
       ),
-      width: '12%',
+      width: '10%',
     },
   ];
 
@@ -442,9 +417,43 @@ const TournamentLeaderboardPage = () => {
           <button onClick={loadData} className="btn-refresh" disabled={loading}>
             {loading ? '⟳ Actualizando...' : '⟳ Actualizar'}
           </button>
+          {tournament?.estado === 'IN_PROGRESS' && (
+            <button
+              onClick={handleFinalizeTournament}
+              disabled={finalizing}
+              style={{
+                backgroundColor: '#e67e22',
+                color: 'white',
+                padding: '10px 20px',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: finalizing ? 'not-allowed' : 'pointer',
+                fontWeight: 'bold',
+                opacity: finalizing ? 0.7 : 1,
+              }}
+            >
+              {finalizing ? 'Finalizando...' : 'Finalizar Torneo'}
+            </button>
+          )}
+          <button
+            onClick={handleCalculateScores}
+            disabled={calculating}
+            style={{
+              backgroundColor: '#8e44ad',
+              color: 'white',
+              padding: '10px 20px',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: calculating ? 'not-allowed' : 'pointer',
+              fontWeight: 'bold',
+              opacity: calculating ? 0.7 : 1,
+            }}
+          >
+            {calculating ? 'Calculando...' : 'Calcular Puntos'}
+          </button>
           {tournament?.estado === 'FINALIZED' && (
-            <button 
-              onClick={copyResultsLink} 
+            <button
+              onClick={copyResultsLink}
               className="btn-copy-link"
               style={{
                 backgroundColor: '#3498db',
@@ -456,30 +465,15 @@ const TournamentLeaderboardPage = () => {
                 fontWeight: 'bold'
               }}
             >
-              📋 Link Resultados
+              Link de Resultados
             </button>
           )}
-          <button 
-            onClick={handleSavePayments} 
-            className="btn-save-payments" 
-            disabled={savingPayments || paymentChanges.size === 0}
-            style={{
-              backgroundColor: paymentChanges.size > 0 ? '#4CAF50' : '#ccc',
-              color: 'white',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: paymentChanges.size > 0 ? 'pointer' : 'not-allowed',
-              fontWeight: 'bold'
-            }}
-          >
-            {savingPayments ? 'Guardando...' : `Guardar Pagos ${paymentChanges.size > 0 ? `(${paymentChanges.size})` : ''}`}
-          </button>
         </div>
-        
+
         <div className="tournament-info">
           <h1>{tournament?.nombre}</h1>
-          {isFinal && <span className="final-badge">FINAL RESULTS</span>}
+          {tournament?.doublePoints && <span className="final-badge" style={{ backgroundColor: '#8e44ad' }}>FECHA DOBLE</span>}
+          {isFinal && <span className="final-badge">RESULTADOS FINALES</span>}
           <div className="tournament-details">
             <span className="detail-item">
               <strong>Campo:</strong> {tournament?.courseName}
@@ -496,28 +490,15 @@ const TournamentLeaderboardPage = () => {
             <span className="detail-item">
               <strong>Código:</strong> <span className="tournament-code">{tournament?.codigo}</span>
             </span>
-            <span className="detail-item">
-              <strong>Total Recaudado:</strong> <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>
-                ${formatCurrency(calculateTotalPaid())}
-              </span>
-            </span>
           </div>
         </div>
       </div>
-
-      {tournament && tabs.length > 0 && (
-        <Tabs 
-          tabs={tabs} 
-          activeTab={activeTab} 
-          onTabChange={setActiveTab} 
-        />
-      )}
 
       <div className="search-container" style={{ marginBottom: '1.5rem' }}>
         <div className="search-input-wrapper" style={{ width: '50%' }}>
           <input
             type="text"
-            placeholder="Buscar jugadores por nombre, matrícula o club"
+            placeholder="Buscar jugadores por nombre o matrícula"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="search-input"
@@ -537,41 +518,32 @@ const TournamentLeaderboardPage = () => {
           )}
         </div>
         {searchQuery && (
-          <p style={{ 
-            marginTop: '0.5rem', 
-            fontSize: '0.875rem', 
-            color: '#7f8c8d' 
-          }}>
-            Mostrando {filteredLeaderboard.length} de {filteredByCategory.length} jugadores
+          <p style={{ marginTop: '0.5rem', fontSize: '0.875rem', color: '#7f8c8d' }}>
+            Mostrando {filteredScores.length} de {frutalesScores.length} jugadores
           </p>
         )}
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
-      {leaderboard.length === 0 ? (
+      {frutalesScores.length === 0 ? (
         <div className="empty-state">
-          <h2>No hay Jugadores Inscritos</h2>
-          <p>No hay jugadores inscritos en este torneo</p>
+          <h2>No hay jugadores inscriptos</h2>
+          <p>Cuando haya jugadores inscriptos aparecerán en esta tabla.</p>
         </div>
       ) : (
         <>
           <div className="leaderboard-container">
-            <Table 
-              data={filteredLeaderboard} 
-              columns={columns} 
+            <Table
+              data={filteredScores}
+              columns={columns}
               emptyMessage="No hay jugadores que coincidan con la búsqueda"
-              getRowKey={(row) => row.playerId}
+              getRowKey={(row) => `${row.playerId}-${row.scorecardId ?? 'no-scorecard'}`}
             />
           </div>
           <div className="update-info">
             <span className="live-indicator"></span>
             <span>Actualizando en tiempo real cada 100 segundos</span>
-            {filteredByCategory.filter(entry => entry.status === 'DELIVERED').length > 0 && (
-              <span style={{ marginLeft: '20px' }}>
-                • Tarjetas entregadas: {filteredByCategory.filter(entry => entry.status === 'DELIVERED').length} de {filteredByCategory.length}
-              </span>
-            )}
           </div>
         </>
       )}
@@ -585,18 +557,10 @@ const TournamentLeaderboardPage = () => {
             <p style={{ color: '#7f8c8d', marginBottom: '1.5rem' }}>
               El link de resultados ha sido copiado al portapapeles
             </p>
-            <button 
-              onClick={() => setShowCopyLinkModal(false)} 
+            <button
+              onClick={() => setShowCopyLinkModal(false)}
               className="btn-primary"
-              style={{
-                backgroundColor: '#3498db',
-                color: 'white',
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
+              style={{ backgroundColor: '#3498db', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
             >
               Cerrar
             </button>
@@ -622,13 +586,7 @@ const TournamentLeaderboardPage = () => {
                   value={selectedTeeId}
                   onChange={(e) => setSelectedTeeId(parseInt(e.target.value))}
                   required
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    fontSize: '1rem',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '4px',
-                  }}
+                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', border: '1px solid #e0e0e0', borderRadius: '4px' }}
                 >
                   <option value="">Seleccionar tee</option>
                   {courseTees.map((tee) => (
@@ -640,9 +598,7 @@ const TournamentLeaderboardPage = () => {
               </div>
             </div>
             <div className="modal-footer">
-              <button onClick={() => setShowEnableScorecardModal(false)} className="btn-cancel">
-                Cancelar
-              </button>
+              <button onClick={() => setShowEnableScorecardModal(false)} className="btn-cancel">Cancelar</button>
               <button
                 onClick={handleConfirmEnableScorecard}
                 className="btn-save"
@@ -663,13 +619,13 @@ const TournamentLeaderboardPage = () => {
               <div>
                 <h2>Editar Tarjeta - {editingScorecard.playerName}</h2>
                 <p className="scorecard-info">
-                  HCP: {editingScorecard.handicapCourse?.toFixed(1)} | 
+                  HCP: {editingScorecard.handicapCourse?.toFixed(1)} |
                   Score: {editingScorecard.holeScores.reduce((sum, hs) => sum + (hs.golpesPropio || 0), 0) || '-'}
                 </p>
               </div>
               <button className="modal-close" onClick={handleCloseModal}>×</button>
             </div>
-            
+
             <div className="modal-body">
               <div className="scorecard-table-wrapper">
                 <table className="modal-scorecard-table">
@@ -690,18 +646,14 @@ const TournamentLeaderboardPage = () => {
                       {editingScorecard.holeScores
                         .sort((a, b) => a.numeroHoyo - b.numeroHoyo)
                         .map((holeScore) => (
-                          <td key={holeScore.id} className="scorecard-par-cell">
-                            {holeScore.par}
-                          </td>
+                          <td key={holeScore.id} className="scorecard-par-cell">{holeScore.par}</td>
                         ))}
                       <td className="scorecard-total-cell">
                         {editingScorecard.holeScores.reduce((sum, hs) => sum + hs.par, 0)}
                       </td>
                     </tr>
                     <tr className="scorecard-score-row">
-                      <td className="scorecard-sticky-col scorecard-label scorecard-player-label">
-                        SCORE
-                      </td>
+                      <td className="scorecard-sticky-col scorecard-label scorecard-player-label">SCORE</td>
                       {editingScorecard.holeScores
                         .sort((a, b) => a.numeroHoyo - b.numeroHoyo)
                         .map((holeScore) => (
@@ -724,7 +676,7 @@ const TournamentLeaderboardPage = () => {
                 </table>
               </div>
             </div>
-            
+
             <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', gap: '1.5rem' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: editingScorecard.holeScores.every(hs => hs.golpesPropio != null && hs.golpesPropio > 0) ? 'pointer' : 'not-allowed', color: editingScorecard.holeScores.every(hs => hs.golpesPropio != null && hs.golpesPropio > 0) ? '#2c3e50' : '#bdc3c7' }}>
@@ -761,14 +713,8 @@ const TournamentLeaderboardPage = () => {
                 </label>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button onClick={handleCloseModal} className="btn-cancel">
-                  Cancelar
-                </button>
-                <button 
-                  onClick={handleSaveScorecard} 
-                  className="btn-save"
-                  disabled={savingScorecard}
-                >
+                <button onClick={handleCloseModal} className="btn-cancel">Cancelar</button>
+                <button onClick={handleSaveScorecard} className="btn-save" disabled={savingScorecard}>
                   {savingScorecard ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
               </div>
@@ -780,4 +726,4 @@ const TournamentLeaderboardPage = () => {
   );
 };
 
-export default TournamentLeaderboardPage;
+export default FrutalesLeaderboardPage;

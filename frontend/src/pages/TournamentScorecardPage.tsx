@@ -245,7 +245,7 @@ const TournamentScorecardPage = () => {
 
   // Marker assignment functions
   const openMarkerModal = () => {
-    if (scorecard?.delivered) {
+    if (scorecard?.status === 'DELIVERED') {
       setTimeout(() => {
         showModal('Error', 'No se puede asignar un marcador a una tarjeta entregada', 'error');
       }, 100);
@@ -487,12 +487,12 @@ const TournamentScorecardPage = () => {
         <p className="player-matricula">
           <strong><span style={{ fontWeight: 'bold', color: '#000000' }}>Handicap Course:</span> {handicapCourse}</strong>
         </p>
-        {scorecard?.delivered && (
+        {scorecard?.status === 'DELIVERED' && (
           <div className="delivered-badge">
             Tarjeta entregada ✓
           </div>
         )}
-        {!scorecard?.delivered && (
+        {scorecard?.status !== 'DELIVERED' && (
           <div className="auto-save-indicator">
             {saving ? (
               <span className="saving">Guardando...</span>
@@ -583,7 +583,7 @@ const TournamentScorecardPage = () => {
                       onChange={(e) => updateScore(hole.numeroHoyo, 'propio', e.target.value)}
                       className="score-input"
                       placeholder="-"
-                      disabled={scorecard?.delivered || false}
+                      disabled={scorecard?.status === 'DELIVERED' || false}
                     />
                   </td>
                 ))}
@@ -598,7 +598,7 @@ const TournamentScorecardPage = () => {
                       onChange={(e) => updateScore(hole.numeroHoyo, 'propio', e.target.value)}
                       className="score-input"
                       placeholder="-"
-                      disabled={scorecard?.delivered || false}
+                      disabled={scorecard?.status === 'DELIVERED' || false}
                     />
                   </td>
                 ))}
@@ -628,7 +628,7 @@ const TournamentScorecardPage = () => {
                       onChange={(e) => updateScore(hole.numeroHoyo, 'marcador', e.target.value)}
                       className="score-input"
                       placeholder="-"
-                      disabled={scorecard?.delivered || false}
+                      disabled={scorecard?.status === 'DELIVERED' || false}
                     />
                   </td>
                 ))}
@@ -643,7 +643,7 @@ const TournamentScorecardPage = () => {
                       onChange={(e) => updateScore(hole.numeroHoyo, 'marcador', e.target.value)}
                       className="score-input"
                       placeholder="-"
-                      disabled={scorecard?.delivered || false}
+                      disabled={scorecard?.status === 'DELIVERED' || false}
                     />
                   </td>
                 ))}
@@ -677,16 +677,16 @@ const TournamentScorecardPage = () => {
           <button 
             onClick={handleCancelScorecard} 
             className="btn btn-cancel"
-            disabled={scorecard?.delivered || scorecard?.canceled || false}
+            disabled={scorecard?.status === 'DELIVERED' || scorecard?.status === 'CANCELLED' || false}
           >
-            {scorecard?.delivered ? 'Ya entregada' : scorecard?.canceled ? 'Cancelada' : 'Cancelar tarjeta'}
+            {scorecard?.status === 'DELIVERED' ? 'Ya entregada' : scorecard?.status === 'CANCELLED' ? 'Cancelada' : 'Cancelar tarjeta'}
           </button>
           <button 
             onClick={handleDeliverScorecard} 
             className="btn btn-deliver"
-            disabled={scorecard?.delivered || scorecard?.canceled || tournament?.estado === "FINALIZED" || false}
+            disabled={scorecard?.status === 'DELIVERED' || scorecard?.status === 'CANCELLED' || tournament?.estado === "FINALIZED" || false}
           >
-            {scorecard?.delivered ? 'Ya entregada' : scorecard?.canceled ? 'Cancelada' : tournament?.estado === "FINALIZED" ? 'Torneo finalizado' : 'Entregar tarjeta'}
+            {scorecard?.status === 'DELIVERED' ? 'Ya entregada' : scorecard?.status === 'CANCELLED' ? 'Cancelada' : tournament?.estado === "FINALIZED" ? 'Torneo finalizado' : 'Entregar tarjeta'}
           </button>
         </div>
       </div>

@@ -33,6 +33,7 @@ const TournamentsPage = () => {
     fechaFin: '',
     limiteInscriptos: '',
     valorInscripcion: '',
+    doublePoints: false,
     teeConfig: {
       courseTeeIdPrimeros9: '',
       courseTeeIdSegundos9: '',
@@ -104,6 +105,7 @@ const TournamentsPage = () => {
       fechaInicio: '',
       fechaFin: '',
       limiteInscriptos: '',
+      doublePoints: false,
       teeConfig: {
         courseTeeIdPrimeros9: '',
         courseTeeIdSegundos9: '',
@@ -124,6 +126,7 @@ const TournamentsPage = () => {
       fechaFin: tournament.fechaFin || '',
       limiteInscriptos: tournament.limiteInscriptos || '',
       valorInscripcion: tournament.valorInscripcion ? formatCurrency(tournament.valorInscripcion) : '',
+      doublePoints: tournament.doublePoints || false,
       categories: tournament.categories,
     });
     setShowModal(true);
@@ -137,6 +140,8 @@ const TournamentsPage = () => {
         courseId: parseInt(formData.courseId),
         limiteInscriptos: formData.limiteInscriptos ? parseInt(formData.limiteInscriptos) : null,
         valorInscripcion: parseCurrency(formData.valorInscripcion),
+        doublePoints: formData.tipo === 'FRUTALES' ? (formData.doublePoints || false) : false,
+        categories: formData.tipo === 'FRUTALES' ? [] : formData.categories,
       };
 
       if (editingTournament) {
@@ -184,7 +189,11 @@ const TournamentsPage = () => {
     try {
       await tournamentService.finalize(tournament.id);
       await loadTournaments();
-      navigate(`/tournaments/${tournament.id}/leaderboard?final=true`);
+      if (tournament.tipo === 'FRUTALES') {
+        navigate(`/tournaments/${tournament.id}/frutales-leaderboard?final=true`);
+      } else {
+        navigate(`/tournaments/${tournament.id}/leaderboard?final=true`);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error finalizando torneo');
     }
@@ -212,7 +221,11 @@ const TournamentsPage = () => {
   };
 
   const handleViewLeaderboard = (tournament: Tournament) => {
-    navigate(`/tournaments/${tournament.id}/leaderboard`);
+    if (tournament.tipo === 'FRUTALES') {
+      navigate(`/tournaments/${tournament.id}/frutales-leaderboard`);
+    } else {
+      navigate(`/tournaments/${tournament.id}/leaderboard`);
+    }
   };
 
   const copyLink = (link: string) => {
@@ -423,12 +436,31 @@ const TournamentsPage = () => {
               <label>Tipo *</label>
               <select
                 value={formData.tipo}
-                onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                onChange={(e) => {
+                  const newTipo = e.target.value;
+                  setFormData({
+                    ...formData,
+                    tipo: newTipo,
+                    doublePoints: newTipo === 'FRUTALES' ? formData.doublePoints : false,
+                    categories: newTipo === 'FRUTALES' ? [] : (formData.categories.length === 0 ? [{ nombre: 'General', handicapMin: 0, handicapMax: 54 }] : formData.categories),
+                  });
+                }}
                 required
               >
                 <option value="CLASICO">Clásico</option>
-                <option value="ANUAL">Anual</option>
+                <option value="FRUTALES">Frutales</option>
               </select>
+              {formData.tipo === 'FRUTALES' && (
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.doublePoints || false}
+                    onChange={(e) => setFormData({ ...formData, doublePoints: e.target.checked })}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  Fecha Doble (doble puntaje en todos los conceptos)
+                </label>
+              )}
             </div>
             <div className="form-group">
               <label>Modalidad de Puntuación *</label>
@@ -549,6 +581,7 @@ const TournamentsPage = () => {
             </div>
           </div>
 
+          {formData.tipo !== 'FRUTALES' && (
           <div className="form-group">
             <label>Categorías</label>
             {formData.categories.map((category: TournamentCategory, index: number) => (
@@ -595,6 +628,7 @@ const TournamentsPage = () => {
               Agregar Categoría
             </button>
           </div>
+          )}
         </form>
       </Modal>
 

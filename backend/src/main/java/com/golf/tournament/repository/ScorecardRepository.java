@@ -1,6 +1,7 @@
 package com.golf.tournament.repository;
 
 import com.golf.tournament.model.Scorecard;
+import com.golf.tournament.model.ScorecardStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,7 +15,11 @@ public interface ScorecardRepository extends JpaRepository<Scorecard, Long> {
     
     List<Scorecard> findByTournamentId(Long tournamentId);
     
-    List<Scorecard> findByTournamentIdAndDeliveredTrue(Long tournamentId);
+    List<Scorecard> findByTournamentIdAndStatus(Long tournamentId, ScorecardStatus status);
+
+    List<Scorecard> findByTournamentIdAndStatusIn(Long tournamentId, List<ScorecardStatus> statuses);
+
+    List<Scorecard> findByTournamentIdAndStatusNot(Long tournamentId, ScorecardStatus status);
 
     List<Scorecard> findByTournamentIdOrderByDeliveredAtAsc(Long tournamentId);
     
@@ -23,6 +28,6 @@ public interface ScorecardRepository extends JpaRepository<Scorecard, Long> {
     boolean existsByTournamentIdAndPlayerId(Long tournamentId, Long playerId);
     
     @Query("SELECT s FROM Scorecard s WHERE s.tournament.id = :tournamentId " +
-           "AND s.delivered = true ORDER BY s.deliveredAt ASC")
+           "AND s.status = 'DELIVERED' ORDER BY s.deliveredAt ASC")
     List<Scorecard> findDeliveredScorecardsByTournament(@Param("tournamentId") Long tournamentId);
 }

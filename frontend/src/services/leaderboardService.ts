@@ -1,5 +1,5 @@
 import api from './api';
-import { LeaderboardEntry } from '../types';
+import { LeaderboardEntry, FrutalesScore } from '../types';
 
 interface PaymentUpdate {
   inscriptionId: number;
@@ -27,5 +27,20 @@ export const leaderboardService = {
   updatePayments: async (tournamentId: number, payments: PaymentUpdate[]): Promise<void> => {
     const request: UpdatePaymentRequest = { payments };
     await api.put(`/leaderboard/tournaments/${tournamentId}/payments`, request);
+  },
+
+  getFrutalesScores: async (tournamentId: number): Promise<FrutalesScore[]> => {
+    const response = await api.get<FrutalesScore[]>(`/leaderboard/tournaments/${tournamentId}/frutales`);
+    return response.data;
+  },
+
+  calculateFrutalesScores: async (tournamentId: number): Promise<FrutalesScore[]> => {
+    const response = await api.post<FrutalesScore[]>(`/leaderboard/tournaments/${tournamentId}/frutales/calculate`);
+    return response.data;
+  },
+
+  getPublicFrutalesScores: async (codigo: string): Promise<FrutalesScore[]> => {
+    const response = await api.get<FrutalesScore[]>(`/leaderboard/public/${codigo}/frutales`);
+    return response.data;
   },
 };

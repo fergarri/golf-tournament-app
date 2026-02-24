@@ -11,6 +11,8 @@ import TournamentAccessPage from './pages/TournamentAccessPage'
 import TournamentScorecardPage from './pages/TournamentScorecardPage'
 import PublicInscriptionPage from './pages/PublicInscriptionPage'
 import PublicLeaderboardPage from './pages/PublicLeaderboardPage'
+import FrutalesLeaderboardPage from './pages/FrutalesLeaderboardPage'
+import PublicFrutalesLeaderboardPage from './pages/PublicFrutalesLeaderboardPage'
 import ScorecardPage from './pages/ScorecardPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import AdministrationPage from './pages/AdministrationPage'
@@ -30,6 +32,7 @@ function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/tournaments" element={<PermissionRoute permission="GAMES"><TournamentsPage /></PermissionRoute>} />
           <Route path="/tournaments/:id/leaderboard" element={<PermissionRoute permission="GAMES"><TournamentLeaderboardPage /></PermissionRoute>} />
+          <Route path="/tournaments/:id/frutales-leaderboard" element={<PermissionRoute permission="GAMES"><FrutalesLeaderboardPage /></PermissionRoute>} />
           <Route path="/players" element={<PermissionRoute permission="GAMES"><PlayersPage /></PermissionRoute>} />
           <Route path="/courses" element={<PermissionRoute permission="GAMES"><CoursesPage /></PermissionRoute>} />
           <Route path="/users" element={<PermissionRoute permission="TOTAL"><UsersPage /></PermissionRoute>} />
@@ -44,6 +47,7 @@ function App() {
         <Route path="/tournaments/:codigo/scorecard" element={<ScorecardPage />} />
         <Route path="/tournaments/:codigo/leaderboard" element={<LeaderboardPage />} />
         <Route path="/results/:codigo" element={<PublicLeaderboardPage />} />
+        <Route path="/frutales-results/:codigo" element={<PublicFrutalesLeaderboardPage />} />
       </Routes>
     </AuthProvider>
   )

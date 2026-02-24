@@ -27,6 +27,7 @@ public class TournamentDTO {
     private LocalDate fechaFin;
     private Integer limiteInscriptos;
     private BigDecimal valorInscripcion;
+    private Boolean doublePoints;
     private Integer currentInscriptos;
     private List<TournamentCategoryDTO> categories;
 }
