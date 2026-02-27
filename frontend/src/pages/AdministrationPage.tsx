@@ -141,13 +141,14 @@ const AdministrationPage = () => {
     const updatePosition = () => {
       if (!relationInputRef.current) return;
       const rect = relationInputRef.current.getBoundingClientRect();
-      const maxHeight = Math.max(120, Math.min(220, rect.top - 16));
-      const top = Math.max(8, rect.top - maxHeight - 6);
+      const availableAbove = Math.max(80, rect.top - 16);
+      const maxHeight = Math.min(220, availableAbove);
+      const bottom = Math.max(8, window.innerHeight - rect.top + 6);
       setRelationsDropdownStyle({
         position: 'fixed',
         left: rect.left,
         width: rect.width,
-        top,
+        bottom,
         maxHeight,
         zIndex: 20000,
       });
