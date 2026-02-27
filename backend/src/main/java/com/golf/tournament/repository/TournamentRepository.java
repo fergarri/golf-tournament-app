@@ -25,4 +25,14 @@ public interface TournamentRepository extends JpaRepository<Tournament, Long> {
     
     @Query("SELECT t FROM Tournament t ORDER BY t.fechaInicio DESC")
     List<Tournament> findAllOrderByFechaInicioDesc();
+
+    @Query("SELECT t FROM Tournament t WHERE t.id NOT IN (" +
+            "SELECT rt.id FROM TournamentAdmin ta JOIN ta.tournaments rt" +
+            ") ORDER BY t.fechaInicio DESC")
+    List<Tournament> findAvailableForTournamentAdminCreate();
+
+    @Query("SELECT t FROM Tournament t WHERE t.id NOT IN (" +
+            "SELECT rt.id FROM TournamentAdmin ta JOIN ta.tournaments rt WHERE ta.id <> :adminId" +
+            ") ORDER BY t.fechaInicio DESC")
+    List<Tournament> findAvailableForTournamentAdminEdit(@Param("adminId") Long adminId);
 }

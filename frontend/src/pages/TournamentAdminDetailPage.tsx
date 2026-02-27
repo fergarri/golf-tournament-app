@@ -127,6 +127,14 @@ const TournamentAdminDetailPage = () => {
           <button onClick={loadData} className="btn-refresh" disabled={loading}>
             {loading ? '⟳ Actualizando...' : '⟳ Actualizar'}
           </button>
+          {detail.canManageStages && (
+            <button
+              onClick={() => navigate(`/administration/${detail.id}/stages`)}
+              className="btn-admin-stages"
+            >
+              Administrar Etapas
+            </button>
+          )}
           <button
             onClick={handleSavePayments}
             className="btn-save-payments"

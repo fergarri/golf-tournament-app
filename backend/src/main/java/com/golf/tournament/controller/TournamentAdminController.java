@@ -23,6 +23,12 @@ public class TournamentAdminController {
         return ResponseEntity.ok(tournamentAdminService.getAll());
     }
 
+    @GetMapping("/relations/options")
+    public ResponseEntity<List<TournamentRelationOptionDTO>> getRelationOptions(
+            @RequestParam(required = false) Long adminId) {
+        return ResponseEntity.ok(tournamentAdminService.getRelationOptions(adminId));
+    }
+
     @PostMapping
     public ResponseEntity<TournamentAdminDTO> create(@Valid @RequestBody CreateTournamentAdminRequest request) {
         return ResponseEntity.ok(tournamentAdminService.create(request));

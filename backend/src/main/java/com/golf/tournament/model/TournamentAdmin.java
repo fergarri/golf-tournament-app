@@ -32,9 +32,14 @@ public class TournamentAdmin {
     @Column(nullable = false)
     private LocalDate fecha;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "tournament_id")
-    private Tournament tournament;
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "tournament_admin_related_tournaments",
+            joinColumns = @JoinColumn(name = "tournament_admin_id"),
+            inverseJoinColumns = @JoinColumn(name = "tournament_id")
+    )
+    @Builder.Default
+    private List<Tournament> tournaments = new ArrayList<>();
 
     @Column(name = "valor_inscripcion", nullable = false, precision = 10, scale = 2)
     @Builder.Default
@@ -51,6 +56,10 @@ public class TournamentAdmin {
     @OneToMany(mappedBy = "tournamentAdmin", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TournamentAdminInscription> inscriptions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "tournamentAdmin", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<TournamentAdminStage> stages = new ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

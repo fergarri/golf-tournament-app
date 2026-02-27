@@ -1,5 +1,5 @@
 import api from './api';
-import { TournamentAdmin, TournamentAdminDetail } from '../types';
+import { TournamentAdmin, TournamentAdminDetail, TournamentRelationOption } from '../types';
 
 interface SavePaymentUpdate {
   paymentId: number;
@@ -20,7 +20,7 @@ export const tournamentAdminService = {
   create: async (data: {
     nombre: string;
     fecha: string;
-    tournamentId?: number | null;
+    relatedTournamentIds?: number[];
     valorInscripcion: number;
     cantidadCuotas: number;
   }): Promise<TournamentAdmin> => {
@@ -31,7 +31,7 @@ export const tournamentAdminService = {
   update: async (id: number, data: {
     nombre: string;
     fecha: string;
-    tournamentId?: number | null;
+    relatedTournamentIds?: number[];
     valorInscripcion: number;
     cantidadCuotas: number;
   }): Promise<TournamentAdmin> => {
@@ -58,6 +58,12 @@ export const tournamentAdminService = {
 
   getDetail: async (id: number): Promise<TournamentAdminDetail> => {
     const response = await api.get<TournamentAdminDetail>(`/tournament-admin/${id}/detail`);
+    return response.data;
+  },
+
+  getRelationOptions: async (adminId?: number): Promise<TournamentRelationOption[]> => {
+    const query = adminId ? `?adminId=${adminId}` : '';
+    const response = await api.get<TournamentRelationOption[]>(`/tournament-admin/relations/options${query}`);
     return response.data;
   },
 

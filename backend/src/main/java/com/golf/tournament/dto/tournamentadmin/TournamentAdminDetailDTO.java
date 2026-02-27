@@ -22,5 +22,6 @@ public class TournamentAdminDetailDTO {
     private BigDecimal valorInscripcion;
     private Integer currentInscriptos;
     private BigDecimal totalRecaudado;
+    private Boolean canManageStages;
     private List<TournamentAdminInscriptionDTO> inscriptions;
 }

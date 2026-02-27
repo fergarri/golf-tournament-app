@@ -17,6 +17,9 @@ import ScorecardPage from './pages/ScorecardPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import AdministrationPage from './pages/AdministrationPage'
 import TournamentAdminDetailPage from './pages/TournamentAdminDetailPage'
+import TournamentAdminStagesPage from './pages/TournamentAdminStagesPage'
+import TournamentAdminStageBoardPage from './pages/TournamentAdminStageBoardPage'
+import TournamentAdminPlayoffResultsPage from './pages/TournamentAdminPlayoffResultsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import PermissionRoute from './components/PermissionRoute'
 import Layout from './components/Layout'
@@ -38,6 +41,9 @@ function App() {
           <Route path="/users" element={<PermissionRoute permission="TOTAL"><UsersPage /></PermissionRoute>} />
           <Route path="/administration" element={<PermissionRoute permission="ADMINISTRATION"><AdministrationPage /></PermissionRoute>} />
           <Route path="/administration/:id" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminDetailPage /></PermissionRoute>} />
+          <Route path="/administration/:id/stages" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminStagesPage /></PermissionRoute>} />
+          <Route path="/administration/:id/stages/:stageId" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminStageBoardPage /></PermissionRoute>} />
+          <Route path="/administration/:id/stages/playoff-results" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminPlayoffResultsPage /></PermissionRoute>} />
         </Route>
 
         {/* Public routes come after protected routes */}

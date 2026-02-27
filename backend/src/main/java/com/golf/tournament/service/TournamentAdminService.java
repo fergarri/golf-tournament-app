@@ -13,8 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -30,18 +33,15 @@ public class TournamentAdminService {
 
     @Transactional
     public TournamentAdminDTO create(CreateTournamentAdminRequest request) {
+        List<Tournament> relatedTournaments = resolveRelatedTournaments(request.getRelatedTournamentIds(), null);
+
         TournamentAdmin admin = TournamentAdmin.builder()
                 .nombre(request.getNombre())
                 .fecha(request.getFecha())
                 .valorInscripcion(request.getValorInscripcion())
                 .cantidadCuotas(request.getCantidadCuotas())
+                .tournaments(relatedTournaments)
                 .build();
-
-        if (request.getTournamentId() != null) {
-            Tournament tournament = tournamentRepository.findById(request.getTournamentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", request.getTournamentId()));
-            admin.setTournament(tournament);
-        }
 
         admin = tournamentAdminRepository.save(admin);
         log.info("Torneo administrativo creado: {}", admin.getId());
@@ -62,6 +62,36 @@ public class TournamentAdminService {
         return convertToDTO(admin);
     }
 
+    @Transactional(readOnly = true)
+    public List<TournamentRelationOptionDTO> getRelationOptions(Long adminId) {
+        if (adminId == null) {
+            return tournamentRepository.findAvailableForTournamentAdminCreate().stream()
+                    .map(t -> TournamentRelationOptionDTO.builder()
+                            .id(t.getId())
+                            .nombre(t.getNombre())
+                            .fechaInicio(t.getFechaInicio())
+                            .related(false)
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        TournamentAdmin admin = tournamentAdminRepository.findById(adminId)
+                .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", adminId));
+        final Set<Long> currentRelatedIds = admin.getTournaments().stream()
+                .map(Tournament::getId)
+                .collect(Collectors.toSet());
+        List<Tournament> available = tournamentRepository.findAvailableForTournamentAdminEdit(adminId);
+
+        return available.stream()
+                .map(t -> TournamentRelationOptionDTO.builder()
+                        .id(t.getId())
+                        .nombre(t.getNombre())
+                        .fechaInicio(t.getFechaInicio())
+                        .related(currentRelatedIds.contains(t.getId()))
+                        .build())
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public TournamentAdminDTO update(Long id, UpdateTournamentAdminRequest request) {
         TournamentAdmin admin = tournamentAdminRepository.findById(id)
@@ -70,14 +100,7 @@ public class TournamentAdminService {
         admin.setNombre(request.getNombre());
         admin.setFecha(request.getFecha());
         admin.setValorInscripcion(request.getValorInscripcion());
-
-        if (request.getTournamentId() != null) {
-            Tournament tournament = tournamentRepository.findById(request.getTournamentId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", request.getTournamentId()));
-            admin.setTournament(tournament);
-        } else {
-            admin.setTournament(null);
-        }
+        admin.setTournaments(resolveRelatedTournaments(request.getRelatedTournamentIds(), id));
 
         boolean cuotasChanged = !admin.getCantidadCuotas().equals(request.getCantidadCuotas());
         admin.setCantidadCuotas(request.getCantidadCuotas());
@@ -168,6 +191,9 @@ public class TournamentAdminService {
                 .map(this::convertInscriptionToDTO)
                 .sorted(Comparator.comparing(TournamentAdminInscriptionDTO::getPlayerName))
                 .collect(Collectors.toList());
+        boolean canManageStages = admin.getTournaments() != null
+                && !admin.getTournaments().isEmpty()
+                && admin.getTournaments().stream().anyMatch(t -> "FRUTALES".equals(t.getTipo()));
 
         return TournamentAdminDetailDTO.builder()
                 .id(admin.getId())
@@ -177,6 +203,7 @@ public class TournamentAdminService {
                 .valorInscripcion(admin.getValorInscripcion())
                 .currentInscriptos(inscriptions.size())
                 .totalRecaudado(totalRecaudado)
+                .canManageStages(canManageStages)
                 .inscriptions(inscriptionDTOs)
                 .build();
     }
@@ -227,19 +254,52 @@ public class TournamentAdminService {
                 ? admin.getValorInscripcion().divide(BigDecimal.valueOf(admin.getCantidadCuotas()), 2, RoundingMode.HALF_UP)
                 : BigDecimal.ZERO;
         BigDecimal totalRecaudado = cuotaValue.multiply(BigDecimal.valueOf(paidCount));
+        List<Tournament> relatedTournaments = admin.getTournaments() != null ? admin.getTournaments() : Collections.emptyList();
+        String relatedNames = relatedTournaments.stream()
+                .map(Tournament::getNombre)
+                .sorted()
+                .collect(Collectors.joining(", "));
 
         return TournamentAdminDTO.builder()
                 .id(admin.getId())
                 .nombre(admin.getNombre())
                 .fecha(admin.getFecha())
-                .tournamentId(admin.getTournament() != null ? admin.getTournament().getId() : null)
-                .tournamentNombre(admin.getTournament() != null ? admin.getTournament().getNombre() : null)
+                .tournamentNombre(relatedNames.isBlank() ? null : relatedNames)
+                .relatedTournamentIds(relatedTournaments.stream().map(Tournament::getId).collect(Collectors.toList()))
+                .relatedTournaments(relatedTournaments.stream()
+                        .map(t -> TournamentAdminDTO.RelatedTournamentDTO.builder()
+                                .id(t.getId())
+                                .nombre(t.getNombre())
+                                .build())
+                        .collect(Collectors.toList()))
                 .valorInscripcion(admin.getValorInscripcion())
                 .cantidadCuotas(admin.getCantidadCuotas())
                 .estado(admin.getEstado())
                 .currentInscriptos(count.intValue())
                 .totalRecaudado(totalRecaudado)
                 .build();
+    }
+
+    private List<Tournament> resolveRelatedTournaments(List<Long> relatedTournamentIds, Long adminId) {
+        if (relatedTournamentIds == null || relatedTournamentIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        Set<Long> uniqueIds = new HashSet<>(relatedTournamentIds);
+        List<Tournament> tournaments = tournamentRepository.findAllById(uniqueIds);
+        if (tournaments.size() != uniqueIds.size()) {
+            throw new BadRequestException("Uno o más torneos relacionados no existen");
+        }
+
+        Set<Long> conflictingIds = tournamentAdminRepository.findConflictingRelatedTournamentIds(
+                new ArrayList<>(uniqueIds),
+                adminId
+        );
+        if (!conflictingIds.isEmpty()) {
+            throw new BadRequestException("Hay torneos ya relacionados con otro torneo administrativo");
+        }
+
+        return tournaments;
     }
 
     private TournamentAdminInscriptionDTO convertInscriptionToDTO(TournamentAdminInscription inscription) {

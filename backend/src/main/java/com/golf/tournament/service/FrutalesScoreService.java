@@ -98,13 +98,13 @@ public class FrutalesScoreService {
             calculatedScores.add(new CalculatedScoreData(score, data));
         }
 
-        // 2) CANCELLED: only participation + birdie/eagle/ace.
+        // 2) CANCELLED: only participation point (no birdie/eagle/ace points).
         for (PlayerScoreData data : cancelledData) {
-            int birdiePoints = data.birdieCount * multiplier;
-            int eaglePoints = data.eagleCount * 5 * multiplier;
-            int acePoints = data.aceCount * 10 * multiplier;
+            int birdiePoints = 0;
+            int eaglePoints = 0;
+            int acePoints = 0;
             int participationPoints = 1 * multiplier;
-            int total = birdiePoints + eaglePoints + acePoints + participationPoints;
+            int total = participationPoints;
 
             FrutalesScore score = FrutalesScore.builder()
                     .tournament(tournament)

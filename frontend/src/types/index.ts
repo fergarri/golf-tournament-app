@@ -191,13 +191,26 @@ export interface TournamentAdmin {
   id: number;
   nombre: string;
   fecha: string;
-  tournamentId?: number;
   tournamentNombre?: string;
+  relatedTournamentIds: number[];
+  relatedTournaments: TournamentAdminRelatedTournament[];
   valorInscripcion: number;
   cantidadCuotas: number;
   estado: string;
   currentInscriptos: number;
   totalRecaudado: number;
+}
+
+export interface TournamentAdminRelatedTournament {
+  id: number;
+  nombre: string;
+}
+
+export interface TournamentRelationOption {
+  id: number;
+  nombre: string;
+  fechaInicio?: string;
+  related: boolean;
 }
 
 export interface TournamentAdminDetail {
@@ -208,6 +221,7 @@ export interface TournamentAdminDetail {
   valorInscripcion: number;
   currentInscriptos: number;
   totalRecaudado: number;
+  canManageStages: boolean;
   inscriptions: TournamentAdminInscriptionDetail[];
 }
 
@@ -224,4 +238,68 @@ export interface TournamentAdminPaymentDetail {
   paymentId: number;
   cuotaNumber: number;
   pagado: boolean;
+}
+
+export interface TournamentAdminStage {
+  id: number;
+  tournamentAdminId: number;
+  nombre: string;
+  fechasCount: number;
+  createdAt: string;
+  tournamentIds: number[];
+  tournaments: TournamentAdminStageTournament[];
+}
+
+export interface TournamentAdminStageTournament {
+  id: number;
+  nombre: string;
+  fechaInicio: string;
+  doublePoints: boolean;
+}
+
+export interface TournamentAdminStageBoard {
+  stageId: number;
+  tournamentAdminId: number;
+  stageName: string;
+  stageCreatedAt: string;
+  tournaments: TournamentAdminStageBoardTournament[];
+  rows: TournamentAdminStageBoardRow[];
+}
+
+export interface TournamentAdminStageBoardTournament {
+  tournamentId: number;
+  tournamentName: string;
+  fechaInicio: string;
+  doublePoints: boolean;
+}
+
+export interface TournamentAdminStageBoardRow {
+  playerId: number;
+  playerName: string;
+  handicapIndex?: number;
+  totalPoints: number;
+  position?: number;
+  pointsByTournament: Record<number, number>;
+}
+
+export interface TournamentAdminPlayoffResults {
+  tournamentAdminId: number;
+  stages: TournamentAdminPlayoffStageColumn[];
+  rows: TournamentAdminPlayoffResultRow[];
+}
+
+export interface TournamentAdminPlayoffStageColumn {
+  stageId: number;
+  code: string;
+  stageName: string;
+  stageCreatedAt: string;
+}
+
+export interface TournamentAdminPlayoffResultRow {
+  playerId: number;
+  playerName: string;
+  pointsByStage: Record<number, number>;
+  totalPoints: number;
+  position: number;
+  qualified: boolean;
 }

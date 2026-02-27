@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Data
 @Builder
@@ -23,7 +24,7 @@ public class UpdateTournamentAdminRequest {
     @NotNull(message = "La fecha del torneo es requerida")
     private LocalDate fecha;
 
-    private Long tournamentId;
+    private List<Long> relatedTournamentIds;
 
     @NotNull(message = "El valor de inscripción es requerido")
     private BigDecimal valorInscripcion;
