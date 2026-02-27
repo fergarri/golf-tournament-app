@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import Modal from '../components/Modal';
 import Table, { TableAction } from '../components/Table';
 import { tournamentAdminService } from '../services/tournamentAdminService';
@@ -27,6 +28,8 @@ const TournamentAdminStagesPage = () => {
   });
   const [relationOptions, setRelationOptions] = useState<TournamentRelationOption[]>([]);
   const [showRelationsDropdown, setShowRelationsDropdown] = useState(false);
+  const relationInputRef = useRef<HTMLDivElement | null>(null);
+  const [relationsDropdownStyle, setRelationsDropdownStyle] = useState<React.CSSProperties>({});
 
   useEffect(() => {
     if (!Number.isFinite(tournamentAdminId)) {
@@ -123,6 +126,33 @@ const TournamentAdminStagesPage = () => {
   const handleViewDates = (stage: TournamentAdminStage) => {
     navigate(`/administration/${tournamentAdminId}/stages/${stage.id}`);
   };
+
+  useEffect(() => {
+    if (!showRelationsDropdown || !relationInputRef.current) return;
+
+    const updatePosition = () => {
+      if (!relationInputRef.current) return;
+      const rect = relationInputRef.current.getBoundingClientRect();
+      const maxHeight = Math.max(120, Math.min(220, rect.top - 16));
+      const top = Math.max(8, rect.top - maxHeight - 6);
+      setRelationsDropdownStyle({
+        position: 'fixed',
+        left: rect.left,
+        width: rect.width,
+        top,
+        maxHeight,
+        zIndex: 20000,
+      });
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [showRelationsDropdown]);
 
   const stageActions: TableAction<TournamentAdminStage>[] = [
     {
@@ -241,7 +271,7 @@ const TournamentAdminStagesPage = () => {
 
           <div className="form-group">
             <label>Torneos (Fechas) *</label>
-            <div style={{ position: 'relative' }}>
+            <div ref={relationInputRef} style={{ position: 'relative', zIndex: showRelationsDropdown ? 2000 : 'auto' }}>
               <button
                 type="button"
                 onClick={() => setShowRelationsDropdown(prev => !prev)}
@@ -261,19 +291,14 @@ const TournamentAdminStagesPage = () => {
                   : 'No hay fechas disponibles'}
               </button>
 
-              {showRelationsDropdown && (
+              {showRelationsDropdown && createPortal(
                 <div
                   style={{
-                    position: 'absolute',
-                    left: 0,
-                    right: 0,
-                    bottom: 'calc(100% + 6px)',
+                    ...relationsDropdownStyle,
                     background: 'white',
                     border: '1px solid #e0e0e0',
                     borderRadius: '6px',
-                    maxHeight: '220px',
                     overflowY: 'auto',
-                    zIndex: 30,
                     boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
                   }}
                 >
@@ -302,7 +327,8 @@ const TournamentAdminStagesPage = () => {
                         </button>
                       ))
                   )}
-                </div>
+                </div>,
+                document.body
               )}
             </div>
 

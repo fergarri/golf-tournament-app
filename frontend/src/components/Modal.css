@@ -38,6 +38,8 @@
   display: flex;
   flex-direction: column;
   max-height: 90vh;
+  position: relative;
+  overflow: visible;
 }
 
 .modal-container.modal-small {
@@ -73,6 +75,8 @@
   padding: 1.5rem 2rem;
   border-bottom: 1px solid #e0e0e0;
   flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .modal-header .modal-title {
@@ -137,9 +141,11 @@
 
 .modal-body {
   padding: 1.5rem 2rem;
-  overflow-y: auto;
+  overflow: visible;
   flex: 1;
   min-height: 0;
+  position: relative;
+  z-index: 20;
 }
 
 .modal-footer {
@@ -148,6 +154,8 @@
   flex-shrink: 0;
   background: white;
   border-radius: 0 0 16px 16px;
+  position: relative;
+  z-index: 1;
 }
 
 .modal-actions {
