@@ -6,7 +6,7 @@ import { scorecardService } from '../services/scorecardService';
 import { courseService } from '../services/courseService';
 import { inscriptionService } from '../services/inscriptionService';
 import { Tournament, FrutalesScore, Scorecard, CourseTee, LeaderboardEntry, InscriptionResponse } from '../types';
-import Table from '../components/Table';
+import Table, { TableAction } from '../components/Table';
 import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
@@ -19,6 +19,7 @@ const FrutalesLeaderboardPage = () => {
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [frutalesScores, setFrutalesScores] = useState<FrutalesScore[]>([]);
+  const [inscriptions, setInscriptions] = useState<InscriptionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const [error, setError] = useState('');
@@ -121,6 +122,7 @@ const FrutalesLeaderboardPage = () => {
         inscriptionService.getTournamentInscriptions(parseInt(id)),
       ]);
 
+      setInscriptions(inscriptions);
       setFrutalesScores(mergeScoresWithInscriptions(scores, entries, inscriptions));
       setError('');
     } catch (err: any) {
@@ -139,12 +141,30 @@ const FrutalesLeaderboardPage = () => {
         leaderboardService.calculateFrutalesScores(parseInt(id)),
         inscriptionService.getTournamentInscriptions(parseInt(id)),
       ]);
+      setInscriptions(inscriptions);
       setFrutalesScores(mergeScoresWithInscriptions(scores, entries, inscriptions));
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al calcular puntos');
     } finally {
       setCalculating(false);
+    }
+  };
+
+  const handleRemoveInscription = async (row: FrutalesScore) => {
+    if (!confirm(`¿Dar de baja a ${row.playerName} de este torneo?`)) return;
+    const entry = inscriptions.find(i => i.player.id === row.playerId);
+    if (!entry) {
+      setError('No se encontró la inscripción del jugador');
+      return;
+    }
+
+    try {
+      await inscriptionService.removeInscription(entry.inscriptionId);
+      await loadData();
+      setError('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error dando de baja al jugador');
     }
   };
 
@@ -375,33 +395,35 @@ const FrutalesLeaderboardPage = () => {
       ),
       width: '7%',
     },
+  ];
+
+  const actions: TableAction<FrutalesScore>[] = [
     {
-      header: 'Acciones',
-      accessor: (row: FrutalesScore) => (
-        row.scorecardId != null ? (
-          <button
-            onClick={() => {
-              if (row.scorecardId != null) {
-                handleEditScorecard(row.scorecardId);
-              }
-            }}
-            className="btn-edit"
-          >
-            Editar
-          </button>
-        ) : tournament?.estado !== 'FINALIZED' ? (
-          <button
-            onClick={() => handleEnableScorecard(row)}
-            className="btn-edit"
-            style={{ backgroundColor: '#27ae60', borderColor: '#27ae60' }}
-          >
-            Habilitar Tarjeta
-          </button>
-        ) : (
-          <span style={{ color: '#95a5a6', fontSize: '0.9rem' }}>-</span>
-        )
-      ),
-      width: '10%',
+      label: 'Editar',
+      onClick: (row) => {
+        if (row.scorecardId != null) {
+          handleEditScorecard(row.scorecardId);
+        }
+      },
+      variant: 'primary',
+      show: (row) => row.scorecardId != null,
+    },
+    {
+      label: 'Habilitar Tarjeta',
+      onClick: handleEnableScorecard,
+      variant: 'secondary',
+      show: (row) => row.scorecardId == null && tournament?.estado !== 'FINALIZED',
+    },
+    {
+      label: 'Dar de baja',
+      onClick: (row) => {
+        if (row.scorecardId) {
+          setError('No se puede dar de baja porque ya tiene tarjeta creada');
+          return;
+        }
+        handleRemoveInscription(row);
+      },
+      variant: 'danger',
     },
   ];
 
@@ -537,6 +559,7 @@ const FrutalesLeaderboardPage = () => {
             <Table
               data={filteredScores}
               columns={columns}
+              actions={actions}
               emptyMessage="No hay jugadores que coincidan con la búsqueda"
               getRowKey={(row) => `${row.playerId}-${row.scorecardId ?? 'no-scorecard'}`}
             />

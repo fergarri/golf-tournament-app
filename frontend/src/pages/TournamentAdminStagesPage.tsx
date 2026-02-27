@@ -8,6 +8,7 @@ import { tournamentAdminStageService } from '../services/tournamentAdminStageSer
 import { TournamentAdminDetail, TournamentAdminStage, TournamentRelationOption } from '../types';
 import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
+import './TournamentLeaderboardPage.css';
 
 const TournamentAdminStagesPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -189,23 +190,23 @@ const TournamentAdminStagesPage = () => {
       <div className="page-header">
         <h1>Etapas - {adminDetail.nombre}</h1>
         <div className="header-actions">
-          <button onClick={() => navigate(`/administration/${tournamentAdminId}`)} className="btn btn-secondary">
+          <button onClick={() => navigate(`/administration/${tournamentAdminId}`)} className="btn-back">
             ← Volver
           </button>
-          <button onClick={loadData} className="btn btn-secondary">
+          <button onClick={loadData} className="btn-refresh">
             Actualizar
           </button>
           <button
             onClick={() => navigate(`/administration/${tournamentAdminId}/stages/playoff-results`)}
-            className="btn btn-secondary"
+            className="btn-admin-stages"
             disabled={stages.length === 0}
             title={stages.length === 0 ? 'No hay etapas creadas' : undefined}
           >
-            Resultados Play Off
+            Tabla Play Off
           </button>
           <button
             onClick={handleCreate}
-            className="btn btn-primary"
+            className="btn-compact btn-compact-primary"
             disabled={!adminDetail.canManageStages}
           >
             + Crear Etapa
@@ -244,14 +245,14 @@ const TournamentAdminStagesPage = () => {
                 setShowModal(false);
                 setShowRelationsDropdown(false);
               }}
-              className="btn btn-secondary"
+              className="btn-compact btn-compact-secondary"
             >
               Cancelar
             </button>
             <button
               type="submit"
               form="stage-form"
-              className="btn btn-primary"
+              className="btn-compact btn-compact-primary"
               disabled={saving}
             >
               {saving ? 'Guardando...' : editingStage ? 'Actualizar' : 'Crear'}

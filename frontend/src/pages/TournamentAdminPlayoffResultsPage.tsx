@@ -67,7 +67,7 @@ const TournamentAdminPlayoffResultsPage = () => {
           </button>
           <button
             onClick={handleCalculate}
-            className="btn btn-primary"
+            className="btn-compact btn-compact-primary"
             disabled={calculating || !hasStages}
             title={!hasStages ? 'No hay etapas para calcular' : undefined}
           >

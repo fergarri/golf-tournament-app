@@ -42,6 +42,9 @@ const AdministrationPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [savingInscription, setSavingInscription] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importTargetAdmin, setImportTargetAdmin] = useState<TournamentAdmin | null>(null);
+  const [importingInscriptions, setImportingInscriptions] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -296,6 +299,32 @@ const AdministrationPage = () => {
     navigate(`/administration/${admin.id}/stages`);
   };
 
+  const handleOpenImportModal = (admin: TournamentAdmin) => {
+    setImportTargetAdmin(admin);
+    setShowImportModal(true);
+  };
+
+  const handleConfirmImportInscriptions = async () => {
+    if (!importTargetAdmin) return;
+    try {
+      setImportingInscriptions(true);
+      const result = await tournamentAdminService.importInscriptions(importTargetAdmin.id);
+      alert(
+        `Importación completada.\n` +
+        `Torneos pendientes relacionados: ${result.relatedPendingTournaments}\n` +
+        `Inscriptos importados: ${result.importedCount}\n` +
+        `Saltados (ya inscriptos): ${result.skippedAlreadyInscribed}\n` +
+        `Saltados (sin cupo): ${result.skippedByCapacity}`
+      );
+      setShowImportModal(false);
+      setImportTargetAdmin(null);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error importando inscriptos');
+    } finally {
+      setImportingInscriptions(false);
+    }
+  };
+
   const columns = [
     { header: 'Nombre', accessor: 'nombre' as keyof TournamentAdmin },
     { header: 'Fecha', accessor: (row: TournamentAdmin) => formatDateSafe(row.fecha) },
@@ -330,6 +359,12 @@ const AdministrationPage = () => {
     {
       label: 'Administrar Etapas',
       onClick: handleManageStages,
+      variant: 'secondary',
+      show: (admin) => admin.estado === 'ACTIVE',
+    },
+    {
+      label: 'Importar Inscriptos a Torneos',
+      onClick: handleOpenImportModal,
       variant: 'secondary',
       show: (admin) => admin.estado === 'ACTIVE',
     },
@@ -648,6 +683,49 @@ const AdministrationPage = () => {
             </>
           )}
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={showImportModal}
+        onClose={() => {
+          setShowImportModal(false);
+          setImportTargetAdmin(null);
+        }}
+        title="Importar Inscriptos a Torneos"
+        size="medium"
+        footer={
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button
+              type="button"
+              className="btn btn-cancel"
+              onClick={() => {
+                setShowImportModal(false);
+                setImportTargetAdmin(null);
+              }}
+              disabled={importingInscriptions}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleConfirmImportInscriptions}
+              disabled={importingInscriptions}
+            >
+              {importingInscriptions ? 'Importando...' : 'Confirmar'}
+            </button>
+          </div>
+        }
+      >
+        <p style={{ margin: 0, lineHeight: 1.5 }}>
+          Si confirma, se importaran todos los jugadores incriptos a la Administracion de Torneos
+          a todos los torneos pendientes relacionados a esta Administracion.
+        </p>
+        {importTargetAdmin && (
+          <p style={{ marginTop: '0.75rem', color: '#2c3e50' }}>
+            <strong>Torneo administrativo:</strong> {importTargetAdmin.nombre}
+          </p>
+        )}
       </Modal>
     </div>
   );

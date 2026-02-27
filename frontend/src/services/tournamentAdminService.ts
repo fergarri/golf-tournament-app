@@ -1,5 +1,5 @@
 import api from './api';
-import { TournamentAdmin, TournamentAdminDetail, TournamentRelationOption } from '../types';
+import { ImportAdminInscriptionsResult, TournamentAdmin, TournamentAdminDetail, TournamentRelationOption } from '../types';
 
 interface SavePaymentUpdate {
   paymentId: number;
@@ -50,6 +50,11 @@ export const tournamentAdminService = {
 
   inscribePlayer: async (tournamentAdminId: number, playerId: number): Promise<void> => {
     await api.post(`/tournament-admin/${tournamentAdminId}/inscriptions/${playerId}`);
+  },
+
+  importInscriptions: async (tournamentAdminId: number): Promise<ImportAdminInscriptionsResult> => {
+    const response = await api.post<ImportAdminInscriptionsResult>(`/tournament-admin/${tournamentAdminId}/import-inscriptions`);
+    return response.data;
   },
 
   removeInscription: async (inscriptionId: number): Promise<void> => {

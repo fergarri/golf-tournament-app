@@ -29,6 +29,7 @@ public class TournamentAdminService {
     private final TournamentAdminInscriptionRepository inscriptionRepository;
     private final TournamentAdminPaymentRepository paymentRepository;
     private final TournamentRepository tournamentRepository;
+    private final TournamentInscriptionRepository tournamentInscriptionRepository;
     private final PlayerRepository playerRepository;
 
     @Transactional
@@ -227,6 +228,65 @@ public class TournamentAdminService {
         }
 
         log.info("Pagos actualizados para torneo admin {}", tournamentAdminId);
+    }
+
+    @Transactional
+    public ImportAdminInscriptionsResultDTO importInscriptionsToRelatedPendingTournaments(Long tournamentAdminId) {
+        TournamentAdmin admin = tournamentAdminRepository.findById(tournamentAdminId)
+                .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", tournamentAdminId));
+
+        List<TournamentAdminInscription> adminInscriptions = inscriptionRepository.findByTournamentAdminId(tournamentAdminId);
+        List<Tournament> pendingRelatedTournaments = admin.getTournaments().stream()
+                .filter(t -> "PENDING".equals(t.getEstado()))
+                .collect(Collectors.toList());
+
+        int importedCount = 0;
+        int skippedAlready = 0;
+        int skippedByCapacity = 0;
+
+        for (Tournament tournament : pendingRelatedTournaments) {
+            Long currentCount = tournamentInscriptionRepository.countByTournamentId(tournament.getId());
+            Integer limit = tournament.getLimiteInscriptos();
+            int remainingSlots = limit != null ? Math.max(0, limit - currentCount.intValue()) : Integer.MAX_VALUE;
+
+            List<TournamentInscription> toSave = new ArrayList<>();
+            for (TournamentAdminInscription adminInscription : adminInscriptions) {
+                Long playerId = adminInscription.getPlayer().getId();
+                if (tournamentInscriptionRepository.existsByTournamentIdAndPlayerId(tournament.getId(), playerId)) {
+                    skippedAlready++;
+                    continue;
+                }
+
+                if (remainingSlots <= 0) {
+                    skippedByCapacity++;
+                    continue;
+                }
+
+                toSave.add(TournamentInscription.builder()
+                        .tournament(tournament)
+                        .player(adminInscription.getPlayer())
+                        .category(null)
+                        .build());
+                importedCount++;
+                if (limit != null) {
+                    remainingSlots--;
+                }
+            }
+
+            if (!toSave.isEmpty()) {
+                tournamentInscriptionRepository.saveAll(toSave);
+            }
+        }
+
+        log.info("Importación de inscriptos admin {} completada. Torneos pendientes: {}, importados: {}, repetidos: {}, sin cupo: {}",
+                tournamentAdminId, pendingRelatedTournaments.size(), importedCount, skippedAlready, skippedByCapacity);
+
+        return ImportAdminInscriptionsResultDTO.builder()
+                .relatedPendingTournaments(pendingRelatedTournaments.size())
+                .importedCount(importedCount)
+                .skippedAlreadyInscribed(skippedAlready)
+                .skippedByCapacity(skippedByCapacity)
+                .build();
     }
 
     private void recreatePaymentsForAllInscriptions(TournamentAdmin admin) {

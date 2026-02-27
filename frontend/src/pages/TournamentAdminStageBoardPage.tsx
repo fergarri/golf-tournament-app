@@ -70,7 +70,7 @@ const TournamentAdminStageBoardPage = () => {
           </button>
           <button
             onClick={handleCalculate}
-            className="btn btn-primary"
+            className="btn-compact btn-compact-primary"
             disabled={calculating}
           >
             {calculating ? 'Calculando...' : 'Calcular Puntos'}

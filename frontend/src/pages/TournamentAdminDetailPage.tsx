@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tournamentAdminService } from '../services/tournamentAdminService';
 import { TournamentAdminDetail, TournamentAdminInscriptionDetail } from '../types';
+import ActionMenu from '../components/ActionMenu';
 import { formatDateSafe } from '../utils/dateUtils';
 import { formatCurrency } from '../utils/currencyUtils';
 import '../components/Form.css';
@@ -100,6 +101,16 @@ const TournamentAdminDetailPage = () => {
       setError(err.response?.data?.message || 'Error guardando pagos');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRemoveInscription = async (inscriptionId: number, playerName: string) => {
+    if (!confirm(`¿Dar de baja a ${playerName} de este torneo administrativo?`)) return;
+    try {
+      await tournamentAdminService.removeInscription(inscriptionId);
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error dando de baja al jugador');
     }
   };
 
@@ -230,12 +241,13 @@ const TournamentAdminDetailPage = () => {
                       Cuota {n}
                     </th>
                   ))}
+                  <th style={{ textAlign: 'center', minWidth: '80px' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredInscriptions.length === 0 ? (
                   <tr>
-                    <td colSpan={4 + cuotaColumns.length} className="empty-row">
+                    <td colSpan={5 + cuotaColumns.length} className="empty-row">
                       No hay jugadores que coincidan con la búsqueda
                     </td>
                   </tr>
@@ -260,6 +272,17 @@ const TournamentAdminDetailPage = () => {
                           </td>
                         );
                       })}
+                      <td style={{ textAlign: 'center' }}>
+                        <ActionMenu
+                          items={[
+                            {
+                              label: 'Dar de baja',
+                              variant: 'danger',
+                              onClick: () => handleRemoveInscription(inscription.inscriptionId, inscription.playerName),
+                            },
+                          ]}
+                        />
+                      </td>
                     </tr>
                   ))
                 )}

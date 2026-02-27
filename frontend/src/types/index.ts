@@ -240,6 +240,13 @@ export interface TournamentAdminPaymentDetail {
   pagado: boolean;
 }
 
+export interface ImportAdminInscriptionsResult {
+  relatedPendingTournaments: number;
+  importedCount: number;
+  skippedAlreadyInscribed: number;
+  skippedByCapacity: number;
+}
+
 export interface TournamentAdminStage {
   id: number;
   tournamentAdminId: number;

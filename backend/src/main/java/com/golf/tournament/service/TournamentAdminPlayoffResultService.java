@@ -135,9 +135,6 @@ public class TournamentAdminPlayoffResultService {
         playoffResultRepository.deleteByTournamentAdminId(tournamentAdminId);
         playoffResultRepository.saveAll(resultsToPersist);
 
-        log.info("Resultados Play Off calculados para torneo admin {}. Jugadores: {}",
-                tournamentAdminId, resultsToPersist.size());
-
         return getResults(tournamentAdminId);
     }
 

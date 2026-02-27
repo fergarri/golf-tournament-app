@@ -24,6 +24,7 @@ public class InscriptionService {
     private final TournamentRepository tournamentRepository;
     private final PlayerRepository playerRepository;
     private final TournamentInscriptionRepository inscriptionRepository;
+    private final ScorecardRepository scorecardRepository;
 
     @Transactional
     public InscriptionResponse inscribePlayer(String codigo, InscriptionRequest request) {
@@ -131,8 +132,15 @@ public class InscriptionService {
 
     @Transactional
     public void removeInscription(Long inscriptionId) {
-        if (!inscriptionRepository.existsById(inscriptionId)) {
-            throw new ResourceNotFoundException("Inscription", "id", inscriptionId);
+        TournamentInscription inscription = inscriptionRepository.findById(inscriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Inscription", "id", inscriptionId));
+
+        boolean hasScorecard = scorecardRepository.existsByTournamentIdAndPlayerId(
+                inscription.getTournament().getId(),
+                inscription.getPlayer().getId()
+        );
+        if (hasScorecard) {
+            throw new BadRequestException("No se puede dar de baja al jugador porque ya tiene tarjeta creada");
         }
         inscriptionRepository.deleteById(inscriptionId);
         log.info("Inscripción eliminada: {}", inscriptionId);

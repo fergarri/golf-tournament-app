@@ -65,6 +65,11 @@ public class TournamentAdminController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/{id}/import-inscriptions")
+    public ResponseEntity<ImportAdminInscriptionsResultDTO> importInscriptions(@PathVariable Long id) {
+        return ResponseEntity.ok(tournamentAdminService.importInscriptionsToRelatedPendingTournaments(id));
+    }
+
     @DeleteMapping("/inscriptions/{inscriptionId}")
     public ResponseEntity<Void> removeInscription(@PathVariable Long inscriptionId) {
         tournamentAdminService.removeInscription(inscriptionId);

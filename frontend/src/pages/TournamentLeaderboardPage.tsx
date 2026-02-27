@@ -4,8 +4,9 @@ import { tournamentService } from '../services/tournamentService';
 import { leaderboardService } from '../services/leaderboardService';
 import { scorecardService } from '../services/scorecardService';
 import { courseService } from '../services/courseService';
+import { inscriptionService } from '../services/inscriptionService';
 import { Tournament, LeaderboardEntry, Scorecard, CourseTee } from '../types';
-import Table from '../components/Table';
+import Table, { TableAction } from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
@@ -329,6 +330,17 @@ const TournamentLeaderboardPage = () => {
     }
   };
 
+  const handleRemoveInscription = async (entry: LeaderboardEntry) => {
+    if (!confirm(`¿Dar de baja a ${entry.playerName} de este torneo?`)) return;
+    try {
+      await inscriptionService.removeInscription(entry.inscriptionId);
+      await loadData();
+      setError('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error dando de baja al jugador');
+    }
+  };
+
   const getResultsLink = (codigo: string) => {
     return `${window.location.origin}/results/${codigo}`;
   };
@@ -406,27 +418,35 @@ const TournamentLeaderboardPage = () => {
       ),
       width: '7%',
     },
+  ];
+
+  const actions: TableAction<LeaderboardEntry>[] = [
     {
-      header: 'Acciones',
-      accessor: (row: LeaderboardEntry) => (
-        row.scorecardId ? (
-          <button
-            onClick={() => handleEditScorecard(row.scorecardId)}
-            className="btn-edit"
-          >
-            Editar
-          </button>
-        ) : (
-          <button
-            onClick={() => handleEnableScorecard(row)}
-            className="btn-edit"
-            style={{ backgroundColor: '#27ae60', borderColor: '#27ae60' }}
-          >
-            Habilitar Tarjeta
-          </button>
-        )
-      ),
-      width: '12%',
+      label: 'Editar',
+      onClick: (row) => {
+        if (row.scorecardId) {
+          handleEditScorecard(row.scorecardId);
+        }
+      },
+      variant: 'primary',
+      show: (row) => Boolean(row.scorecardId),
+    },
+    {
+      label: 'Habilitar Tarjeta',
+      onClick: handleEnableScorecard,
+      variant: 'secondary',
+      show: (row) => !row.scorecardId,
+    },
+    {
+      label: 'Dar de baja',
+      onClick: (row) => {
+        if (row.scorecardId) {
+          setError('No se puede dar de baja porque ya tiene tarjeta creada');
+          return;
+        }
+        handleRemoveInscription(row);
+      },
+      variant: 'danger',
     },
   ];
 
@@ -560,6 +580,7 @@ const TournamentLeaderboardPage = () => {
             <Table 
               data={filteredLeaderboard} 
               columns={columns} 
+              actions={actions}
               emptyMessage="No hay jugadores que coincidan con la búsqueda"
               getRowKey={(row) => row.playerId}
             />
