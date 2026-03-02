@@ -72,7 +72,7 @@ public class FrutalesScoreService {
         for (int i = 0; i < deliveredData.size(); i++) {
             PlayerScoreData data = deliveredData.get(i);
             int deliveredRank = i + 1;
-            int posPoints = POSITION_POINTS.getOrDefault(deliveredRank, 1) * multiplier;
+            int posPoints = POSITION_POINTS.getOrDefault(deliveredRank, 0) * multiplier;
             int birdiePoints = data.birdieCount * multiplier;
             int eaglePoints = data.eagleCount * 5 * multiplier;
             int acePoints = data.aceCount * 10 * multiplier;
