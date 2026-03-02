@@ -60,7 +60,12 @@ const PublicFrutalesLeaderboardPage = () => {
   const daPlayerIds = useMemo(() => {
     const byNeto = new Map<string, number[]>();
     for (const entry of frutalesScores) {
-      if (entry.status !== 'DELIVERED' || entry.scoreNeto == null) continue;
+      if (
+        entry.status !== 'DELIVERED' ||
+        entry.scoreNeto == null ||
+        entry.position == null ||
+        entry.position > 6
+      ) continue;
       const key = entry.scoreNeto.toString();
       const ids = byNeto.get(key) || [];
       ids.push(entry.playerId);
