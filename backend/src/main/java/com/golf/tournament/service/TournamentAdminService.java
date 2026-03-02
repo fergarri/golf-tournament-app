@@ -237,7 +237,7 @@ public class TournamentAdminService {
 
         List<TournamentAdminInscription> adminInscriptions = inscriptionRepository.findByTournamentAdminId(tournamentAdminId);
         List<Tournament> pendingRelatedTournaments = admin.getTournaments().stream()
-                .filter(t -> "PENDING".equals(t.getEstado()))
+                .filter(t -> "PENDING".equals(t.getEstado()) || "IN_PROGRESS".equals(t.getEstado()))
                 .collect(Collectors.toList());
 
         int importedCount = 0;
