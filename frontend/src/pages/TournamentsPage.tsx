@@ -18,6 +18,8 @@ const TournamentsPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
+  const [showStartBlockedModal, setShowStartBlockedModal] = useState(false);
+  const [startBlockedMessage, setStartBlockedMessage] = useState('');
   const [showInscriptionModal, setShowInscriptionModal] = useState(false);
   const [showCreatedModal, setShowCreatedModal] = useState(false);
   const [selectedTournamentForLink, setSelectedTournamentForLink] = useState<Tournament | null>(null);
@@ -29,15 +31,13 @@ const TournamentsPage = () => {
     tipo: 'CLASICO',
     modalidad: 'MEDAL_PLAY',
     courseId: '',
+    teeMasculinoId: '',
+    teeFemeninoId: '',
     fechaInicio: '',
     fechaFin: '',
     limiteInscriptos: '',
     valorInscripcion: '',
     doublePoints: false,
-    teeConfig: {
-      courseTeeIdPrimeros9: '',
-      courseTeeIdSegundos9: '',
-    },
     categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54 }],
   });
 
@@ -102,14 +102,12 @@ const TournamentsPage = () => {
       tipo: 'CLASICO',
       modalidad: 'MEDAL_PLAY',
       courseId: courses.length > 0 ? courses[0].id : '',
+      teeMasculinoId: '',
+      teeFemeninoId: '',
       fechaInicio: '',
       fechaFin: '',
       limiteInscriptos: '',
       doublePoints: false,
-      teeConfig: {
-        courseTeeIdPrimeros9: '',
-        courseTeeIdSegundos9: '',
-      },
       categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54 }],
     });
     setShowModal(true);
@@ -122,6 +120,8 @@ const TournamentsPage = () => {
       tipo: tournament.tipo,
       modalidad: tournament.modalidad,
       courseId: tournament.courseId,
+      teeMasculinoId: tournament.teeMasculinoId || '',
+      teeFemeninoId: tournament.teeFemeninoId || '',
       fechaInicio: tournament.fechaInicio,
       fechaFin: tournament.fechaFin || '',
       limiteInscriptos: tournament.limiteInscriptos || '',
@@ -138,6 +138,8 @@ const TournamentsPage = () => {
       const payload = {
         ...formData,
         courseId: parseInt(formData.courseId),
+        teeMasculinoId: formData.teeMasculinoId ? parseInt(formData.teeMasculinoId) : null,
+        teeFemeninoId: formData.teeFemeninoId ? parseInt(formData.teeFemeninoId) : null,
         limiteInscriptos: formData.limiteInscriptos ? parseInt(formData.limiteInscriptos) : null,
         valorInscripcion: parseCurrency(formData.valorInscripcion),
         doublePoints: formData.tipo === 'FRUTALES' ? (formData.doublePoints || false) : false,
@@ -216,7 +218,13 @@ const TournamentsPage = () => {
       setShowLinkModal(true);
       loadData();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error starting tournament');
+      const message = err.response?.data?.message || 'Error starting tournament';
+      if (message.startsWith('Imposible iniciar el torneo')) {
+        setStartBlockedMessage(message);
+        setShowStartBlockedModal(true);
+      } else {
+        setError(message);
+      }
     }
   };
 
@@ -296,7 +304,7 @@ const TournamentsPage = () => {
     });
   };
 
-  // const selectedCourse = courses.find((c) => c.id === parseInt(formData.courseId));
+  const selectedCourse = courses.find((c) => c.id === parseInt(formData.courseId));
 
   const columns = [
     { header: 'Nombre', accessor: 'nombre' as keyof Tournament },
@@ -405,6 +413,22 @@ const TournamentsPage = () => {
       </Modal>
 
       <Modal
+        isOpen={showStartBlockedModal}
+        onClose={() => setShowStartBlockedModal(false)}
+        title="No es posible iniciar el torneo"
+        size="medium"
+        footer={
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button type="button" onClick={() => setShowStartBlockedModal(false)} className="btn btn-primary">
+              Entendido
+            </button>
+          </div>
+        }
+      >
+        <p style={{ margin: 0 }}>{startBlockedMessage}</p>
+      </Modal>
+
+      <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingTournament ? 'Editar Torneo' : 'Crear Torneo'}
@@ -478,7 +502,7 @@ const TournamentsPage = () => {
             <label>Campo de Golf *</label>
             <select
               value={formData.courseId}
-              onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
+              onChange={(e) => setFormData({ ...formData, courseId: e.target.value, teeMasculinoId: '', teeFemeninoId: '' })}
               required
             >
               <option value="">Seleccionar un campo</option>
@@ -490,21 +514,15 @@ const TournamentsPage = () => {
             </select>
           </div>
 
-          {/* {selectedCourse && selectedCourse.tees && selectedCourse.tees.length > 0 && (
+          {selectedCourse && selectedCourse.tees && selectedCourse.tees.length > 0 && (
             <div className="form-row">
               <div className="form-group">
-                <label>Tee para los primeros 9 hoyos *</label>
+                <label>Tee de Salida Masculino</label>
                 <select
-                  value={formData.teeConfig.courseTeeIdPrimeros9}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      teeConfig: { ...formData.teeConfig, courseTeeIdPrimeros9: e.target.value },
-                    })
-                  }
-                  required
+                  value={formData.teeMasculinoId}
+                  onChange={(e) => setFormData({ ...formData, teeMasculinoId: e.target.value })}
                 >
-                  <option value="">Seleccionar tee</option>
+                  <option value="">Definir más adelante</option>
                   {selectedCourse.tees
                     .filter((tee) => tee.active)
                     .map((tee) => (
@@ -515,17 +533,12 @@ const TournamentsPage = () => {
                 </select>
               </div>
               <div className="form-group">
-                <label>Tee para los segundos 9 hoyos</label>
+                <label>Tee de Salida Femenino</label>
                 <select
-                  value={formData.teeConfig.courseTeeIdSegundos9}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      teeConfig: { ...formData.teeConfig, courseTeeIdSegundos9: e.target.value },
-                    })
-                  }
+                  value={formData.teeFemeninoId}
+                  onChange={(e) => setFormData({ ...formData, teeFemeninoId: e.target.value })}
                 >
-                  <option value="">Igual que los primeros 9</option>
+                  <option value="">Definir más adelante</option>
                   {selectedCourse.tees
                     .filter((tee) => tee.active)
                     .map((tee) => (
@@ -536,7 +549,7 @@ const TournamentsPage = () => {
                 </select>
               </div>
             </div>
-          )} */}
+          )}
 
           <div className="form-row">
             <div className="form-group">

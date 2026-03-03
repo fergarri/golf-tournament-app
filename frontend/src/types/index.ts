@@ -45,6 +45,7 @@ export interface Player {
   email?: string;
   matricula: string;
   fechaNacimiento?: string;
+  sexo: 'M' | 'F';
   handicapIndex: number;
   telefono?: string;
   clubOrigen?: string;
@@ -88,6 +89,8 @@ export interface Tournament {
   estado: string;
   courseId: number;
   courseName: string;
+  teeMasculinoId?: number | null;
+  teeFemeninoId?: number | null;
   fechaInicio: string;
   fechaFin?: string;
   limiteInscriptos?: number;
@@ -95,7 +98,7 @@ export interface Tournament {
   doublePoints?: boolean;
   currentInscriptos: number;
   categories: TournamentCategory[];
-  teeConfig: TournamentTeeConfig;
+  teeConfig?: TournamentTeeConfig;
 }
 
 export interface TournamentCategory {

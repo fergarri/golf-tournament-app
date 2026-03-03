@@ -69,6 +69,7 @@ public class PlayerService {
                 .email(request.getEmail())
                 .matricula(request.getMatricula())
                 .fechaNacimiento(request.getFechaNacimiento())
+                .sexo(request.getSexo())
                 .handicapIndex(request.getHandicapIndex())
                 .telefono(request.getTelefono())
                 .clubOrigen(request.getClubOrigen())
@@ -94,6 +95,7 @@ public class PlayerService {
         player.setEmail(request.getEmail());
         player.setMatricula(request.getMatricula());
         player.setFechaNacimiento(request.getFechaNacimiento());
+        player.setSexo(request.getSexo());
         player.setHandicapIndex(request.getHandicapIndex());
         player.setTelefono(request.getTelefono());
         player.setClubOrigen(request.getClubOrigen());
@@ -212,6 +214,7 @@ public class PlayerService {
                                 .matricula(matricula)
                                 .nombre(nombre)
                                 .apellido(apellido)
+                                .sexo("M")
                                 .handicapIndex(handicapIndex)
                                 .telefono(telefono)
                                 .email(email)
@@ -297,6 +300,7 @@ public class PlayerService {
                 .email(player.getEmail())
                 .matricula(player.getMatricula())
                 .fechaNacimiento(player.getFechaNacimiento())
+                .sexo(player.getSexo())
                 .handicapIndex(player.getHandicapIndex())
                 .telefono(player.getTelefono())
                 .clubOrigen(player.getClubOrigen())

@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tournamentAdminService } from '../services/tournamentAdminService';
-import { TournamentAdminDetail, TournamentAdminInscriptionDetail } from '../types';
+import { playerService } from '../services/playerService';
+import { TournamentAdminDetail, TournamentAdminInscriptionDetail, Player } from '../types';
 import ActionMenu from '../components/ActionMenu';
+import Modal from '../components/Modal';
 import { formatDateSafe } from '../utils/dateUtils';
 import { formatCurrency } from '../utils/currencyUtils';
 import '../components/Form.css';
@@ -17,6 +19,13 @@ const TournamentAdminDetailPage = () => {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showInscriptionModal, setShowInscriptionModal] = useState(false);
+  const [allPlayers, setAllPlayers] = useState<Player[]>([]);
+  const [inscribedPlayerIds, setInscribedPlayerIds] = useState<Set<number>>(new Set());
+  const [selectedPlayers, setSelectedPlayers] = useState<Set<number>>(new Set());
+  const [loadingPlayers, setLoadingPlayers] = useState(false);
+  const [savingInscription, setSavingInscription] = useState(false);
+  const [importingInscriptions, setImportingInscriptions] = useState(false);
 
   // Track local payment changes: Map<paymentId, pagado>
   const [paymentChanges, setPaymentChanges] = useState<Map<number, boolean>>(new Map());
@@ -114,6 +123,83 @@ const TournamentAdminDetailPage = () => {
     }
   };
 
+  const handleInscribe = async () => {
+    if (!detail) return;
+    try {
+      setLoadingPlayers(true);
+      setSelectedPlayers(new Set());
+      const players = await playerService.getAll();
+      setAllPlayers(players);
+      const inscribedIds = new Set<number>(detail.inscriptions.map(i => i.playerId));
+      setInscribedPlayerIds(inscribedIds);
+      setShowInscriptionModal(true);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error cargando jugadores');
+    } finally {
+      setLoadingPlayers(false);
+    }
+  };
+
+  const availablePlayers = allPlayers.filter(p => !inscribedPlayerIds.has(p.id));
+
+  const filteredAvailablePlayers = availablePlayers;
+
+  const togglePlayer = (playerId: number) => {
+    const updated = new Set(selectedPlayers);
+    if (updated.has(playerId)) {
+      updated.delete(playerId);
+    } else {
+      updated.add(playerId);
+    }
+    setSelectedPlayers(updated);
+  };
+
+  const toggleAllPlayers = () => {
+    if (selectedPlayers.size === filteredAvailablePlayers.length) {
+      setSelectedPlayers(new Set());
+      return;
+    }
+    setSelectedPlayers(new Set(filteredAvailablePlayers.map(p => p.id)));
+  };
+
+  const handleSaveInscriptions = async () => {
+    if (!id || selectedPlayers.size === 0) return;
+    try {
+      setSavingInscription(true);
+      const requests = Array.from(selectedPlayers).map(playerId =>
+        tournamentAdminService.inscribePlayer(parseInt(id), playerId)
+      );
+      await Promise.all(requests);
+      setShowInscriptionModal(false);
+      setSelectedPlayers(new Set());
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error inscribiendo jugadores');
+    } finally {
+      setSavingInscription(false);
+    }
+  };
+
+  const handleImportInscriptions = async () => {
+    if (!id) return;
+    try {
+      setImportingInscriptions(true);
+      const result = await tournamentAdminService.importInscriptions(parseInt(id));
+      alert(
+        `Importación completada.\n` +
+        `Torneos pendientes relacionados: ${result.relatedPendingTournaments}\n` +
+        `Inscriptos importados: ${result.importedCount}\n` +
+        `Saltados (ya inscriptos): ${result.skippedAlreadyInscribed}\n` +
+        `Saltados (sin cupo): ${result.skippedByCapacity}`
+      );
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error importando inscriptos');
+    } finally {
+      setImportingInscriptions(false);
+    }
+  };
+
   const filteredInscriptions = useMemo(() => {
     if (!detail) return [];
     if (!searchQuery) return detail.inscriptions;
@@ -137,6 +223,19 @@ const TournamentAdminDetailPage = () => {
           </button>
           <button onClick={loadData} className="btn-refresh" disabled={loading}>
             {loading ? '⟳ Actualizando...' : '⟳ Actualizar'}
+          </button>
+          <button
+            onClick={handleInscribe}
+            className="btn-refresh"
+          >
+            Inscribir
+          </button>
+          <button
+            onClick={handleImportInscriptions}
+            className="btn-refresh"
+            disabled={importingInscriptions}
+          >
+            {importingInscriptions ? 'Importando...' : 'Importar Inscriptos a Torneos'}
           </button>
           {detail.canManageStages && (
             <button
@@ -291,6 +390,93 @@ const TournamentAdminDetailPage = () => {
           </div>
         </div>
       )}
+
+      <Modal
+        isOpen={showInscriptionModal}
+        onClose={() => setShowInscriptionModal(false)}
+        title={`Inscribir Jugadores - ${detail.nombre}`}
+        size="large"
+        footer={
+          !loadingPlayers ? (
+            <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+              <button
+                type="button"
+                onClick={() => setShowInscriptionModal(false)}
+                className="btn btn-cancel"
+                disabled={savingInscription}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveInscriptions}
+                className="btn btn-primary"
+                disabled={savingInscription || selectedPlayers.size === 0}
+              >
+                {savingInscription ? 'Inscribiendo...' : `Inscribir ${selectedPlayers.size} Jugador(es)`}
+              </button>
+            </div>
+          ) : undefined
+        }
+      >
+        <div className="manual-inscription">
+          {loadingPlayers ? (
+            <div className="loading">Cargando jugadores...</div>
+          ) : (
+            <>
+              <div className="inscription-header">
+                <div className="inscription-stats">
+                  <p><strong>Jugadores disponibles:</strong> {availablePlayers.length}</p>
+                  <p><strong>Seleccionados:</strong> {selectedPlayers.size}</p>
+                </div>
+              </div>
+
+              {filteredAvailablePlayers.length === 0 ? (
+                <div className="empty-state">
+                  <p>No hay jugadores disponibles para inscripción</p>
+                </div>
+              ) : (
+                <>
+                  <div className="select-all-row">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={selectedPlayers.size === filteredAvailablePlayers.length && filteredAvailablePlayers.length > 0}
+                        onChange={toggleAllPlayers}
+                      />
+                      <span>Seleccionar Todos ({filteredAvailablePlayers.length})</span>
+                    </label>
+                  </div>
+
+                  <div className="players-list">
+                    {filteredAvailablePlayers.map((player) => (
+                      <div key={player.id} className="player-item">
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={selectedPlayers.has(player.id)}
+                            onChange={() => togglePlayer(player.id)}
+                          />
+                          <div className="player-info">
+                            <div className="player-name">
+                              {player.apellido} {player.nombre}
+                            </div>
+                            <div className="player-details">
+                              <span>Reg: {player.matricula}</span>
+                              <span>HCP: {player.handicapIndex}</span>
+                              {player.clubOrigen && <span>Club: {player.clubOrigen}</span>}
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

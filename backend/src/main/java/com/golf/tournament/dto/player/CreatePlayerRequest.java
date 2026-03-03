@@ -2,6 +2,7 @@ package com.golf.tournament.dto.player;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -28,6 +29,10 @@ public class CreatePlayerRequest {
     private String matricula;
     
     private LocalDate fechaNacimiento;
+
+    @NotBlank(message = "Sex is required")
+    @Pattern(regexp = "M|F", message = "Sex must be M or F")
+    private String sexo;
     
     @NotNull(message = "Handicap index is required")
     private BigDecimal handicapIndex;

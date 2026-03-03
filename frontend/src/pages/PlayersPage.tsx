@@ -17,6 +17,7 @@ const PlayersPage = () => {
     email: '',
     matricula: '',
     fechaNacimiento: '',
+    sexo: 'M',
     handicapIndex: 0,
     telefono: '',
     clubOrigen: '',
@@ -52,6 +53,7 @@ const PlayersPage = () => {
       email: '',
       matricula: '',
       fechaNacimiento: '',
+      sexo: 'M',
       handicapIndex: 0,
       telefono: '',
       clubOrigen: '',
@@ -67,6 +69,7 @@ const PlayersPage = () => {
       email: player.email || '',
       matricula: player.matricula,
       fechaNacimiento: player.fechaNacimiento || '',
+      sexo: player.sexo,
       handicapIndex: player.handicapIndex,
       telefono: player.telefono || '',
       clubOrigen: player.clubOrigen || '',
@@ -141,6 +144,7 @@ const PlayersPage = () => {
   const columns = [
     { header: 'Nombre', accessor: (row: Player) => `${row.apellido} ${row.nombre}` },
     { header: 'Matricula', accessor: 'matricula' as keyof Player },
+    { header: 'Sexo', accessor: 'sexo' as keyof Player },
     { header: 'Handicap', accessor: 'handicapIndex' as keyof Player },
     { header: 'Club', accessor: 'clubOrigen' as keyof Player },
     { header: 'Email', accessor: 'email' as keyof Player },
@@ -247,6 +251,17 @@ const PlayersPage = () => {
                 onChange={(e) => setFormData({ ...formData, matricula: e.target.value })}
                 required
               />
+            </div>
+            <div className="form-group">
+              <label>Sexo *</label>
+              <select
+                value={formData.sexo}
+                onChange={(e) => setFormData({ ...formData, sexo: e.target.value as 'M' | 'F' })}
+                required
+              >
+                <option value="M">M</option>
+                <option value="F">F</option>
+              </select>
             </div>
             <div className="form-group">
               <label>Handicap Index *</label>

@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { playerService } from '../services/playerService';
 import { scorecardService } from '../services/scorecardService';
-import { courseService } from '../services/courseService';
 import { Tournament } from '../types';
 import Modal from '../components/Modal';
 import { formatDateSafe } from '../utils/dateUtils';
@@ -14,8 +13,6 @@ const TournamentAccessPage = () => {
   const navigate = useNavigate();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [matricula, setMatricula] = useState('');
-  const [selectedTeeId, setSelectedTeeId] = useState<number | null>(null);
-  const [courseTees, setCourseTees] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -32,11 +29,6 @@ const TournamentAccessPage = () => {
       setLoading(true);
       const data = await tournamentService.getByCodigo(codigo);
       setTournament(data);
-      
-      // Cargar los tees del campo
-      const tees = await courseService.getTees(data.courseId);
-      setCourseTees(tees);
-      
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Torneo no encontrado');
@@ -57,11 +49,6 @@ const TournamentAccessPage = () => {
       return;
     }
 
-    if (!selectedTeeId) {
-      setError('Por favor seleccione un tee');
-      return;
-    }
-
     try {
       setSubmitting(true);
       setError('');
@@ -71,14 +58,13 @@ const TournamentAccessPage = () => {
       
       // Validar y crear scorecard (el backend calculará el handicap course)
       if (tournament) {
-        const scorecard = await scorecardService.getOrCreate(tournament.id, player.id, selectedTeeId);
+        const scorecard = await scorecardService.getOrCreate(tournament.id, player.id);
         
         // Navegar con el handicapCourse calculado por el backend
         navigate(`/play/${codigo}/scorecard`, {
           state: { 
             matricula, 
-            handicapCourse: scorecard.handicapCourse,
-            teeId: selectedTeeId 
+            handicapCourse: scorecard.handicapCourse
           },
         });
       }
@@ -140,23 +126,6 @@ const TournamentAccessPage = () => {
                 required
                 autoFocus
               />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="teeSelection">Tee de Salida</label>
-              <select
-                id="teeSelection"
-                value={selectedTeeId || ''}
-                onChange={(e) => setSelectedTeeId(Number(e.target.value))}
-                required
-              >
-                <option value="">Seleccione un tee</option>
-                {courseTees.map((tee) => (
-                  <option key={tee.id} value={tee.id}>
-                    {!tee.grupo ? tee.nombre : `${tee.grupo} - ${tee.nombre}`}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {error && <div className="error-message">{error}</div>}

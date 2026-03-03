@@ -3,9 +3,8 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { leaderboardService } from '../services/leaderboardService';
 import { scorecardService } from '../services/scorecardService';
-import { courseService } from '../services/courseService';
 import { inscriptionService } from '../services/inscriptionService';
-import { Tournament, FrutalesScore, Scorecard, CourseTee, LeaderboardEntry, InscriptionResponse } from '../types';
+import { Tournament, FrutalesScore, Scorecard, LeaderboardEntry, InscriptionResponse } from '../types';
 import Table, { TableAction } from '../components/Table';
 import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
@@ -29,11 +28,6 @@ const FrutalesLeaderboardPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
-  const [showEnableScorecardModal, setShowEnableScorecardModal] = useState(false);
-  const [enableScorecardPlayer, setEnableScorecardPlayer] = useState<FrutalesScore | null>(null);
-  const [courseTees, setCourseTees] = useState<CourseTee[]>([]);
-  const [selectedTeeId, setSelectedTeeId] = useState<number | ''>('');
-  const [enablingScorecard, setEnablingScorecard] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
 
   const mergeScoresWithInscriptions = (
@@ -193,46 +187,6 @@ const FrutalesLeaderboardPage = () => {
     if (position === 2) return 'position-second';
     if (position === 3) return 'position-third';
     return '';
-  };
-
-  const handleEnableScorecard = async (entry: FrutalesScore) => {
-    setEnableScorecardPlayer(entry);
-    setSelectedTeeId('');
-    try {
-      if (tournament?.courseId) {
-        const tees = await courseService.getTees(tournament.courseId);
-        const activeTees = tees.filter((t: CourseTee) => t.active);
-        setCourseTees(activeTees);
-        if (activeTees.length === 1) {
-          setSelectedTeeId(activeTees[0].id);
-        }
-      }
-    } catch (err) {
-      console.error('Error loading tees:', err);
-    }
-    setShowEnableScorecardModal(true);
-  };
-
-  const handleConfirmEnableScorecard = async () => {
-    if (!enableScorecardPlayer || !tournament || !selectedTeeId) return;
-    try {
-      setEnablingScorecard(true);
-      const scorecard = await scorecardService.getOrCreate(
-        tournament.id,
-        enableScorecardPlayer.playerId,
-        selectedTeeId as number
-      );
-      setShowEnableScorecardModal(false);
-      setEnableScorecardPlayer(null);
-      setMarkAsDelivered(false);
-      setEditingScorecard(scorecard);
-      setEditingScorecardId(scorecard.id);
-      await loadData();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al habilitar la tarjeta');
-    } finally {
-      setEnablingScorecard(false);
-    }
   };
 
   const handleEditScorecard = async (scorecardId: number) => {
@@ -414,12 +368,6 @@ const FrutalesLeaderboardPage = () => {
       show: (row) => row.scorecardId != null,
     },
     {
-      label: 'Habilitar Tarjeta',
-      onClick: handleEnableScorecard,
-      variant: 'secondary',
-      show: (row) => row.scorecardId == null && tournament?.estado !== 'FINALIZED',
-    },
-    {
       label: 'Dar de baja',
       onClick: (row) => {
         if (row.scorecardId) {
@@ -592,49 +540,6 @@ const FrutalesLeaderboardPage = () => {
             >
               Cerrar
             </button>
-          </div>
-        </div>
-      )}
-
-      {/* Enable Scorecard Modal */}
-      {showEnableScorecardModal && enableScorecardPlayer && (
-        <div className="modal-overlay" onClick={() => setShowEnableScorecardModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
-            <div className="modal-header">
-              <h2>Habilitar Tarjeta</h2>
-              <button className="modal-close" onClick={() => setShowEnableScorecardModal(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              <p style={{ marginBottom: '1rem' }}>
-                Se creará una tarjeta vacía para <strong>{enableScorecardPlayer.playerName}</strong>.
-              </p>
-              <div className="form-group">
-                <label>Tee *</label>
-                <select
-                  value={selectedTeeId}
-                  onChange={(e) => setSelectedTeeId(parseInt(e.target.value))}
-                  required
-                  style={{ width: '100%', padding: '0.75rem', fontSize: '1rem', border: '1px solid #e0e0e0', borderRadius: '4px' }}
-                >
-                  <option value="">Seleccionar tee</option>
-                  {courseTees.map((tee) => (
-                    <option key={tee.id} value={tee.id}>
-                      {tee.nombre} {tee.grupo ? `(${tee.grupo})` : ''}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button onClick={() => setShowEnableScorecardModal(false)} className="btn-cancel">Cancelar</button>
-              <button
-                onClick={handleConfirmEnableScorecard}
-                className="btn-save"
-                disabled={!selectedTeeId || enablingScorecard}
-              >
-                {enablingScorecard ? 'Habilitando...' : 'Confirmar'}
-              </button>
-            </div>
           </div>
         </div>
       )}

@@ -22,6 +22,7 @@ public class TournamentService {
 
     private final TournamentRepository tournamentRepository;
     private final CourseRepository courseRepository;
+    private final CourseTeeRepository courseTeeRepository;
     private final TournamentCategoryRepository tournamentCategoryRepository;
     private final TournamentInscriptionRepository tournamentInscriptionRepository;
     private final ScorecardRepository scorecardRepository;
@@ -55,6 +56,8 @@ public class TournamentService {
     public TournamentDTO createTournament(CreateTournamentRequest request) {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
+        CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId());
+        CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId());
 
         String codigo = generateUniqueCodigo();
 
@@ -66,6 +69,8 @@ public class TournamentService {
                 .tipo(request.getTipo())
                 .modalidad(request.getModalidad())
                 .course(course)
+                .teeMasculino(teeMasculino)
+                .teeFemenino(teeFemenino)
                 .fechaInicio(request.getFechaInicio())
                 .fechaFin(request.getFechaFin())
                 .limiteInscriptos(request.getLimiteInscriptos())
@@ -96,11 +101,15 @@ public class TournamentService {
 
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
+        CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId());
+        CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId());
 
         tournament.setNombre(request.getNombre());
         tournament.setTipo(request.getTipo());
         tournament.setModalidad(request.getModalidad());
         tournament.setCourse(course);
+        tournament.setTeeMasculino(teeMasculino);
+        tournament.setTeeFemenino(teeFemenino);
         tournament.setFechaInicio(request.getFechaInicio());
         tournament.setFechaFin(request.getFechaFin());
         tournament.setLimiteInscriptos(request.getLimiteInscriptos());
@@ -305,6 +314,8 @@ public class TournamentService {
                 .estado(tournament.getEstado())
                 .courseId(tournament.getCourse().getId())
                 .courseName(tournament.getCourse().getNombre())
+                .teeMasculinoId(tournament.getTeeMasculino() != null ? tournament.getTeeMasculino().getId() : null)
+                .teeFemeninoId(tournament.getTeeFemenino() != null ? tournament.getTeeFemenino().getId() : null)
                 .fechaInicio(tournament.getFechaInicio())
                 .fechaFin(tournament.getFechaFin())
                 .limiteInscriptos(tournament.getLimiteInscriptos())
@@ -322,6 +333,9 @@ public class TournamentService {
 
         if (!"PENDING".equals(tournament.getEstado())) {
             throw new BadRequestException("Tournament can only be started from PENDING status");
+        }
+        if (tournament.getTeeMasculino() == null || tournament.getTeeFemenino() == null) {
+            throw new BadRequestException("Imposible iniciar el torneo debido a que no tiene tee de salida definido para masculino y femenino.");
         }
 
         tournament.setEstado("IN_PROGRESS");
@@ -364,5 +378,18 @@ public class TournamentService {
                 .handicapMin(category.getHandicapMin())
                 .handicapMax(category.getHandicapMax())
                 .build();
+    }
+
+    private CourseTee resolveTournamentTee(Course course, Long teeId) {
+        if (teeId == null) {
+            return null;
+        }
+
+        CourseTee tee = courseTeeRepository.findById(teeId)
+                .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeId));
+        if (!tee.getCourse().getId().equals(course.getId())) {
+            throw new BadRequestException("El tee seleccionado no pertenece al campo del torneo");
+        }
+        return tee;
     }
 }

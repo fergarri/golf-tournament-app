@@ -20,6 +20,7 @@ public class PlayerDTO {
     private String email;
     private String matricula;
     private LocalDate fechaNacimiento;
+    private String sexo;
     private BigDecimal handicapIndex;
     private String telefono;
     private String clubOrigen;

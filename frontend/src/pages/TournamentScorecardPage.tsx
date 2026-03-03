@@ -12,7 +12,7 @@ import './TournamentScorecardPage.css';
 const TournamentScorecardPage = () => {
   const { codigo } = useParams<{ codigo: string }>();
   const location = useLocation();
-  const { matricula, handicapCourse, teeId } = location.state || {};
+  const { matricula } = location.state || {};
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [holes, setHoles] = useState<Hole[]>([]);
@@ -98,24 +98,20 @@ const TournamentScorecardPage = () => {
       const sortedHoles = holesData.sort((a: Hole, b: Hole) => a.numeroHoyo - b.numeroHoyo);
       setHoles(sortedHoles);
 
-      // Cargar información del tee seleccionado
-      if (teeId) {
+      // Cargar información del tee del torneo
+      const teeIdBySex = playerData.sexo === 'F' ? tournamentData.teeFemeninoId : tournamentData.teeMasculinoId;
+      if (teeIdBySex) {
         const tees = await courseService.getTees(tournamentData.courseId);
-        const tee = tees.find((t: any) => t.id === teeId);
+        const tee = tees.find((t: any) => t.id === teeIdBySex);
         setSelectedTee(tee);
       }
 
       // Cargar o crear scorecard del backend
       let scorecardData: Scorecard | null = null;
       try {
-        // El scorecard ya debería estar creado desde TournamentAccessPage
-        // pero llamamos a getOrCreate por si acaso, pasando el teeId
-        if (teeId) {
-          scorecardData = await scorecardService.getOrCreate(tournamentData.id, playerData.id, teeId);
-          setScorecard(scorecardData);
-        } else {
-          setError('Acceso inválido. Por favor ingrese nuevamente desde la página de acceso.');
-        }
+        // El scorecard se crea al inscribir, pero getOrCreate cubre datos históricos
+        scorecardData = await scorecardService.getOrCreate(tournamentData.id, playerData.id);
+        setScorecard(scorecardData);
       } catch (err) {
         console.error('Error cargando scorecard:', err);
       }
@@ -467,6 +463,7 @@ const TournamentScorecardPage = () => {
   const totalPar = getTotalPar();
   const scoreNeto = getScoreNeto();
   const hasBackNine = holes.some(h => h.numeroHoyo > 9);
+  const selectedTeeId = player?.sexo === 'F' ? tournament.teeFemeninoId : tournament.teeMasculinoId;
 
   return (
     <div className="scorecard-container">
@@ -485,7 +482,7 @@ const TournamentScorecardPage = () => {
           <span style={{ fontWeight: 'bold', color: '#000000' }}>Matrícula:</span> {matricula}
         </p>
         <p className="player-matricula">
-          <strong><span style={{ fontWeight: 'bold', color: '#000000' }}>Handicap Course:</span> {handicapCourse}</strong>
+          <strong><span style={{ fontWeight: 'bold', color: '#000000' }}>Handicap Course:</span> {scorecard?.handicapCourse ?? '-'}</strong>
         </p>
         {scorecard?.status === 'DELIVERED' && (
           <div className="delivered-badge">
@@ -510,16 +507,16 @@ const TournamentScorecardPage = () => {
           <table className="scorecard-table">
             <thead>
               <tr className="header-row">
-                <th className="sticky-col">{selectedTee.nombre} {selectedTee.grupo ? `- ${selectedTee.grupo}` : ''}</th>
+                <th className="sticky-col">{selectedTee ? `${selectedTee.nombre} ${selectedTee.grupo ? `- ${selectedTee.grupo}` : ''}` : 'Tee'}</th>
                 {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
                     <td key={hole.numeroHoyo} className="distance-cell">
-                      {hole.distancesByTee?.[teeId] || '-'}
+                      {(selectedTeeId ? hole.distancesByTee?.[selectedTeeId] : null) || '-'}
                     </td>
                   ))}
                   {hasBackNine && <td className="subtotal-cell distance-cell"></td>}
                   {hasBackNine && holes.filter(h => h.numeroHoyo > 9).map((hole) => (
                     <td key={hole.numeroHoyo} className="distance-cell">
-                      {hole.distancesByTee?.[teeId] || '-'}
+                      {(selectedTeeId ? hole.distancesByTee?.[selectedTeeId] : null) || '-'}
                     </td>
                   ))}
                 {hasBackNine && <th className="subtotal-col distance-cell"></th>}

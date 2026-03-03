@@ -48,6 +48,14 @@ public class Tournament {
     @JoinColumn(name = "course_id", nullable = false)
     private Course course;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tee_masculino_id")
+    private CourseTee teeMasculino;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tee_femenino_id")
+    private CourseTee teeFemenino;
+
     @Column(name = "fecha_inicio", nullable = false)
     private LocalDate fechaInicio;
 

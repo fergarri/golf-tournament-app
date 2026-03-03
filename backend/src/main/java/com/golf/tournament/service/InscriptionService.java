@@ -25,6 +25,7 @@ public class InscriptionService {
     private final PlayerRepository playerRepository;
     private final TournamentInscriptionRepository inscriptionRepository;
     private final ScorecardRepository scorecardRepository;
+    private final ScorecardService scorecardService;
 
     @Transactional
     public InscriptionResponse inscribePlayer(String codigo, InscriptionRequest request) {
@@ -42,6 +43,7 @@ public class InscriptionService {
                 throw new BadRequestException("Tournament has reached maximum inscriptions");
             }
         }
+        validateTournamentTeesBySex(tournament);
 
         // Buscar el jugador en la base de datos por matrícula
         Player player = playerRepository.findByMatricula(request.getMatricula())
@@ -59,6 +61,7 @@ public class InscriptionService {
                 .build();
 
         inscription = inscriptionRepository.save(inscription);
+        createScorecardAfterInscription(tournament, player);
 
         log.info("Jugador {} inscrito en torneo {}", player.getId(), tournament.getId());
 
@@ -93,6 +96,7 @@ public class InscriptionService {
                 throw new BadRequestException("Torneo ha alcanzado su capacidad máxima");
             }
         }
+        validateTournamentTeesBySex(tournament);
 
         TournamentInscription inscription = TournamentInscription.builder()
                 .tournament(tournament)
@@ -101,6 +105,7 @@ public class InscriptionService {
                 .build();
 
         inscription = inscriptionRepository.save(inscription);
+        createScorecardAfterInscription(tournament, player);
 
         log.info("Jugador {} inscrito en torneo {} por admin", playerId, tournamentId);
 
@@ -155,6 +160,7 @@ public class InscriptionService {
                 .email(player.getEmail())
                 .matricula(player.getMatricula())
                 .fechaNacimiento(player.getFechaNacimiento())
+                .sexo(player.getSexo())
                 .handicapIndex(player.getHandicapIndex())
                 .telefono(player.getTelefono())
                 .clubOrigen(player.getClubOrigen())
@@ -168,5 +174,30 @@ public class InscriptionService {
                 .categoryName(inscription.getCategory() != null ? inscription.getCategory().getNombre() : null)
                 .handicapCourse(inscription.getHandicapCourse())
                 .build();
+    }
+
+    private void createScorecardAfterInscription(Tournament tournament, Player player) {
+        try {
+            scorecardService.getOrCreateScorecard(tournament.getId(), player.getId());
+        } catch (BadRequestException ex) {
+            String message = ex.getMessage() != null ? ex.getMessage() : "";
+            if (message.toLowerCase().contains("handicap index")
+                    || message.toLowerCase().contains("conversión de handicap")) {
+                throw new BadRequestException(
+                        String.format(
+                                "El jugador %s %s no tiene HCP Index definido o no tiene equivalente de HCP Course.",
+                                player.getApellido(),
+                                player.getNombre()
+                        )
+                );
+            }
+            throw ex;
+        }
+    }
+
+    private void validateTournamentTeesBySex(Tournament tournament) {
+        if (tournament.getTeeMasculino() == null || tournament.getTeeFemenino() == null) {
+            throw new BadRequestException("Imposible inscribir jugadores. El torneo debe tener tee de salida definido para M y F.");
+        }
     }
 }

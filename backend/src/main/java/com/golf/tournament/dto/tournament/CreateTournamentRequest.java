@@ -28,6 +28,9 @@ public class CreateTournamentRequest {
     
     @NotNull(message = "Course ID is required")
     private Long courseId;
+
+    private Long teeMasculinoId;
+    private Long teeFemeninoId;
     
     @NotNull(message = "Start date is required")
     private LocalDate fechaInicio;

@@ -30,10 +30,9 @@ public class ScorecardService {
     private final TournamentInscriptionRepository inscriptionRepository;
     private final TournamentCategoryRepository categoryRepository;
     private final HandicapConversionRepository handicapConversionRepository;
-    private final CourseTeeRepository courseTeeRepository;
 
     @Transactional
-    public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId, Long teeId) {
+    public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
 
@@ -51,9 +50,23 @@ public class ScorecardService {
         if (player.getHandicapIndex() == null) {
             throw new BadRequestException("El jugador no tiene handicap index asignado. Hable con el capitan de cancha");
         }
+        if (player.getSexo() == null || player.getSexo().isBlank()) {
+            throw new BadRequestException("El jugador no tiene sexo definido.");
+        }
 
-        courseTeeRepository.findById(teeId)
-                .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeId));
+        if (tournament.getTeeMasculino() == null || tournament.getTeeFemenino() == null) {
+            throw new BadRequestException("Imposible crear la tarjeta. El torneo no tiene tee de salida definido para masculino y femenino.");
+        }
+        String sexo = player.getSexo().trim().toUpperCase();
+        CourseTee selectedTee;
+        if ("M".equals(sexo)) {
+            selectedTee = tournament.getTeeMasculino();
+        } else if ("F".equals(sexo)) {
+            selectedTee = tournament.getTeeFemenino();
+        } else {
+            throw new BadRequestException("El sexo del jugador es inválido. Debe ser M o F.");
+        }
+        Long teeId = selectedTee.getId();
 
         HandicapConversion conversion = handicapConversionRepository
                 .findByTeeAndHandicapIndex(teeId, player.getHandicapIndex())

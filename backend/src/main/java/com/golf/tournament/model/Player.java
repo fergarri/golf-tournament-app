@@ -38,6 +38,9 @@ public class Player {
     @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
+    @Column(nullable = false, length = 1)
+    private String sexo;
+
     @Column(name = "handicap_index", precision = 4, scale = 1)
     private BigDecimal handicapIndex;
 
