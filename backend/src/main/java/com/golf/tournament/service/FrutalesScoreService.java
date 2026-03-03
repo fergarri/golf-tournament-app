@@ -67,7 +67,7 @@ public class FrutalesScoreService {
         // 1) DELIVERED: rank by net + tie-breakers to assign position points.
         deliveredData.sort(buildFrutalesComparator());
 
-        List<CalculatedScoreData> calculatedScores = new ArrayList<>();
+        List<FrutalesScore> persistedScores = new ArrayList<>();
 
         for (int i = 0; i < deliveredData.size(); i++) {
             PlayerScoreData data = deliveredData.get(i);
@@ -83,7 +83,7 @@ public class FrutalesScoreService {
                     .tournament(tournament)
                     .scorecard(data.scorecard)
                     .player(data.scorecard.getPlayer())
-                    .position(null)
+                    .position(deliveredRank)
                     .positionPoints(posPoints)
                     .birdieCount(data.birdieCount)
                     .birdiePoints(birdiePoints)
@@ -95,10 +95,12 @@ public class FrutalesScoreService {
                     .totalPoints(total)
                     .build();
 
-            calculatedScores.add(new CalculatedScoreData(score, data));
+            persistedScores.add(score);
         }
 
-        // 2) CANCELLED: only participation point (no birdie/eagle/ace points).
+        // 2) CANCELLED: only participation point (no birdie/eagle/ace points),
+        // positioned after all DELIVERED.
+        List<CalculatedScoreData> cancelledCalculated = new ArrayList<>();
         for (PlayerScoreData data : cancelledData) {
             int birdiePoints = 0;
             int eaglePoints = 0;
@@ -122,19 +124,17 @@ public class FrutalesScoreService {
                     .totalPoints(total)
                     .build();
 
-            calculatedScores.add(new CalculatedScoreData(score, data));
+            cancelledCalculated.add(new CalculatedScoreData(score, data));
         }
 
-        // 3) Final positions by total_points across DELIVERED + CANCELLED.
-        // Tie on total_points: DELIVERED wins over CANCELLED.
-        calculatedScores.sort(buildFinalRankingComparator());
-        for (int i = 0; i < calculatedScores.size(); i++) {
-            calculatedScores.get(i).score.setPosition(i + 1);
+        cancelledCalculated.sort(buildCancelledRankingComparator());
+        for (int i = 0; i < cancelledCalculated.size(); i++) {
+            cancelledCalculated.get(i).score.setPosition(deliveredData.size() + i + 1);
         }
 
-        List<FrutalesScore> persistedScores = calculatedScores.stream()
+        persistedScores.addAll(cancelledCalculated.stream()
                 .map(cs -> cs.score)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()));
 
         // DS always included with 0 points.
         List<Scorecard> disqualifiedScorecards = scorecardRepository
@@ -307,14 +307,10 @@ public class FrutalesScoreService {
         };
     }
 
-    private Comparator<CalculatedScoreData> buildFinalRankingComparator() {
+    private Comparator<CalculatedScoreData> buildCancelledRankingComparator() {
         return (a, b) -> {
             int totalCompare = Integer.compare(b.score.getTotalPoints(), a.score.getTotalPoints());
             if (totalCompare != 0) return totalCompare;
-
-            boolean aDelivered = a.playerData.scorecard.getStatus() == ScorecardStatus.DELIVERED;
-            boolean bDelivered = b.playerData.scorecard.getStatus() == ScorecardStatus.DELIVERED;
-            if (aDelivered != bDelivered) return aDelivered ? -1 : 1;
 
             BigDecimal hcpA = a.playerData.handicapIndex != null ? a.playerData.handicapIndex : BigDecimal.valueOf(999);
             BigDecimal hcpB = b.playerData.handicapIndex != null ? b.playerData.handicapIndex : BigDecimal.valueOf(999);
