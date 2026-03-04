@@ -66,6 +66,13 @@ export const tournamentAdminStageService = {
     return response.data;
   },
 
+  getPublicBoard: async (tournamentAdminId: number, stageId: number): Promise<TournamentAdminStageBoard> => {
+    const response = await api.get<TournamentAdminStageBoard>(
+      `/public/tournament-admin/${tournamentAdminId}/stages/${stageId}/board`
+    );
+    return response.data;
+  },
+
   calculate: async (tournamentAdminId: number, stageId: number): Promise<TournamentAdminStageBoard> => {
     const response = await api.post<TournamentAdminStageBoard>(
       `/tournament-admin/${tournamentAdminId}/stages/${stageId}/calculate`

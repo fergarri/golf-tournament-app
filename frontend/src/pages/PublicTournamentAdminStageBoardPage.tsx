@@ -1,101 +1,54 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { tournamentAdminStageService } from '../services/tournamentAdminStageService';
 import { TournamentAdminStageBoard } from '../types';
 import { formatDateSafe } from '../utils/dateUtils';
-import Modal from '../components/Modal';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 
-const TournamentAdminStageBoardPage = () => {
-  const { id, stageId } = useParams<{ id: string; stageId: string }>();
-  const navigate = useNavigate();
-  const tournamentAdminId = Number(id);
+const PublicTournamentAdminStageBoardPage = () => {
+  const { tournamentAdminId, stageId } = useParams<{ tournamentAdminId: string; stageId: string }>();
+  const adminIdNumber = Number(tournamentAdminId);
   const stageIdNumber = Number(stageId);
 
   const [board, setBoard] = useState<TournamentAdminStageBoard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [calculating, setCalculating] = useState(false);
-  const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
 
   useEffect(() => {
-    if (!Number.isFinite(tournamentAdminId) || !Number.isFinite(stageIdNumber)) {
+    if (!Number.isFinite(adminIdNumber) || !Number.isFinite(stageIdNumber)) {
       setError('Parámetros inválidos');
       setLoading(false);
       return;
     }
+
     loadData();
-  }, [tournamentAdminId, stageIdNumber]);
+    const interval = setInterval(loadData, 100000);
+    return () => clearInterval(interval);
+  }, [adminIdNumber, stageIdNumber]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await tournamentAdminStageService.getBoard(tournamentAdminId, stageIdNumber);
+      const data = await tournamentAdminStageService.getPublicBoard(adminIdNumber, stageIdNumber);
       setBoard(data);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error cargando fechas de la etapa');
+      setError(err.response?.data?.message || 'Error cargando resultados de etapa');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCalculate = async () => {
-    try {
-      setCalculating(true);
-      const data = await tournamentAdminStageService.calculate(tournamentAdminId, stageIdNumber);
-      setBoard(data);
-      setError('');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error calculando puntos de etapa');
-    } finally {
-      setCalculating(false);
-    }
-  };
-
-  const getPublicResultsLink = () => {
-    return `${window.location.origin}/stage-results/${tournamentAdminId}/${stageIdNumber}`;
-  };
-
-  const copyResultsLink = () => {
-    navigator.clipboard.writeText(getPublicResultsLink());
-    setShowCopyLinkModal(true);
-  };
-
-  if (loading) return <div className="loading">Cargando fechas de etapa...</div>;
+  if (loading) return <div className="loading">Cargando resultados de etapa...</div>;
   if (!board) return <div className="error-message">No se encontró la etapa</div>;
 
   return (
     <div className="leaderboard-page">
       <div className="leaderboard-header">
-        <div className="header-actions">
-          <button
-            onClick={() => navigate(`/administration/${tournamentAdminId}/stages`)}
-            className="btn-back"
-          >
-            ← Volver a Etapas
-          </button>
-          <button onClick={loadData} className="btn-refresh">
-            ⟳ Actualizar
-          </button>
-          <button
-            onClick={copyResultsLink}
-            className="btn-compact btn-compact-primary"
-          >
-            Link Resultados
-          </button>
-          <button
-            onClick={handleCalculate}
-            className="btn-compact btn-compact-primary"
-            disabled={calculating}
-          >
-            {calculating ? 'Calculando...' : 'Calcular Puntos'}
-          </button>
-        </div>
-
         <div className="tournament-info">
           <h1>{board.stageName}</h1>
+          <span className="final-badge">RESULTADOS DE ETAPA</span>
           <div className="tournament-details">
             <span className="detail-item">
               <strong>Fechas:</strong> {board.tournaments.length}
@@ -116,7 +69,7 @@ const TournamentAdminStageBoardPage = () => {
               <tr>
                 <th style={{ width: '60px', textAlign: 'center' }}>#</th>
                 <th>Jugador</th>
-                {board.tournaments.map(tournament => (
+                {board.tournaments.map((tournament) => (
                   <th
                     key={tournament.tournamentId}
                     style={{
@@ -145,7 +98,7 @@ const TournamentAdminStageBoardPage = () => {
                   <tr key={row.playerId}>
                     <td style={{ textAlign: 'center', fontWeight: 600 }}>{index + 1}</td>
                     <td>{row.playerName}</td>
-                    {board.tournaments.map(tournament => (
+                    {board.tournaments.map((tournament) => (
                       <td
                         key={`${row.playerId}-${tournament.tournamentId}`}
                         style={{
@@ -167,22 +120,12 @@ const TournamentAdminStageBoardPage = () => {
         </div>
       </div>
 
-      <Modal
-        isOpen={showCopyLinkModal}
-        onClose={() => setShowCopyLinkModal(false)}
-        title="Link Copiado"
-        size="medium"
-      >
-        <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', color: '#27ae60', marginBottom: '1rem' }}>✓</div>
-          <p style={{ marginBottom: '1rem' }}>El link de resultados de etapa fue copiado al portapapeles</p>
-          <button onClick={() => setShowCopyLinkModal(false)} className="btn btn-primary">
-            Cerrar
-          </button>
-        </div>
-      </Modal>
+      <div className="update-info">
+        <span className="live-indicator"></span>
+        <span>Actualizando en tiempo real cada 100 segundos</span>
+      </div>
     </div>
   );
 };
 
-export default TournamentAdminStageBoardPage;
+export default PublicTournamentAdminStageBoardPage;
