@@ -3,6 +3,7 @@ package com.golf.tournament.controller;
 import com.golf.tournament.dto.scorecard.ScorecardDTO;
 import com.golf.tournament.dto.scorecard.UpdateScoreRequest;
 import com.golf.tournament.dto.scorecard.UpdateScorecardRequest;
+import com.golf.tournament.dto.scorecard.ConfigureScorecardRequest;
 import com.golf.tournament.service.ScorecardService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,8 +34,9 @@ public class ScorecardController {
     @PostMapping("/tournaments/{tournamentId}/players/{playerId}")
     public ResponseEntity<ScorecardDTO> getOrCreateScorecard(
             @PathVariable Long tournamentId,
-            @PathVariable Long playerId) {
-        return ResponseEntity.ok(scorecardService.getOrCreateScorecard(tournamentId, playerId));
+            @PathVariable Long playerId,
+            @RequestBody(required = false) ConfigureScorecardRequest request) {
+        return ResponseEntity.ok(scorecardService.getOrCreateScorecard(tournamentId, playerId, request));
     }
 
     @PatchMapping("/{scorecardId}/marker/{markerId}")

@@ -29,6 +29,8 @@ public class CreateTournamentRequest {
     @NotNull(message = "Course ID is required")
     private Long courseId;
 
+    private Integer cantidadHoyosJuego;
+
     private Long teeMasculinoId;
     private Long teeFemeninoId;
     

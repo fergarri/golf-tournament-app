@@ -17,10 +17,21 @@ export interface UpdateScorecardRequest {
   holeScores: HoleScoreUpdate[];
 }
 
+export interface ConfigureScorecardRequest {
+  teeId?: number;
+  cantidadHoyosJuego?: number;
+  inProgressAction?: 'CONTINUE_EXISTING' | 'START_NEW';
+}
+
 export const scorecardService = {
-  getOrCreate: async (tournamentId: number, playerId: number): Promise<Scorecard> => {
+  getOrCreate: async (
+    tournamentId: number,
+    playerId: number,
+    config?: ConfigureScorecardRequest
+  ): Promise<Scorecard> => {
     const response = await api.post<Scorecard>(
-      `/scorecards/tournaments/${tournamentId}/players/${playerId}`
+      `/scorecards/tournaments/${tournamentId}/players/${playerId}`,
+      config || {}
     );
     return response.data;
   },

@@ -56,6 +56,7 @@ public class TournamentService {
     public TournamentDTO createTournament(CreateTournamentRequest request) {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
+        validateCantidadHoyosJuego(request.getCantidadHoyosJuego());
         CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId());
         CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId());
 
@@ -69,6 +70,7 @@ public class TournamentService {
                 .tipo(request.getTipo())
                 .modalidad(request.getModalidad())
                 .course(course)
+                .cantidadHoyosJuego(request.getCantidadHoyosJuego())
                 .teeMasculino(teeMasculino)
                 .teeFemenino(teeFemenino)
                 .fechaInicio(request.getFechaInicio())
@@ -101,6 +103,7 @@ public class TournamentService {
 
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
+        validateCantidadHoyosJuego(request.getCantidadHoyosJuego());
         CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId());
         CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId());
 
@@ -108,6 +111,7 @@ public class TournamentService {
         tournament.setTipo(request.getTipo());
         tournament.setModalidad(request.getModalidad());
         tournament.setCourse(course);
+        tournament.setCantidadHoyosJuego(request.getCantidadHoyosJuego());
         tournament.setTeeMasculino(teeMasculino);
         tournament.setTeeFemenino(teeFemenino);
         tournament.setFechaInicio(request.getFechaInicio());
@@ -314,6 +318,7 @@ public class TournamentService {
                 .estado(tournament.getEstado())
                 .courseId(tournament.getCourse().getId())
                 .courseName(tournament.getCourse().getNombre())
+                .cantidadHoyosJuego(tournament.getCantidadHoyosJuego())
                 .teeMasculinoId(tournament.getTeeMasculino() != null ? tournament.getTeeMasculino().getId() : null)
                 .teeFemeninoId(tournament.getTeeFemenino() != null ? tournament.getTeeFemenino().getId() : null)
                 .fechaInicio(tournament.getFechaInicio())
@@ -334,9 +339,6 @@ public class TournamentService {
         if (!"PENDING".equals(tournament.getEstado())) {
             throw new BadRequestException("Tournament can only be started from PENDING status");
         }
-        if (tournament.getTeeMasculino() == null || tournament.getTeeFemenino() == null) {
-            throw new BadRequestException("Imposible iniciar el torneo debido a que no tiene tee de salida definido para masculino y femenino.");
-        }
 
         tournament.setEstado("IN_PROGRESS");
         tournament = tournamentRepository.save(tournament);
@@ -351,7 +353,7 @@ public class TournamentService {
 
         // Convert any in-progress scorecards to CANCELLED before finalizing.
         List<Scorecard> inProgressScorecards = scorecardRepository
-                .findByTournamentIdAndStatus(id, ScorecardStatus.IN_PROGRESS);
+                .findByTournamentIdAndStatusIn(id, List.of(ScorecardStatus.IN_PROGRESS, ScorecardStatus.PENDING_CONFIG));
 
         if (!inProgressScorecards.isEmpty()) {
             LocalDateTime now = LocalDateTime.now();
@@ -391,5 +393,14 @@ public class TournamentService {
             throw new BadRequestException("El tee seleccionado no pertenece al campo del torneo");
         }
         return tee;
+    }
+
+    private void validateCantidadHoyosJuego(Integer cantidadHoyosJuego) {
+        if (cantidadHoyosJuego == null) {
+            return;
+        }
+        if (cantidadHoyosJuego != 9 && cantidadHoyosJuego != 18) {
+            throw new BadRequestException("La cantidad de hoyos a jugar debe ser 9 o 18.");
+        }
     }
 }

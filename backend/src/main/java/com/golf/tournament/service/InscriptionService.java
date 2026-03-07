@@ -43,7 +43,6 @@ public class InscriptionService {
                 throw new BadRequestException("Tournament has reached maximum inscriptions");
             }
         }
-        validateTournamentTeesBySex(tournament);
 
         // Buscar el jugador en la base de datos por matrícula
         Player player = playerRepository.findByMatricula(request.getMatricula())
@@ -96,7 +95,6 @@ public class InscriptionService {
                 throw new BadRequestException("Torneo ha alcanzado su capacidad máxima");
             }
         }
-        validateTournamentTeesBySex(tournament);
 
         TournamentInscription inscription = TournamentInscription.builder()
                 .tournament(tournament)
@@ -195,9 +193,4 @@ public class InscriptionService {
         }
     }
 
-    private void validateTournamentTeesBySex(Tournament tournament) {
-        if (tournament.getTeeMasculino() == null || tournament.getTeeFemenino() == null) {
-            throw new BadRequestException("Imposible inscribir jugadores. El torneo debe tener tee de salida definido para M y F.");
-        }
-    }
 }

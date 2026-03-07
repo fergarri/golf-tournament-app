@@ -31,6 +31,7 @@ const TournamentsPage = () => {
     tipo: 'CLASICO',
     modalidad: 'MEDAL_PLAY',
     courseId: '',
+    cantidadHoyosJuego: '',
     teeMasculinoId: '',
     teeFemeninoId: '',
     fechaInicio: '',
@@ -102,6 +103,7 @@ const TournamentsPage = () => {
       tipo: 'CLASICO',
       modalidad: 'MEDAL_PLAY',
       courseId: courses.length > 0 ? courses[0].id : '',
+      cantidadHoyosJuego: '',
       teeMasculinoId: '',
       teeFemeninoId: '',
       fechaInicio: '',
@@ -120,6 +122,7 @@ const TournamentsPage = () => {
       tipo: tournament.tipo,
       modalidad: tournament.modalidad,
       courseId: tournament.courseId,
+      cantidadHoyosJuego: tournament.cantidadHoyosJuego || '',
       teeMasculinoId: tournament.teeMasculinoId || '',
       teeFemeninoId: tournament.teeFemeninoId || '',
       fechaInicio: tournament.fechaInicio,
@@ -138,6 +141,7 @@ const TournamentsPage = () => {
       const payload = {
         ...formData,
         courseId: parseInt(formData.courseId),
+        cantidadHoyosJuego: formData.cantidadHoyosJuego ? parseInt(formData.cantidadHoyosJuego) : null,
         teeMasculinoId: formData.teeMasculinoId ? parseInt(formData.teeMasculinoId) : null,
         teeFemeninoId: formData.teeFemeninoId ? parseInt(formData.teeFemeninoId) : null,
         limiteInscriptos: formData.limiteInscriptos ? parseInt(formData.limiteInscriptos) : null,
@@ -508,9 +512,21 @@ const TournamentsPage = () => {
               <option value="">Seleccionar un campo</option>
               {courses.map((course) => (
                 <option key={course.id} value={course.id}>
-                  {course.nombre} ({course.cantidadHoyos} hoyos)
+                  {course.nombre}
                 </option>
               ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Cantidad de Hoyos a Jugar</label>
+            <select
+              value={formData.cantidadHoyosJuego}
+              onChange={(e) => setFormData({ ...formData, cantidadHoyosJuego: e.target.value })}
+            >
+              <option value="">Definir más adelante</option>
+              <option value="9">9 Hoyos</option>
+              <option value="18">18 Hoyos</option>
             </select>
           </div>
 

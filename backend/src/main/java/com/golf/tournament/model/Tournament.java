@@ -56,6 +56,9 @@ public class Tournament {
     @JoinColumn(name = "tee_femenino_id")
     private CourseTee teeFemenino;
 
+    @Column(name = "cantidad_hoyos_juego")
+    private Integer cantidadHoyosJuego;
+
     @Column(name = "fecha_inicio", nullable = false)
     private LocalDate fechaInicio;
 

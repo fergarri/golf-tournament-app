@@ -89,6 +89,7 @@ export interface Tournament {
   estado: string;
   courseId: number;
   courseName: string;
+  cantidadHoyosJuego?: number | null;
   teeMasculinoId?: number | null;
   teeFemeninoId?: number | null;
   fechaInicio: string;
@@ -122,6 +123,8 @@ export interface Scorecard {
   markerId?: number;
   markerName?: string;
   handicapCourse?: number;
+  teeId?: number | null;
+  cantidadHoyosJuego?: number | null;
   status: string;
   deliveredAt?: string;
   holeScores: HoleScore[];

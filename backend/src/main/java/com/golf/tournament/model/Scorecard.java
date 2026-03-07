@@ -42,6 +42,13 @@ public class Scorecard {
     @Column(name = "handicap_course", precision = 4, scale = 2)
     private BigDecimal handicapCourse;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "tee_id")
+    private CourseTee tee;
+
+    @Column(name = "cantidad_hoyos_juego")
+    private Integer cantidadHoyosJuego;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

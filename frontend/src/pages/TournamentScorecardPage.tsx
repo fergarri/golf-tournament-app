@@ -93,32 +93,40 @@ const TournamentScorecardPage = () => {
       setTournament(tournamentData);
       setPlayer(playerData);
 
-      // Cargar hoyos del campo
-      const holesData = await courseService.getHoles(tournamentData.courseId);
-      const sortedHoles = holesData.sort((a: Hole, b: Hole) => a.numeroHoyo - b.numeroHoyo);
-      setHoles(sortedHoles);
-
-      // Cargar información del tee del torneo
-      const teeIdBySex = playerData.sexo === 'F' ? tournamentData.teeFemeninoId : tournamentData.teeMasculinoId;
-      if (teeIdBySex) {
-        const tees = await courseService.getTees(tournamentData.courseId);
-        const tee = tees.find((t: any) => t.id === teeIdBySex);
-        setSelectedTee(tee);
-      }
-
       // Cargar o crear scorecard del backend
       let scorecardData: Scorecard | null = null;
       try {
         // El scorecard se crea al inscribir, pero getOrCreate cubre datos históricos
         scorecardData = await scorecardService.getOrCreate(tournamentData.id, playerData.id);
         setScorecard(scorecardData);
+        if (scorecardData.status === 'PENDING_CONFIG') {
+          setError('Debe completar la configuración en la pantalla de acceso antes de cargar la tarjeta.');
+          setLoading(false);
+          return;
+        }
       } catch (err) {
         console.error('Error cargando scorecard:', err);
       }
 
+      // Cargar hoyos del campo y aplicar cantidad configurada en la scorecard
+      const holesData = await courseService.getHoles(tournamentData.courseId);
+      const sortedHoles = holesData.sort((a: Hole, b: Hole) => a.numeroHoyo - b.numeroHoyo);
+      const holesToPlay = scorecardData?.cantidadHoyosJuego === 9
+        ? sortedHoles.filter((hole: Hole) => hole.numeroHoyo <= 9)
+        : sortedHoles;
+      setHoles(holesToPlay);
+
+      // Cargar tee efectivo de la scorecard
+      setSelectedTee(null);
+      if (scorecardData?.teeId) {
+        const tees = await courseService.getTees(tournamentData.courseId);
+        const tee = tees.find((t: any) => t.id === scorecardData?.teeId);
+        setSelectedTee(tee || null);
+      }
+
       // Inicializar scores SIEMPRE desde el backend
       const initialScores: any = {};
-      sortedHoles.forEach((hole: Hole) => {
+      holesToPlay.forEach((hole: Hole) => {
         // Cargar SOLO del backend
         const holeScore = scorecardData?.holeScores.find(hs => hs.numeroHoyo === hole.numeroHoyo);
         initialScores[hole.numeroHoyo] = {
@@ -463,7 +471,8 @@ const TournamentScorecardPage = () => {
   const totalPar = getTotalPar();
   const scoreNeto = getScoreNeto();
   const hasBackNine = holes.some(h => h.numeroHoyo > 9);
-  const selectedTeeId = player?.sexo === 'F' ? tournament.teeFemeninoId : tournament.teeMasculinoId;
+  const selectedTeeId = scorecard?.teeId
+    || (player?.sexo === 'F' ? tournament.teeFemeninoId : tournament.teeMasculinoId);
 
   return (
     <div className="scorecard-container">

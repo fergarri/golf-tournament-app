@@ -23,6 +23,7 @@ public class TournamentDTO {
     private String estado;
     private Long courseId;
     private String courseName;
+    private Integer cantidadHoyosJuego;
     private Long teeMasculinoId;
     private Long teeFemeninoId;
     private LocalDate fechaInicio;

@@ -3,6 +3,7 @@ package com.golf.tournament.service;
 import com.golf.tournament.dto.scorecard.HoleScoreDTO;
 import com.golf.tournament.dto.scorecard.ScorecardDTO;
 import com.golf.tournament.dto.scorecard.UpdateScoreRequest;
+import com.golf.tournament.dto.scorecard.ConfigureScorecardRequest;
 import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.model.*;
@@ -13,7 +14,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
 
@@ -21,11 +24,15 @@ import java.math.BigDecimal;
 @Service
 @RequiredArgsConstructor
 public class ScorecardService {
+    private static final String IN_PROGRESS_EXISTS = "IN_PROGRESS_EXISTS";
+    private static final String CONTINUE_EXISTING = "CONTINUE_EXISTING";
+    private static final String START_NEW = "START_NEW";
 
     private final ScorecardRepository scorecardRepository;
     private final TournamentRepository tournamentRepository;
     private final PlayerRepository playerRepository;
     private final HoleRepository holeRepository;
+    private final CourseTeeRepository courseTeeRepository;
     private final HoleScoreRepository holeScoreRepository;
     private final TournamentInscriptionRepository inscriptionRepository;
     private final TournamentCategoryRepository categoryRepository;
@@ -33,6 +40,11 @@ public class ScorecardService {
 
     @Transactional
     public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId) {
+        return getOrCreateScorecard(tournamentId, playerId, null);
+    }
+
+    @Transactional
+    public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId, ConfigureScorecardRequest request) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
 
@@ -47,55 +59,68 @@ public class ScorecardService {
             throw new BadRequestException("Jugador no inscrito en este torneo");
         }
 
-        if (player.getHandicapIndex() == null) {
-            throw new BadRequestException("El jugador no tiene handicap index asignado. Hable con el capitan de cancha");
-        }
-        if (player.getSexo() == null || player.getSexo().isBlank()) {
-            throw new BadRequestException("El jugador no tiene sexo definido.");
+        if (player.getSexo() == null || player.getSexo().trim().isBlank()) {
+            throw new BadRequestException("El jugador no tiene sexo definido. Debe ser M o F.");
         }
 
-        if (tournament.getTeeMasculino() == null || tournament.getTeeFemenino() == null) {
-            throw new BadRequestException("Imposible crear la tarjeta. El torneo no tiene tee de salida definido para masculino y femenino.");
-        }
         String sexo = player.getSexo().trim().toUpperCase();
-        CourseTee selectedTee;
-        if ("M".equals(sexo)) {
-            selectedTee = tournament.getTeeMasculino();
-        } else if ("F".equals(sexo)) {
-            selectedTee = tournament.getTeeFemenino();
-        } else {
+        if (!"M".equals(sexo) && !"F".equals(sexo)) {
             throw new BadRequestException("El sexo del jugador es inválido. Debe ser M o F.");
-        }
-        Long teeId = selectedTee.getId();
-
-        HandicapConversion conversion = handicapConversionRepository
-                .findByTeeAndHandicapIndex(teeId, player.getHandicapIndex())
-                .orElseThrow(() -> new BadRequestException(
-                    "No se encontró conversión de handicap para el tee seleccionado y el handicap index del jugador"));
-
-        BigDecimal handicapCourse;
-        if (tournament.getCourse().getCantidadHoyos() == 9) {
-            handicapCourse = BigDecimal.valueOf(conversion.getCourseHandicap() / 2.0);
-        } else {
-            handicapCourse = BigDecimal.valueOf(conversion.getCourseHandicap());
         }
 
         Scorecard scorecard = scorecardRepository.findByTournamentIdAndPlayerId(tournamentId, playerId)
-                .orElseGet(() -> createNewScorecard(tournament, player, handicapCourse));
+                .orElse(null);
 
-        boolean handicapChanged = false;
-        if (scorecard.getHandicapCourse() == null || 
-            (scorecard.getStatus() == ScorecardStatus.IN_PROGRESS && !scorecard.getHandicapCourse().equals(handicapCourse))) {
-            scorecard.setHandicapCourse(handicapCourse);
-            scorecard = scorecardRepository.save(scorecard);
-            handicapChanged = true;
+        boolean tournamentFullyConfigured = isTournamentFullyConfigured(tournament);
+        if (scorecard != null
+                && scorecard.getStatus() == ScorecardStatus.IN_PROGRESS
+                && !tournamentFullyConfigured) {
+            String inProgressAction = request != null ? request.getInProgressAction() : null;
+
+            if (inProgressAction == null || inProgressAction.trim().isBlank()) {
+                return buildInProgressExistsResponse(scorecard);
+            }
+
+            if (CONTINUE_EXISTING.equalsIgnoreCase(inProgressAction.trim())) {
+                if (scorecard.getHandicapCourse() != null) {
+                    assignCategoryToInscription(tournamentId, playerId, scorecard.getHandicapCourse());
+                }
+                return convertToDTO(scorecard);
+            }
+
+            if (START_NEW.equalsIgnoreCase(inProgressAction.trim())) {
+                scorecardRepository.delete(scorecard);
+                scorecardRepository.flush();
+                scorecard = null;
+            } else {
+                throw new BadRequestException("Acción inválida para scorecard en progreso.");
+            }
         }
 
-        if (handicapChanged || scorecard.getHandicapCourse() != null) {
+        if (scorecard == null) {
+            scorecard = createNewScorecard(tournament, player, request, sexo);
+        }
+
+        if (scorecard.getStatus() == ScorecardStatus.PENDING_CONFIG) {
+            scorecard = completePendingScorecard(scorecard, tournament, player, request, sexo);
+        }
+
+        if (scorecard.getHandicapCourse() != null) {
             assignCategoryToInscription(tournamentId, playerId, scorecard.getHandicapCourse());
         }
-
         return convertToDTO(scorecard);
+    }
+
+    private boolean isTournamentFullyConfigured(Tournament tournament) {
+        return tournament.getCantidadHoyosJuego() != null
+                && tournament.getTeeMasculino() != null
+                && tournament.getTeeFemenino() != null;
+    }
+
+    private ScorecardDTO buildInProgressExistsResponse(Scorecard scorecard) {
+        ScorecardDTO dto = convertToDTO(scorecard);
+        dto.setStatus(IN_PROGRESS_EXISTS);
+        return dto;
     }
 
     private void assignCategoryToInscription(Long tournamentId, Long playerId, BigDecimal handicapCourse) {
@@ -167,6 +192,7 @@ public class ScorecardService {
     public void updateScore(Long scorecardId, UpdateScoreRequest request) {
         Scorecard scorecard = scorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+        ensureScorecardConfigured(scorecard);
         
         Hole hole = holeRepository.findById(request.getHoleId())
                 .orElseThrow(() -> new ResourceNotFoundException("Hole", "id", request.getHoleId()));
@@ -194,6 +220,7 @@ public class ScorecardService {
     public ScorecardDTO updateScorecard(Long scorecardId, com.golf.tournament.dto.scorecard.UpdateScorecardRequest request) {
         Scorecard scorecard = scorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+        ensureScorecardConfigured(scorecard);
 
         for (com.golf.tournament.dto.scorecard.UpdateScorecardRequest.HoleScoreUpdate holeScoreUpdate : request.getHoleScores()) {
             Hole hole = holeRepository.findById(holeScoreUpdate.getHoleId())
@@ -223,6 +250,7 @@ public class ScorecardService {
     public ScorecardDTO deliverScorecard(Long scorecardId) {
         Scorecard scorecard = scorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+        ensureScorecardConfigured(scorecard);
 
         if ("FINALIZED".equals(scorecard.getTournament().getEstado())) {
             throw new BadRequestException("Imposible entregar la tarjeta. Torneo cerrado.");
@@ -252,6 +280,7 @@ public class ScorecardService {
     public ScorecardDTO cancelScorecard(Long scorecardId) {
         Scorecard scorecard = scorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+        ensureScorecardConfigured(scorecard);
 
         if (scorecard.getStatus() == ScorecardStatus.DELIVERED) {
             throw new BadRequestException("No se puede cancelar una tarjeta ya entregada");
@@ -332,28 +361,135 @@ public class ScorecardService {
         return convertToDTO(scorecard);
     }
 
-    private Scorecard createNewScorecard(Tournament tournament, Player player, BigDecimal handicapCourse) {
+    private Scorecard createNewScorecard(Tournament tournament,
+                                         Player player,
+                                         ConfigureScorecardRequest request,
+                                         String sexo) {
+        Integer cantidadHoyosJuego = resolveCantidadHoyosJuego(tournament, request);
+        CourseTee selectedTee = resolveSelectedTee(tournament, sexo, request);
+        boolean canConfigure = cantidadHoyosJuego != null && selectedTee != null;
+
         Scorecard scorecard = Scorecard.builder()
                 .tournament(tournament)
                 .player(player)
-                .handicapCourse(handicapCourse)
-                .status(ScorecardStatus.IN_PROGRESS)
+                .tee(selectedTee)
+                .cantidadHoyosJuego(cantidadHoyosJuego)
+                .status(canConfigure ? ScorecardStatus.IN_PROGRESS : ScorecardStatus.PENDING_CONFIG)
                 .build();
 
+        if (canConfigure) {
+            scorecard.setHandicapCourse(calculateHandicapCourse(selectedTee, cantidadHoyosJuego, player));
+        }
         scorecard = scorecardRepository.save(scorecard);
+        if (canConfigure) {
+            initializeHoleScores(scorecard);
+        }
+        return scorecard;
+    }
 
-        List<Hole> holes = holeRepository.findByCourseIdOrderByNumeroHoyoAsc(tournament.getCourse().getId());
-        for (Hole hole : holes) {
+    private Scorecard completePendingScorecard(Scorecard scorecard,
+                                               Tournament tournament,
+                                               Player player,
+                                               ConfigureScorecardRequest request,
+                                               String sexo) {
+        Integer cantidadHoyosJuego = scorecard.getCantidadHoyosJuego() != null
+                ? scorecard.getCantidadHoyosJuego()
+                : resolveCantidadHoyosJuego(tournament, request);
+        CourseTee selectedTee = scorecard.getTee() != null
+                ? scorecard.getTee()
+                : resolveSelectedTee(tournament, sexo, request);
+
+        if (cantidadHoyosJuego == null || selectedTee == null) {
+            return scorecard;
+        }
+
+        scorecard.setCantidadHoyosJuego(cantidadHoyosJuego);
+        scorecard.setTee(selectedTee);
+        scorecard.setHandicapCourse(calculateHandicapCourse(selectedTee, cantidadHoyosJuego, player));
+        scorecard.setStatus(ScorecardStatus.IN_PROGRESS);
+        scorecard = scorecardRepository.save(scorecard);
+        initializeHoleScores(scorecard);
+        return scorecard;
+    }
+
+    private Integer resolveCantidadHoyosJuego(Tournament tournament, ConfigureScorecardRequest request) {
+        Integer cantidadHoyosJuego = tournament.getCantidadHoyosJuego() != null
+                ? tournament.getCantidadHoyosJuego()
+                : (request != null ? request.getCantidadHoyosJuego() : null);
+        if (cantidadHoyosJuego == null) {
+            return null;
+        }
+        if (cantidadHoyosJuego != 9 && cantidadHoyosJuego != 18) {
+            throw new BadRequestException("La cantidad de hoyos a jugar debe ser 9 o 18.");
+        }
+        return cantidadHoyosJuego;
+    }
+
+    private CourseTee resolveSelectedTee(Tournament tournament, String sexo, ConfigureScorecardRequest request) {
+        CourseTee tournamentTee = "F".equals(sexo) ? tournament.getTeeFemenino() : tournament.getTeeMasculino();
+        if (tournamentTee != null) {
+            return tournamentTee;
+        }
+
+        Long requestedTeeId = request != null ? request.getTeeId() : null;
+        if (requestedTeeId == null) {
+            return null;
+        }
+        CourseTee requestedTee = playerSelectedTee(tournament, requestedTeeId);
+        if (!Boolean.TRUE.equals(requestedTee.getActive())) {
+            throw new BadRequestException("El tee seleccionado no se encuentra activo.");
+        }
+        return requestedTee;
+    }
+
+    private CourseTee playerSelectedTee(Tournament tournament, Long teeId) {
+        CourseTee tee = courseTeeRepository.findById(teeId)
+                .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeId));
+        if (!Objects.equals(tee.getCourse().getId(), tournament.getCourse().getId())) {
+            throw new BadRequestException("El tee seleccionado no pertenece al campo del torneo.");
+        }
+        return tee;
+    }
+
+    private BigDecimal calculateHandicapCourse(CourseTee tee, Integer cantidadHoyosJuego, Player player) {
+        if (player.getHandicapIndex() == null) {
+            throw new BadRequestException("El jugador no tiene handicap index asignado. Hable con el capitan de cancha");
+        }
+
+        HandicapConversion conversion = handicapConversionRepository
+                .findByTeeAndHandicapIndex(tee.getId(), player.getHandicapIndex())
+                .orElseThrow(() -> new BadRequestException(
+                        "No se encontró conversión de handicap para el tee seleccionado y el handicap index del jugador"));
+
+        if (cantidadHoyosJuego == 9) {
+            return BigDecimal.valueOf(conversion.getCourseHandicap() / 2.0);
+        }
+        return BigDecimal.valueOf(conversion.getCourseHandicap());
+    }
+
+    private void initializeHoleScores(Scorecard scorecard) {
+        if (scorecard.getCantidadHoyosJuego() == null) {
+            return;
+        }
+        holeScoreRepository.deleteAll(holeScoreRepository.findByScorecardId(scorecard.getId()));
+
+        List<Hole> holes = holeRepository.findByCourseIdOrderByNumeroHoyoAsc(scorecard.getTournament().getCourse().getId());
+        List<Hole> selectedHoles = holes.stream()
+                .filter(hole -> scorecard.getCantidadHoyosJuego() == 18 || hole.getNumeroHoyo() <= 9)
+                .collect(Collectors.toCollection(ArrayList::new));
+        for (Hole hole : selectedHoles) {
             HoleScore holeScore = HoleScore.builder()
                     .scorecard(scorecard)
                     .hole(hole)
                     .build();
             holeScoreRepository.save(holeScore);
         }
+    }
 
-        log.info("New scorecard created for tournament {} player {} with handicap course {}", 
-                tournament.getId(), player.getId(), handicapCourse);
-        return scorecard;
+    private void ensureScorecardConfigured(Scorecard scorecard) {
+        if (scorecard.getStatus() == ScorecardStatus.PENDING_CONFIG) {
+            throw new BadRequestException("Debe completar tee de salida y cantidad de hoyos antes de cargar la tarjeta.");
+        }
     }
 
     private ScorecardDTO convertToDTO(Scorecard scorecard) {
@@ -379,6 +515,8 @@ public class ScorecardService {
                 .markerName(scorecard.getMarker() != null ?
                         scorecard.getMarker().getNombre() + " " + scorecard.getMarker().getApellido() : null)
                 .handicapCourse(scorecard.getHandicapCourse())
+                .teeId(scorecard.getTee() != null ? scorecard.getTee().getId() : null)
+                .cantidadHoyosJuego(scorecard.getCantidadHoyosJuego())
                 .status(scorecard.getStatus().name())
                 .deliveredAt(scorecard.getDeliveredAt())
                 .holeScores(holeScores)
