@@ -18,6 +18,9 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class LeaderboardService {
+    private static final String CATEGORY_SEX_MALE = "M";
+    private static final String CATEGORY_SEX_FEMALE = "F";
+    private static final String CATEGORY_SEX_MIXED = "X";
 
     private final TournamentRepository tournamentRepository;
     private final ScorecardRepository scorecardRepository;
@@ -25,12 +28,18 @@ public class LeaderboardService {
     private final TournamentInscriptionRepository inscriptionRepository;
     private final TournamentCategoryRepository categoryRepository;
 
-    private TournamentCategory determineCategory(BigDecimal handicapCourse, List<TournamentCategory> categories) {
+    private TournamentCategory determineCategory(BigDecimal handicapCourse,
+                                                 String playerSex,
+                                                 List<TournamentCategory> categories) {
         if (handicapCourse == null || categories == null || categories.isEmpty()) {
             return null;
         }
 
+        String normalizedPlayerSex = normalizePlayerSex(playerSex);
         for (TournamentCategory category : categories) {
+            if (!categoryAppliesToPlayerSex(category, normalizedPlayerSex)) {
+                continue;
+            }
             if (handicapCourse.compareTo(category.getHandicapMin()) >= 0 &&
                 handicapCourse.compareTo(category.getHandicapMax()) <= 0) {
                 return category;
@@ -38,6 +47,38 @@ public class LeaderboardService {
         }
 
         return null;
+    }
+
+    private String normalizePlayerSex(String playerSex) {
+        if (playerSex == null || playerSex.trim().isBlank()) {
+            return CATEGORY_SEX_MIXED;
+        }
+        String normalized = playerSex.trim().toUpperCase();
+        if (CATEGORY_SEX_MALE.equals(normalized) || CATEGORY_SEX_FEMALE.equals(normalized)) {
+            return normalized;
+        }
+        return CATEGORY_SEX_MIXED;
+    }
+
+    private String normalizeCategorySex(String categorySex) {
+        if (categorySex == null || categorySex.trim().isBlank()) {
+            return CATEGORY_SEX_MIXED;
+        }
+        String normalized = categorySex.trim().toUpperCase();
+        if (CATEGORY_SEX_MALE.equals(normalized)
+                || CATEGORY_SEX_FEMALE.equals(normalized)
+                || CATEGORY_SEX_MIXED.equals(normalized)) {
+            return normalized;
+        }
+        return CATEGORY_SEX_MIXED;
+    }
+
+    private boolean categoryAppliesToPlayerSex(TournamentCategory category, String playerSex) {
+        String categorySex = normalizeCategorySex(category.getSexoCategoria());
+        if (CATEGORY_SEX_MIXED.equals(categorySex)) {
+            return true;
+        }
+        return categorySex.equals(playerSex);
     }
 
     @Transactional(readOnly = true)
@@ -76,7 +117,11 @@ public class LeaderboardService {
                 BigDecimal scoreNeto = BigDecimal.valueOf(totalScore).subtract(handicapCourse);
                 BigDecimal scoreToPar = scoreNeto.subtract(BigDecimal.valueOf(totalPar));
 
-                TournamentCategory calculatedCategory = determineCategory(handicapCourse, allCategories);
+                TournamentCategory calculatedCategory = determineCategory(
+                        handicapCourse,
+                        player.getSexo(),
+                        allCategories
+                );
                 Long calculatedCategoryId = calculatedCategory != null ? calculatedCategory.getId() : null;
                 String calculatedCategoryName = calculatedCategory != null ? calculatedCategory.getNombre() : null;
 

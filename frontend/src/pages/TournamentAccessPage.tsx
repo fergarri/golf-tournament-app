@@ -130,7 +130,7 @@ const TournamentAccessPage = () => {
 
       navigate(`/play/${codigo}/scorecard`, { state: { matricula } });
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Jugador no encontrado o no inscrito en este torneo';
+      const errorMessage = err.response?.data?.message || 'Jugador no encontrado o no inscripto en el torneo';
       setModalMessage(errorMessage);
       setModalOpen(true);
     } finally {

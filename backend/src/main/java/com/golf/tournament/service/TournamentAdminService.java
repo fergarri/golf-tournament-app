@@ -143,7 +143,7 @@ public class TournamentAdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("Player", "id", playerId));
 
         if (inscriptionRepository.existsByTournamentAdminIdAndPlayerId(tournamentAdminId, playerId)) {
-            throw new BadRequestException("El jugador ya está inscrito en este torneo");
+            throw new BadRequestException("El jugador ya está inscripto en el torneo");
         }
 
         TournamentAdminInscription inscription = TournamentAdminInscription.builder()
@@ -163,7 +163,7 @@ public class TournamentAdminService {
         }
         paymentRepository.saveAll(payments);
 
-        log.info("Jugador {} inscrito en torneo admin {}", playerId, tournamentAdminId);
+        log.info("Jugador {} inscripto en el torneo admin {}", playerId, tournamentAdminId);
     }
 
     @Transactional

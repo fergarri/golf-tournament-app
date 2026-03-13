@@ -527,7 +527,7 @@ const TournamentLeaderboardPage = () => {
       {leaderboard.length === 0 ? (
         <div className="empty-state">
           <h2>No hay Jugadores Inscritos</h2>
-          <p>No hay jugadores inscritos en este torneo</p>
+          <p>No hay jugadores inscriptos en el torneo</p>
         </div>
       ) : (
         <>

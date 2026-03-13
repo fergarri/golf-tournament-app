@@ -48,9 +48,9 @@ public class InscriptionService {
         Player player = playerRepository.findByMatricula(request.getMatricula())
                 .orElseThrow(() -> new BadRequestException("El player no se encuentra registrado en la app. Por favor comunicarse con secretaria."));
 
-        // Verificar si el jugador ya está inscrito en este torneo
+        // Verificar si el jugador ya está inscripto en este torneo
         if (inscriptionRepository.existsByTournamentIdAndPlayerId(tournament.getId(), player.getId())) {
-            throw new BadRequestException("Jugador ya inscrito en este torneo");
+            throw new BadRequestException("Jugador ya inscripto en este torneo");
         }
 
         TournamentInscription inscription = TournamentInscription.builder()
@@ -62,13 +62,13 @@ public class InscriptionService {
         inscription = inscriptionRepository.save(inscription);
         createScorecardAfterInscription(tournament, player);
 
-        log.info("Jugador {} inscrito en torneo {}", player.getId(), tournament.getId());
+        log.info("Jugador {} inscripto en el torneo {}", player.getId(), tournament.getId());
 
         return InscriptionResponse.builder()
                 .inscriptionId(inscription.getId())
                 .player(convertPlayerToDTO(player))
                 .categoryName(null)
-                .message("Jugador inscrito en torneo")
+                .message("Jugador inscripto en el torneo")
                 .build();
     }
 
@@ -81,7 +81,7 @@ public class InscriptionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Player", "id", playerId));
 
         if (inscriptionRepository.existsByTournamentIdAndPlayerId(tournamentId, playerId)) {
-            throw new BadRequestException("Jugador ya inscrito en este torneo");
+            throw new BadRequestException("Jugador ya inscripto en el torneo");
         }
 
         // Validar que el torneo esté en estado PENDING
@@ -105,13 +105,13 @@ public class InscriptionService {
         inscription = inscriptionRepository.save(inscription);
         createScorecardAfterInscription(tournament, player);
 
-        log.info("Jugador {} inscrito en torneo {} por admin", playerId, tournamentId);
+        log.info("Jugador {} inscripto en el torneo {} por admin", playerId, tournamentId);
 
         return InscriptionResponse.builder()
                 .inscriptionId(inscription.getId())
                 .player(convertPlayerToDTO(player))
                 .categoryName(null)
-                .message("Jugador inscrito en torneo por admin")
+                .message("Jugador inscripto en el torneo por admin")
                 .build();
     }
 

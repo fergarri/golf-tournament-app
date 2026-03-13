@@ -30,6 +30,9 @@ public class TournamentService {
     private static final String CODIGO_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int CODIGO_LENGTH = 8;
     private static final SecureRandom random = new SecureRandom();
+    private static final String CATEGORY_SEX_MALE = "M";
+    private static final String CATEGORY_SEX_FEMALE = "F";
+    private static final String CATEGORY_SEX_MIXED = "X";
 
     @Transactional(readOnly = true)
     public List<TournamentDTO> getAllTournaments() {
@@ -57,6 +60,7 @@ public class TournamentService {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
         validateCantidadHoyosJuego(request.getCantidadHoyosJuego());
+        validateCategorySexes(request.getCategories());
         CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId());
         CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId());
 
@@ -88,6 +92,7 @@ public class TournamentService {
                     .nombre(categoryDTO.getNombre())
                     .handicapMin(categoryDTO.getHandicapMin())
                     .handicapMax(categoryDTO.getHandicapMax())
+                    .sexoCategoria(normalizeCategorySex(categoryDTO.getSexoCategoria()))
                     .build();
             tournamentCategoryRepository.save(category);
         }
@@ -104,6 +109,7 @@ public class TournamentService {
         Course course = courseRepository.findById(request.getCourseId())
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
         validateCantidadHoyosJuego(request.getCantidadHoyosJuego());
+        validateCategorySexes(request.getCategories());
         CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId());
         CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId());
 
@@ -170,6 +176,13 @@ public class TournamentService {
                     existingCategory.setHandicapMax(categoryDTO.getHandicapMax());
                     fieldChanged = true;
                 }
+
+                String requestedCategorySex = normalizeCategorySex(categoryDTO.getSexoCategoria());
+                String currentCategorySex = normalizeCategorySex(existingCategory.getSexoCategoria());
+                if (!currentCategorySex.equals(requestedCategorySex)) {
+                    existingCategory.setSexoCategoria(requestedCategorySex);
+                    fieldChanged = true;
+                }
                 
                 if (fieldChanged) {
                     tournamentCategoryRepository.save(existingCategory);
@@ -186,6 +199,7 @@ public class TournamentService {
                         .nombre(categoryDTO.getNombre())
                         .handicapMin(categoryDTO.getHandicapMin())
                         .handicapMax(categoryDTO.getHandicapMax())
+                        .sexoCategoria(normalizeCategorySex(categoryDTO.getSexoCategoria()))
                         .build();
                 tournamentCategoryRepository.save(newCategory);
                 categoriesChanged = true;
@@ -218,13 +232,18 @@ public class TournamentService {
      * Finds the appropriate category for a given handicap course value.
      * Returns null if the handicap doesn't fall within any category range.
      */
-    private TournamentCategory findCategoryForHandicap(java.math.BigDecimal handicapCourse, 
+    private TournamentCategory findCategoryForHandicap(java.math.BigDecimal handicapCourse,
+                                                       String playerSex,
                                                        List<TournamentCategory> categories) {
         if (handicapCourse == null || categories == null || categories.isEmpty()) {
             return null;
         }
 
+        String normalizedPlayerSex = normalizePlayerSex(playerSex);
         for (TournamentCategory category : categories) {
+            if (!categoryAppliesToPlayerSex(category, normalizedPlayerSex)) {
+                continue;
+            }
             // Check if handicapCourse is within the category range (inclusive)
             if (handicapCourse.compareTo(category.getHandicapMin()) >= 0 &&
                 handicapCourse.compareTo(category.getHandicapMax()) <= 0) {
@@ -263,7 +282,11 @@ public class TournamentService {
             
             // Only assign category if scorecard exists AND has handicapCourse
             if (scorecard != null && scorecard.getHandicapCourse() != null) {
-                newCategory = findCategoryForHandicap(scorecard.getHandicapCourse(), categories);
+                newCategory = findCategoryForHandicap(
+                        scorecard.getHandicapCourse(),
+                        inscription.getPlayer().getSexo(),
+                        categories
+                );
                 
                 if (newCategory != null) {
                     reassignedCount++;
@@ -379,6 +402,7 @@ public class TournamentService {
                 .nombre(category.getNombre())
                 .handicapMin(category.getHandicapMin())
                 .handicapMax(category.getHandicapMax())
+                .sexoCategoria(category.getSexoCategoria())
                 .build();
     }
 
@@ -402,5 +426,48 @@ public class TournamentService {
         if (cantidadHoyosJuego != 9 && cantidadHoyosJuego != 18) {
             throw new BadRequestException("La cantidad de hoyos a jugar debe ser 9 o 18.");
         }
+    }
+
+    private void validateCategorySexes(List<TournamentCategoryDTO> categories) {
+        if (categories == null) {
+            return;
+        }
+        for (TournamentCategoryDTO category : categories) {
+            normalizeCategorySex(category.getSexoCategoria());
+        }
+    }
+
+    private String normalizeCategorySex(String categorySex) {
+        if (categorySex == null || categorySex.trim().isBlank()) {
+            return CATEGORY_SEX_MIXED;
+        }
+
+        String normalized = categorySex.trim().toUpperCase();
+        if (!CATEGORY_SEX_MALE.equals(normalized)
+                && !CATEGORY_SEX_FEMALE.equals(normalized)
+                && !CATEGORY_SEX_MIXED.equals(normalized)) {
+            throw new BadRequestException("El sexo de categoría es inválido. Debe ser M, F o X.");
+        }
+        return normalized;
+    }
+
+    private String normalizePlayerSex(String playerSex) {
+        if (playerSex == null || playerSex.trim().isBlank()) {
+            return CATEGORY_SEX_MIXED;
+        }
+
+        String normalized = playerSex.trim().toUpperCase();
+        if (CATEGORY_SEX_MALE.equals(normalized) || CATEGORY_SEX_FEMALE.equals(normalized)) {
+            return normalized;
+        }
+        return CATEGORY_SEX_MIXED;
+    }
+
+    private boolean categoryAppliesToPlayerSex(TournamentCategory category, String playerSex) {
+        String categorySex = normalizeCategorySex(category.getSexoCategoria());
+        if (CATEGORY_SEX_MIXED.equals(categorySex)) {
+            return true;
+        }
+        return categorySex.equals(playerSex);
     }
 }

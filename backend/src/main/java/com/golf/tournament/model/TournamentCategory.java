@@ -35,6 +35,10 @@ public class TournamentCategory {
     @Column(name = "handicap_max", nullable = false, precision = 4, scale = 1)
     private BigDecimal handicapMax;
 
+    @Column(name = "sexo_categoria", nullable = false, length = 1)
+    @Builder.Default
+    private String sexoCategoria = "X";
+
     // No cascade to prevent deletion of inscriptions when category is deleted
     // Inscriptions will remain with category = null
     @OneToMany(mappedBy = "category")

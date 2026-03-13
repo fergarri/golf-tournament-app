@@ -27,6 +27,9 @@ public class ScorecardService {
     private static final String IN_PROGRESS_EXISTS = "IN_PROGRESS_EXISTS";
     private static final String CONTINUE_EXISTING = "CONTINUE_EXISTING";
     private static final String START_NEW = "START_NEW";
+    private static final String CATEGORY_SEX_MALE = "M";
+    private static final String CATEGORY_SEX_FEMALE = "F";
+    private static final String CATEGORY_SEX_MIXED = "X";
 
     private final ScorecardRepository scorecardRepository;
     private final TournamentRepository tournamentRepository;
@@ -56,7 +59,7 @@ public class ScorecardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Player", "id", playerId));
 
         if (!inscriptionRepository.existsByTournamentIdAndPlayerId(tournamentId, playerId)) {
-            throw new BadRequestException("Jugador no inscrito en este torneo");
+            throw new BadRequestException("Jugador no inscripto en el torneo");
         }
 
         if (player.getSexo() == null || player.getSexo().trim().isBlank()) {
@@ -134,7 +137,11 @@ public class ScorecardService {
         }
         
         List<TournamentCategory> categories = categoryRepository.findByTournamentId(tournamentId);
-        TournamentCategory matchingCategory = findCategoryForHandicap(handicapCourse, categories);
+        TournamentCategory matchingCategory = findCategoryForHandicap(
+                handicapCourse,
+                inscription.getPlayer().getSexo(),
+                categories
+        );
         
         inscription.setCategory(matchingCategory);
         inscriptionRepository.save(inscription);
@@ -148,13 +155,18 @@ public class ScorecardService {
         }
     }
 
-    private TournamentCategory findCategoryForHandicap(BigDecimal handicapCourse, 
+    private TournamentCategory findCategoryForHandicap(BigDecimal handicapCourse,
+                                                       String playerSex,
                                                        List<TournamentCategory> categories) {
         if (handicapCourse == null || categories == null || categories.isEmpty()) {
             return null;
         }
 
+        String normalizedPlayerSex = normalizePlayerSex(playerSex);
         for (TournamentCategory category : categories) {
+            if (!categoryAppliesToPlayerSex(category, normalizedPlayerSex)) {
+                continue;
+            }
             if (handicapCourse.compareTo(category.getHandicapMin()) >= 0 &&
                 handicapCourse.compareTo(category.getHandicapMax()) <= 0) {
                 return category;
@@ -162,6 +174,40 @@ public class ScorecardService {
         }
 
         return null;
+    }
+
+    private String normalizePlayerSex(String playerSex) {
+        if (playerSex == null || playerSex.trim().isBlank()) {
+            return CATEGORY_SEX_MIXED;
+        }
+
+        String normalized = playerSex.trim().toUpperCase();
+        if (CATEGORY_SEX_MALE.equals(normalized) || CATEGORY_SEX_FEMALE.equals(normalized)) {
+            return normalized;
+        }
+        return CATEGORY_SEX_MIXED;
+    }
+
+    private String normalizeCategorySex(String categorySex) {
+        if (categorySex == null || categorySex.trim().isBlank()) {
+            return CATEGORY_SEX_MIXED;
+        }
+
+        String normalized = categorySex.trim().toUpperCase();
+        if (CATEGORY_SEX_MALE.equals(normalized)
+                || CATEGORY_SEX_FEMALE.equals(normalized)
+                || CATEGORY_SEX_MIXED.equals(normalized)) {
+            return normalized;
+        }
+        return CATEGORY_SEX_MIXED;
+    }
+
+    private boolean categoryAppliesToPlayerSex(TournamentCategory category, String playerSex) {
+        String categorySex = normalizeCategorySex(category.getSexoCategoria());
+        if (CATEGORY_SEX_MIXED.equals(categorySex)) {
+            return true;
+        }
+        return categorySex.equals(playerSex);
     }
 
     @Transactional
@@ -174,7 +220,7 @@ public class ScorecardService {
 
         if (!inscriptionRepository.existsByTournamentIdAndPlayerId(
                 scorecard.getTournament().getId(), markerId)) {
-            throw new BadRequestException("Marcador no inscrito en este torneo");
+            throw new BadRequestException("Marcador no inscripto en el torneo");
         }
 
         if (scorecard.getPlayer().getId().equals(markerId)) {

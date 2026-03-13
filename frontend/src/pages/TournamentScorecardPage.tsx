@@ -300,7 +300,7 @@ const TournamentScorecardPage = () => {
       setMarkerModalOpen(false);
       setSearchingMarker(false);
       setTimeout(() => {
-        showModal('Error', 'Jugador no encontrado o no inscrito en este torneo', 'error');
+        showModal('Error', 'Jugador no encontrado o no inscripto en el torneo', 'error');
       }, 200);
     } finally {
       setSearchingMarker(false);

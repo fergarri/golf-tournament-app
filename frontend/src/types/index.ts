@@ -107,6 +107,7 @@ export interface TournamentCategory {
   nombre: string;
   handicapMin: number;
   handicapMax: number;
+  sexoCategoria?: 'M' | 'F' | 'X';
 }
 
 export interface TournamentTeeConfig {

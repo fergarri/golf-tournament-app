@@ -39,7 +39,7 @@ const TournamentsPage = () => {
     limiteInscriptos: '',
     valorInscripcion: '',
     doublePoints: false,
-    categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54 }],
+    categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54, sexoCategoria: 'X' }],
   });
 
   // Función para formatear número a formato argentino/europeo (punto miles, coma decimales)
@@ -110,7 +110,7 @@ const TournamentsPage = () => {
       fechaFin: '',
       limiteInscriptos: '',
       doublePoints: false,
-      categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54 }],
+      categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54, sexoCategoria: 'X' }],
     });
     setShowModal(true);
   };
@@ -130,7 +130,10 @@ const TournamentsPage = () => {
       limiteInscriptos: tournament.limiteInscriptos || '',
       valorInscripcion: tournament.valorInscripcion ? formatCurrency(tournament.valorInscripcion) : '',
       doublePoints: tournament.doublePoints || false,
-      categories: tournament.categories,
+      categories: tournament.categories.map((category) => ({
+        ...category,
+        sexoCategoria: category.sexoCategoria || 'X',
+      })),
     });
     setShowModal(true);
   };
@@ -147,7 +150,12 @@ const TournamentsPage = () => {
         limiteInscriptos: formData.limiteInscriptos ? parseInt(formData.limiteInscriptos) : null,
         valorInscripcion: parseCurrency(formData.valorInscripcion),
         doublePoints: formData.tipo === 'FRUTALES' ? (formData.doublePoints || false) : false,
-        categories: formData.tipo === 'FRUTALES' ? [] : formData.categories,
+        categories: formData.tipo === 'FRUTALES'
+          ? []
+          : formData.categories.map((category: TournamentCategory) => ({
+              ...category,
+              sexoCategoria: category.sexoCategoria || 'X',
+            })),
       };
 
       if (editingTournament) {
@@ -256,7 +264,7 @@ const TournamentsPage = () => {
   const addCategory = () => {
     setFormData({
       ...formData,
-      categories: [...formData.categories, { nombre: '', handicapMin: 0, handicapMax: 54 }],
+      categories: [...formData.categories, { nombre: '', handicapMin: 0, handicapMax: 54, sexoCategoria: 'X' }],
     });
   };
 
@@ -470,7 +478,11 @@ const TournamentsPage = () => {
                     ...formData,
                     tipo: newTipo,
                     doublePoints: newTipo === 'FRUTALES' ? formData.doublePoints : false,
-                    categories: newTipo === 'FRUTALES' ? [] : (formData.categories.length === 0 ? [{ nombre: 'General', handicapMin: 0, handicapMax: 54 }] : formData.categories),
+                    categories: newTipo === 'FRUTALES'
+                      ? []
+                      : (formData.categories.length === 0
+                          ? [{ nombre: 'General', handicapMin: 0, handicapMax: 54, sexoCategoria: 'X' }]
+                          : formData.categories),
                   });
                 }}
                 required
@@ -641,6 +653,15 @@ const TournamentsPage = () => {
                   required
                   style={{ flex: 1 }}
                 />
+                <select
+                  value={category.sexoCategoria || 'X'}
+                  onChange={(e) => updateCategory(index, 'sexoCategoria', e.target.value as 'M' | 'F' | 'X')}
+                  style={{ flex: 1 }}
+                >
+                  <option value="X">Mixta</option>
+                  <option value="M">Solo M</option>
+                  <option value="F">Solo F</option>
+                </select>
                 {formData.categories.length > 1 && (
                   <button
                     type="button"

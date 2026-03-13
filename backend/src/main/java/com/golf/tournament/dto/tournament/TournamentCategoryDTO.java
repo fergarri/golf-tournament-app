@@ -17,4 +17,5 @@ public class TournamentCategoryDTO {
     private String nombre;
     private BigDecimal handicapMin;
     private BigDecimal handicapMax;
+    private String sexoCategoria;
 }
