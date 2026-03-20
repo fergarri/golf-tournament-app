@@ -622,7 +622,7 @@ const TournamentScorecardPage = () => {
                   style={{ cursor: 'pointer' }}
                   title="Click to assign marker"
                 >
-                  {scorecard?.markerName ? scorecard.markerName : 'MARCADOR'}
+                  {scorecard?.markerName ? scorecard.markerName : 'MARCAR A...'}
                 </td>
                 {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
                   <td key={hole.numeroHoyo}>
