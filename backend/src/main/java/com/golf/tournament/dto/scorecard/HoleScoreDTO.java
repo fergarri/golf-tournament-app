@@ -18,4 +18,12 @@ public class HoleScoreDTO {
     private Integer golpesPropio;
     private Integer golpesMarcador;
     private Boolean validado;
+    /**
+     * Estado de concordancia para la fila "MARCAR A..." del que marca.
+     * MATCH: ambos cargaron el mismo valor (verde).
+     * MISMATCH: ambos cargaron pero difieren (rojo).
+     * PENDING: falta el dato de alguno de los dos (amarillo).
+     * NONE: no aplica (sin marcador asignado o scorecard sin cruce).
+     */
+    private String estadoConcordancia;
 }

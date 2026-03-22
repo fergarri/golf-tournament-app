@@ -82,6 +82,7 @@ public class TournamentService {
                 .limiteInscriptos(request.getLimiteInscriptos())
                 .valorInscripcion(request.getValorInscripcion())
                 .doublePoints(doublePoints)
+                .controlCruzado(Boolean.TRUE.equals(request.getControlCruzado()))
                 .build();
 
         tournament = tournamentRepository.save(tournament);
@@ -125,6 +126,7 @@ public class TournamentService {
         tournament.setLimiteInscriptos(request.getLimiteInscriptos());
         tournament.setValorInscripcion(request.getValorInscripcion());
         tournament.setDoublePoints("FRUTALES".equals(request.getTipo()) && Boolean.TRUE.equals(request.getDoublePoints()));
+        tournament.setControlCruzado(Boolean.TRUE.equals(request.getControlCruzado()));
         tournament = tournamentRepository.save(tournament);
 
         // Smart UPDATE/CREATE/DELETE of categories
@@ -349,6 +351,7 @@ public class TournamentService {
                 .limiteInscriptos(tournament.getLimiteInscriptos())
                 .valorInscripcion(tournament.getValorInscripcion())
                 .doublePoints(tournament.getDoublePoints())
+                .controlCruzado(tournament.getControlCruzado())
                 .currentInscriptos(inscriptos.intValue())
                 .categories(categories)
                 .build();

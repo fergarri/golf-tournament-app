@@ -39,6 +39,7 @@ const TournamentsPage = () => {
     limiteInscriptos: '',
     valorInscripcion: '',
     doublePoints: false,
+    controlCruzado: false,
     categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54, sexoCategoria: 'X' }],
   });
 
@@ -110,6 +111,7 @@ const TournamentsPage = () => {
       fechaFin: '',
       limiteInscriptos: '',
       doublePoints: false,
+      controlCruzado: false,
       categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54, sexoCategoria: 'X' }],
     });
     setShowModal(true);
@@ -130,6 +132,7 @@ const TournamentsPage = () => {
       limiteInscriptos: tournament.limiteInscriptos || '',
       valorInscripcion: tournament.valorInscripcion ? formatCurrency(tournament.valorInscripcion) : '',
       doublePoints: tournament.doublePoints || false,
+      controlCruzado: tournament.controlCruzado || false,
       categories: tournament.categories.map((category) => ({
         ...category,
         sexoCategoria: category.sexoCategoria || 'X',
@@ -150,6 +153,7 @@ const TournamentsPage = () => {
         limiteInscriptos: formData.limiteInscriptos ? parseInt(formData.limiteInscriptos) : null,
         valorInscripcion: parseCurrency(formData.valorInscripcion),
         doublePoints: formData.tipo === 'FRUTALES' ? (formData.doublePoints || false) : false,
+        controlCruzado: formData.controlCruzado || false,
         categories: formData.tipo === 'FRUTALES'
           ? []
           : formData.categories.map((category: TournamentCategory) => ({
@@ -515,31 +519,44 @@ const TournamentsPage = () => {
           </div>
 
           <div className="form-group">
-            <label>Campo de Golf *</label>
-            <select
-              value={formData.courseId}
-              onChange={(e) => setFormData({ ...formData, courseId: e.target.value, teeMasculinoId: '', teeFemeninoId: '' })}
-              required
-            >
-              <option value="">Seleccionar un campo</option>
-              {courses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {course.nombre}
-                </option>
-              ))}
-            </select>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={formData.controlCruzado || false}
+                onChange={(e) => setFormData({ ...formData, controlCruzado: e.target.checked })}
+                style={{ width: '18px', height: '18px' }}
+              />
+              Control cruzado de hoyos obligatorio
+            </label>
           </div>
 
-          <div className="form-group">
-            <label>Cantidad de Hoyos a Jugar</label>
-            <select
-              value={formData.cantidadHoyosJuego}
-              onChange={(e) => setFormData({ ...formData, cantidadHoyosJuego: e.target.value })}
-            >
-              <option value="">Definir más adelante</option>
-              <option value="9">9 Hoyos</option>
-              <option value="18">18 Hoyos</option>
-            </select>
+          <div className="form-row">
+            <div className="form-group">
+              <label>Campo de Golf *</label>
+              <select
+                value={formData.courseId}
+                onChange={(e) => setFormData({ ...formData, courseId: e.target.value, teeMasculinoId: '', teeFemeninoId: '' })}
+                required
+              >
+                <option value="">Seleccionar un campo</option>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>
+                    {course.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Cantidad de Hoyos a Jugar</label>
+              <select
+                value={formData.cantidadHoyosJuego}
+                onChange={(e) => setFormData({ ...formData, cantidadHoyosJuego: e.target.value })}
+              >
+                <option value="">Definir más adelante</option>
+                <option value="9">9 Hoyos</option>
+                <option value="18">18 Hoyos</option>
+              </select>
+            </div>
           </div>
 
           {selectedCourse && selectedCourse.tees && selectedCourse.tees.length > 0 && (

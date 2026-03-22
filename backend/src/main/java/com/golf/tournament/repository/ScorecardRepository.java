@@ -30,4 +30,6 @@ public interface ScorecardRepository extends JpaRepository<Scorecard, Long> {
     @Query("SELECT s FROM Scorecard s WHERE s.tournament.id = :tournamentId " +
            "AND s.status = 'DELIVERED' ORDER BY s.deliveredAt ASC")
     List<Scorecard> findDeliveredScorecardsByTournament(@Param("tournamentId") Long tournamentId);
+
+    List<Scorecard> findByTournamentIdAndMarkerId(Long tournamentId, Long markerId);
 }

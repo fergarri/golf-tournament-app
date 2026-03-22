@@ -31,6 +31,7 @@ public class TournamentDTO {
     private Integer limiteInscriptos;
     private BigDecimal valorInscripcion;
     private Boolean doublePoints;
+    private Boolean controlCruzado;
     private Integer currentInscriptos;
     private List<TournamentCategoryDTO> categories;
 }

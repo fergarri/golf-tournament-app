@@ -29,4 +29,5 @@ public class ScorecardDTO {
     private List<HoleScoreDTO> holeScores;
     private Integer totalScore;
     private Integer totalPar;
+    private Boolean marcadorValidado;
 }

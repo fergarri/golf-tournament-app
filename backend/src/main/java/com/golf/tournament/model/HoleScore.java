@@ -34,11 +34,7 @@ public class HoleScore {
     @Column(name = "golpes_marcador")
     private Integer golpesMarcador;
 
-    @Transient
-    public Boolean isValidado() {
-        if (golpesPropio != null && golpesMarcador != null) {
-            return golpesPropio.equals(golpesMarcador);
-        }
-        return false;
-    }
+    @Column(name = "validado", nullable = false)
+    @Builder.Default
+    private Boolean validado = false;
 }

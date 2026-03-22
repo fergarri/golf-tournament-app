@@ -57,6 +57,10 @@ public class Scorecard {
     @Column(name = "delivered_at")
     private LocalDateTime deliveredAt;
 
+    @Column(name = "marcador_validado", nullable = false)
+    @Builder.Default
+    private Boolean marcadorValidado = false;
+
     @OneToMany(mappedBy = "scorecard", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<HoleScore> holeScores = new ArrayList<>();

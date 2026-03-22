@@ -47,6 +47,8 @@ const TournamentScorecardPage = () => {
   
   // Para evitar múltiples guardados simultáneos
   const saveTimeoutRef = useRef<number | null>(null);
+  // Ref para mantener el scorecardId accesible desde el callback WebSocket sin cerrar sobre estado stale
+  const scorecardIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!matricula) {
@@ -79,6 +81,26 @@ const TournamentScorecardPage = () => {
     };
   }, []);
 
+  // SSE: recibe notificación del servidor cuando el jugador marcado guarda un golpe.
+  // EventSource usa HTTP puro — no requiere WebSocket ni configuración especial de CORS.
+  useEffect(() => {
+    if (!scorecard?.id || scorecard.status === 'DELIVERED' || scorecard.status === 'CANCELLED') return;
+
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+    const es = new EventSource(`${apiUrl}/scorecards/${scorecard.id}/events`);
+
+    es.addEventListener('concordanciaActualizada', () => {
+      const id = scorecardIdRef.current;
+      if (id) refreshScorecard(id);
+    });
+
+    es.onerror = () => {
+      // El navegador reconecta automáticamente; el error es esperado al cerrar la pestaña
+    };
+
+    return () => es.close();
+  }, [scorecard?.id, scorecard?.status]);
+
   const loadData = async () => {
     if (!codigo) return;
     try {
@@ -99,6 +121,7 @@ const TournamentScorecardPage = () => {
         // El scorecard se crea al inscribir, pero getOrCreate cubre datos históricos
         scorecardData = await scorecardService.getOrCreate(tournamentData.id, playerData.id);
         setScorecard(scorecardData);
+        scorecardIdRef.current = scorecardData.id;
         if (scorecardData.status === 'PENDING_CONFIG') {
           setError('Debe completar la configuración en la pantalla de acceso antes de cargar la tarjeta.');
           setLoading(false);
@@ -176,6 +199,17 @@ const TournamentScorecardPage = () => {
     }
   };
 
+  // Actualiza solo scorecard.holeScores (y marcadorValidado) sin tocar scores ni mostrar spinner.
+  // Se usa tanto tras guardar como cuando llega un evento WebSocket del jugador marcado.
+  const refreshScorecard = async (scorecardId: number) => {
+    try {
+      const updated = await scorecardService.getById(scorecardId);
+      setScorecard(updated);
+    } catch (err) {
+      console.error('Error refrescando scorecard:', err);
+    }
+  };
+
   const saveScoreToBackend = async (holeNumber: number, type: 'propio' | 'marcador', golpes: number) => {
     if (!scorecard) return;
 
@@ -190,9 +224,10 @@ const TournamentScorecardPage = () => {
         tipo: type === 'propio' ? 'PROPIO' : 'MARCADOR',
       });
       setLastSaved(new Date());
+      // Refrescar scorecard para obtener estadoConcordancia actualizado y mostrar colores
+      await refreshScorecard(scorecard.id);
     } catch (err: any) {
       console.error('Error guardando puntuación:', err);
-      // No mostramos error al usuario ya que localStorage ya guardó los datos
     } finally {
       setSaving(false);
     }
@@ -245,6 +280,17 @@ const TournamentScorecardPage = () => {
   ) => {
     setModalConfig({ title, message, type, onConfirm });
     setModalOpen(true);
+  };
+
+  const getMarkerCellClass = (holeNumber: number): string => {
+    if (!scorecard?.markerId) return '';
+    const holeScore = scorecard.holeScores.find(hs => hs.numeroHoyo === holeNumber);
+    if (!holeScore || holeScore.golpesMarcador == null) return '';
+    const estado = holeScore.estadoConcordancia;
+    if (estado === 'MATCH') return 'marker-cell-match';
+    if (estado === 'MISMATCH') return 'marker-cell-mismatch';
+    if (estado === 'PENDING') return 'marker-cell-pending';
+    return '';
   };
 
   // Marker assignment functions
@@ -427,13 +473,22 @@ const TournamentScorecardPage = () => {
     }
 
     const hasAllScores = holes.every(
-      (hole) => scores[hole.numeroHoyo]?.propio && scores[hole.numeroHoyo]?.marcador
+      (hole) => scores[hole.numeroHoyo]?.propio
     );
 
     if (!hasAllScores) {
       showModal(
         'Tarjeta incompleta',
-        'Por favor complete todos los hoyos antes de enviar su tarjeta',
+        'Por favor complete todos sus hoyos antes de enviar la tarjeta',
+        'warning'
+      );
+      return;
+    }
+
+    if (tournament?.controlCruzado && !scorecard?.marcadorValidado) {
+      showModal(
+        'Tarjeta incompleta',
+        'Hay hoyos del jugador que estás marcando que aún no están validados. Todos deben coincidir antes de poder entregar.',
         'warning'
       );
       return;
@@ -625,7 +680,7 @@ const TournamentScorecardPage = () => {
                   {scorecard?.markerName ? scorecard.markerName : 'MARCAR A...'}
                 </td>
                 {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
-                  <td key={hole.numeroHoyo}>
+                  <td key={hole.numeroHoyo} className={getMarkerCellClass(hole.numeroHoyo)}>
                     <input
                       type="number"
                       min="1"
@@ -640,7 +695,7 @@ const TournamentScorecardPage = () => {
                 ))}
                 {hasBackNine && <td className="subtotal-cell score-total">{getFrontNineScore('marcador') || '-'}</td>}
                 {hasBackNine && holes.filter(h => h.numeroHoyo > 9).map((hole) => (
-                  <td key={hole.numeroHoyo}>
+                  <td key={hole.numeroHoyo} className={getMarkerCellClass(hole.numeroHoyo)}>
                     <input
                       type="number"
                       min="1"

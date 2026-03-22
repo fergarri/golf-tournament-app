@@ -4,12 +4,15 @@ import com.golf.tournament.dto.scorecard.ScorecardDTO;
 import com.golf.tournament.dto.scorecard.UpdateScoreRequest;
 import com.golf.tournament.dto.scorecard.UpdateScorecardRequest;
 import com.golf.tournament.dto.scorecard.ConfigureScorecardRequest;
+import com.golf.tournament.service.ScorecardEventService;
 import com.golf.tournament.service.ScorecardService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.util.List;
 
@@ -19,10 +22,16 @@ import java.util.List;
 public class ScorecardController {
 
     private final ScorecardService scorecardService;
+    private final ScorecardEventService scorecardEventService;
 
     @GetMapping("/{id}")
     public ResponseEntity<ScorecardDTO> getScorecardById(@PathVariable Long id) {
         return ResponseEntity.ok(scorecardService.getScorecardById(id));
+    }
+
+    @GetMapping(value = "/{id}/events", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter scorecardEvents(@PathVariable Long id) {
+        return scorecardEventService.subscribe(id);
     }
 
     @GetMapping("/tournaments/{tournamentId}")

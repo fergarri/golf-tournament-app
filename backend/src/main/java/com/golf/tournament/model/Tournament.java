@@ -75,6 +75,10 @@ public class Tournament {
     @Builder.Default
     private Boolean doublePoints = false;
 
+    @Column(name = "control_cruzado", nullable = false)
+    @Builder.Default
+    private Boolean controlCruzado = false;
+
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TournamentCategory> categories = new ArrayList<>();

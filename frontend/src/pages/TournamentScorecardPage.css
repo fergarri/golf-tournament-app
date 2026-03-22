@@ -174,7 +174,7 @@
 }
 
 .player-row {
-  background-color: #fff3cd;
+  background-color: #b1d2ff;
 }
 
 .player-row .sticky-col {
@@ -185,7 +185,7 @@
 }
 
 .marker-row {
-  background-color: #f8f9fa;
+  background-color: #b1d2ff;
 }
 
 .marker-row .sticky-col {
@@ -438,4 +438,29 @@
     flex-direction: column;
     gap: 0.5rem;
   }
+}
+
+/* Colores de concordancia en la fila MARCAR A... */
+.marker-cell-match {
+  background-color: #d4edda !important;
+}
+
+.marker-cell-match .score-input {
+  background-color: #d4edda;
+}
+
+.marker-cell-mismatch {
+  background-color: #f8d7da !important;
+}
+
+.marker-cell-mismatch .score-input {
+  background-color: #f8d7da;
+}
+
+.marker-cell-pending {
+  background-color: #fff3cd !important;
+}
+
+.marker-cell-pending .score-input {
+  background-color: #fff3cd;
 }

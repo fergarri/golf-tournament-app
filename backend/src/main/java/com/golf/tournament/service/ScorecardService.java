@@ -6,12 +6,15 @@ import com.golf.tournament.dto.scorecard.UpdateScoreRequest;
 import com.golf.tournament.dto.scorecard.ConfigureScorecardRequest;
 import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.ResourceNotFoundException;
+import com.golf.tournament.dto.scorecard.UpdateScorecardRequest.HoleScoreUpdate;
 import com.golf.tournament.model.*;
 import com.golf.tournament.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -40,6 +43,7 @@ public class ScorecardService {
     private final TournamentInscriptionRepository inscriptionRepository;
     private final TournamentCategoryRepository categoryRepository;
     private final HandicapConversionRepository handicapConversionRepository;
+    private final ScorecardEventService scorecardEventService;
 
     @Transactional
     public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId) {
@@ -258,8 +262,21 @@ public class ScorecardService {
         }
 
         holeScoreRepository.save(holeScore);
-        log.info("Score updated for scorecard {} hole {}: {} = {}", 
+        log.info("Score updated for scorecard {} hole {}: {} = {}",
                 scorecardId, request.getHoleId(), request.getTipo(), request.getGolpes());
+
+        // Recalcular concordancia entre marcadores
+        if ("MARCADOR".equalsIgnoreCase(request.getTipo())) {
+            // A actualizó los golpes que marcó para B → recalcular en la tarjeta de A
+            recomputeMarkerConcordanceForHole(scorecard, hole);
+        } else {
+            // B actualizó su propio golpe → recalcular en todas las tarjetas donde B es el marcado
+            List<Scorecard> markerScorecards = scorecardRepository
+                    .findByTournamentIdAndMarkerId(scorecard.getTournament().getId(), scorecard.getPlayer().getId());
+            for (Scorecard markerScorecard : markerScorecards) {
+                recomputeMarkerConcordanceForHole(markerScorecard, hole);
+            }
+        }
     }
 
     @Transactional
@@ -268,7 +285,7 @@ public class ScorecardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
         ensureScorecardConfigured(scorecard);
 
-        for (com.golf.tournament.dto.scorecard.UpdateScorecardRequest.HoleScoreUpdate holeScoreUpdate : request.getHoleScores()) {
+        for (HoleScoreUpdate holeScoreUpdate : request.getHoleScores()) {
             Hole hole = holeRepository.findById(holeScoreUpdate.getHoleId())
                     .orElseThrow(() -> new ResourceNotFoundException("Hole", "id", holeScoreUpdate.getHoleId()));
 
@@ -286,6 +303,18 @@ public class ScorecardService {
             }
 
             holeScoreRepository.save(holeScore);
+
+            // Recalcular concordancia para este hoyo (puede haber cambiado propio y/o marcador)
+            recomputeMarkerConcordanceForHole(scorecard, hole);
+
+            // Si también cambió el propio, actualizar tarjetas donde este jugador es el marcado
+            if (holeScoreUpdate.getGolpesPropio() != null) {
+                List<Scorecard> markerScorecards = scorecardRepository
+                        .findByTournamentIdAndMarkerId(scorecard.getTournament().getId(), scorecard.getPlayer().getId());
+                for (Scorecard markerScorecard : markerScorecards) {
+                    recomputeMarkerConcordanceForHole(markerScorecard, hole);
+                }
+            }
         }
 
         log.info("All scores updated for scorecard {}", scorecardId);
@@ -314,12 +343,43 @@ public class ScorecardService {
             throw new BadRequestException("No se puede entregar la tarjeta con hoyos incompletos");
         }
 
+        if (Boolean.TRUE.equals(scorecard.getTournament().getControlCruzado())) {
+            validateScorecardCrossed(scorecard);
+        }
+
         scorecard.setStatus(ScorecardStatus.DELIVERED);
         scorecard.setDeliveredAt(LocalDateTime.now());
         scorecard = scorecardRepository.save(scorecard);
 
         log.info("Scorecard delivered: {}", scorecardId);
         return convertToDTO(scorecard);
+    }
+
+    private void validateScorecardCrossed(Scorecard scorecard) {
+        if (!Boolean.TRUE.equals(scorecard.getMarcadorValidado())) {
+            throw new BadRequestException(
+                    "No se puede entregar la tarjeta hasta que todos los hoyos del jugador que estás marcando estén validados"
+            );
+        }
+
+        List<Scorecard> scorecardsQueMeMarcan = scorecardRepository
+                .findByTournamentIdAndMarkerId(
+                        scorecard.getTournament().getId(),
+                        scorecard.getPlayer().getId());
+
+        if (scorecardsQueMeMarcan.isEmpty()) {
+            throw new BadRequestException(
+                "No se puede entregar la tarjeta hasta que alguien te haya marcado"
+            );          
+        }
+
+        boolean alguienNoMeValidoTodo = scorecardsQueMeMarcan.stream()
+                .anyMatch(s -> !Boolean.TRUE.equals(s.getMarcadorValidado()));
+        if (alguienNoMeValidoTodo) {
+            throw new BadRequestException(
+                    "No se puede entregar la tarjeta hasta que tu marcador haya validado todos tus hoyos"
+            );
+        }
     }
 
     @Transactional
@@ -538,9 +598,85 @@ public class ScorecardService {
         }
     }
 
+    /**
+     * Recalcula la concordancia entre lo que el marcador (scorecardDelMarcador) cargó para el jugador B
+     * (golpesMarcador) y lo que B cargó para sí mismo (golpesPropio en la tarjeta de B) para un hoyo dado.
+     * Actualiza el campo `validado` en la fila correspondiente de scorecardDelMarcador y recalcula
+     * `marcadorValidado` en la scorecard del marcador.
+     */
+    private void recomputeMarkerConcordanceForHole(Scorecard scorecardDelMarcador, Hole hole) {
+        if (scorecardDelMarcador.getMarker() == null) {
+            return;
+        }
+
+        HoleScore holeScoreDelMarcador = holeScoreRepository
+                .findByScorecardIdAndHoleId(scorecardDelMarcador.getId(), hole.getId())
+                .orElse(null);
+
+        if (holeScoreDelMarcador == null) {
+            return;
+        }
+
+        Integer golpesMarcador = holeScoreDelMarcador.getGolpesMarcador();
+
+        // Buscar la tarjeta del jugador marcado (el que recibe los golpes)
+        Scorecard scorecardDelMarcado = scorecardRepository
+                .findByTournamentIdAndPlayerId(
+                        scorecardDelMarcador.getTournament().getId(),
+                        scorecardDelMarcador.getMarker().getId())
+                .orElse(null);
+
+        Integer golpesPropioDeLMarcado = null;
+        if (scorecardDelMarcado != null) {
+            HoleScore holeScoreDelMarcado = holeScoreRepository
+                    .findByScorecardIdAndHoleId(scorecardDelMarcado.getId(), hole.getId())
+                    .orElse(null);
+            if (holeScoreDelMarcado != null) {
+                golpesPropioDeLMarcado = holeScoreDelMarcado.getGolpesPropio();
+            }
+        }
+
+        boolean validado = golpesMarcador != null
+                && golpesPropioDeLMarcado != null
+                && golpesMarcador.equals(golpesPropioDeLMarcado);
+
+        holeScoreDelMarcador.setValidado(validado);
+        holeScoreRepository.save(holeScoreDelMarcador);
+
+        // Recalcular marcadorValidado: true si TODOS los hoyos de esta scorecard tienen validado=true
+        List<HoleScore> todosLosHoyos = holeScoreRepository.findByScorecardId(scorecardDelMarcador.getId());
+        boolean marcadorValidado = !todosLosHoyos.isEmpty()
+                && todosLosHoyos.stream().allMatch(hs -> Boolean.TRUE.equals(hs.getValidado()));
+        scorecardDelMarcador.setMarcadorValidado(marcadorValidado);
+        scorecardRepository.save(scorecardDelMarcador);
+
+        // Notificar al cliente DESPUÉS del commit para que el GET lea datos ya persistidos
+        final Long scorecardIdParaEvento = scorecardDelMarcador.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                scorecardEventService.notifyConcordanciaActualizada(scorecardIdParaEvento);
+            }
+        });
+
+        log.debug("Concordancia recalculada para scorecard {} hoyo {}: validado={}, marcadorValidado={}",
+                scorecardDelMarcador.getId(), hole.getNumeroHoyo(), validado, marcadorValidado);
+    }
+
     private ScorecardDTO convertToDTO(Scorecard scorecard) {
+        // Cargar la tarjeta del jugador marcado para calcular estadoConcordancia
+        Scorecard scorecardDelMarcado = null;
+        if (scorecard.getMarker() != null) {
+            scorecardDelMarcado = scorecardRepository
+                    .findByTournamentIdAndPlayerId(
+                            scorecard.getTournament().getId(),
+                            scorecard.getMarker().getId())
+                    .orElse(null);
+        }
+
+        final Scorecard finalScorecardDelMarcado = scorecardDelMarcado;
         List<HoleScoreDTO> holeScores = holeScoreRepository.findByScorecardId(scorecard.getId()).stream()
-                .map(this::convertHoleScoreToDTO)
+                .map(hs -> convertHoleScoreToDTO(hs, finalScorecardDelMarcado))
                 .collect(Collectors.toList());
 
         Integer totalScore = holeScores.stream()
@@ -568,10 +704,32 @@ public class ScorecardService {
                 .holeScores(holeScores)
                 .totalScore(totalScore > 0 ? totalScore : null)
                 .totalPar(totalPar)
+                .marcadorValidado(scorecard.getMarcadorValidado())
                 .build();
     }
 
-    private HoleScoreDTO convertHoleScoreToDTO(HoleScore holeScore) {
+    private HoleScoreDTO convertHoleScoreToDTO(HoleScore holeScore, Scorecard scorecardDelMarcado) {
+        String estadoConcordancia = "NONE";
+
+        if (holeScore.getGolpesMarcador() != null) {
+            if (scorecardDelMarcado != null) {
+                Integer golpesPropioDeLMarcado = holeScoreRepository
+                        .findByScorecardIdAndHoleId(scorecardDelMarcado.getId(), holeScore.getHole().getId())
+                        .map(HoleScore::getGolpesPropio)
+                        .orElse(null);
+
+                if (golpesPropioDeLMarcado == null) {
+                    estadoConcordancia = "PENDING";
+                } else if (holeScore.getGolpesMarcador().equals(golpesPropioDeLMarcado)) {
+                    estadoConcordancia = "MATCH";
+                } else {
+                    estadoConcordancia = "MISMATCH";
+                }
+            } else {
+                estadoConcordancia = "PENDING";
+            }
+        }
+
         return HoleScoreDTO.builder()
                 .id(holeScore.getId())
                 .holeId(holeScore.getHole().getId())
@@ -579,7 +737,8 @@ public class ScorecardService {
                 .par(holeScore.getHole().getPar())
                 .golpesPropio(holeScore.getGolpesPropio())
                 .golpesMarcador(holeScore.getGolpesMarcador())
-                .validado(holeScore.isValidado())
+                .validado(holeScore.getValidado())
+                .estadoConcordancia(estadoConcordancia)
                 .build();
     }
 }

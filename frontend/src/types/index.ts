@@ -97,6 +97,7 @@ export interface Tournament {
   limiteInscriptos?: number;
   valorInscripcion?: number;
   doublePoints?: boolean;
+  controlCruzado?: boolean;
   currentInscriptos: number;
   categories: TournamentCategory[];
   teeConfig?: TournamentTeeConfig;
@@ -131,6 +132,7 @@ export interface Scorecard {
   holeScores: HoleScore[];
   totalScore?: number;
   totalPar: number;
+  marcadorValidado?: boolean;
 }
 
 export interface HoleScore {
@@ -141,6 +143,7 @@ export interface HoleScore {
   golpesPropio?: number;
   golpesMarcador?: number;
   validado: boolean;
+  estadoConcordancia?: 'MATCH' | 'MISMATCH' | 'PENDING' | 'NONE';
 }
 
 export interface LeaderboardEntry {
