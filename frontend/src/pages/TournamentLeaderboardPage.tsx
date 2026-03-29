@@ -362,11 +362,6 @@ const TournamentLeaderboardPage = () => {
       width: '8%',
     },
     { header: 'Club', accessor: (row: LeaderboardEntry) => row.clubOrigen || '-', width: '10%' },
-    { 
-      header: 'Categoría', 
-      accessor: (row: LeaderboardEntry) => row.status === 'DELIVERED' ? (row.categoryName || '-') : '-',
-      width: '10%' 
-    },
     {
       header: 'Pagado',
       accessor: (row: LeaderboardEntry) => (
