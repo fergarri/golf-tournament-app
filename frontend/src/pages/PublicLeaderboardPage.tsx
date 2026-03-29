@@ -21,13 +21,6 @@ const PublicLeaderboardPage = () => {
 
   useEffect(() => {
     loadData();
-    
-    // Poll for updates every 100 seconds for real-time updates
-    const interval = setInterval(() => {
-      loadData();
-    }, 100000); // 100 seconds
-
-    return () => clearInterval(interval);
   }, [codigo]);
 
   const loadData = async () => {
@@ -282,11 +275,7 @@ const PublicLeaderboardPage = () => {
             />
           </div>
           <div className="update-info">
-            <span className="live-indicator"></span>
-            <span>Actualizando en tiempo real cada 100 segundos</span>
-            <span style={{ marginLeft: '20px' }}>
-              • Tarjetas entregadas: {filteredByCategory.length}
-            </span>
+            <span>Tarjetas entregadas: {filteredByCategory.length}</span>
           </div>
         </>
       )}
