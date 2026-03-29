@@ -27,6 +27,7 @@ public class LeaderboardEntryDTO {
     private Integer totalPar;
     private BigDecimal scoreToPar;
     private BigDecimal handicapCourse;
+    private BigDecimal handicapIndex;
     private String status;
     private Boolean pagado;
 }

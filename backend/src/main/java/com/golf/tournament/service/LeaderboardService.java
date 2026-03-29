@@ -28,10 +28,10 @@ public class LeaderboardService {
     private final TournamentInscriptionRepository inscriptionRepository;
     private final TournamentCategoryRepository categoryRepository;
 
-    private TournamentCategory determineCategory(BigDecimal handicapCourse,
+    private TournamentCategory determineCategory(BigDecimal handicapIndex,
                                                  String playerSex,
                                                  List<TournamentCategory> categories) {
-        if (handicapCourse == null || categories == null || categories.isEmpty()) {
+        if (handicapIndex == null || categories == null || categories.isEmpty()) {
             return null;
         }
 
@@ -40,8 +40,8 @@ public class LeaderboardService {
             if (!categoryAppliesToPlayerSex(category, normalizedPlayerSex)) {
                 continue;
             }
-            if (handicapCourse.compareTo(category.getHandicapMin()) >= 0 &&
-                handicapCourse.compareTo(category.getHandicapMax()) <= 0) {
+            if (handicapIndex.compareTo(category.getHandicapMin()) >= 0 &&
+                handicapIndex.compareTo(category.getHandicapMax()) <= 0) {
                 return category;
             }
         }
@@ -118,7 +118,7 @@ public class LeaderboardService {
                 BigDecimal scoreToPar = scoreNeto.subtract(BigDecimal.valueOf(totalPar));
 
                 TournamentCategory calculatedCategory = determineCategory(
-                        handicapCourse,
+                        player.getHandicapIndex(),
                         player.getSexo(),
                         allCategories
                 );
@@ -139,6 +139,7 @@ public class LeaderboardService {
                         .totalPar(totalPar)
                         .scoreToPar(scoreToPar)
                         .handicapCourse(handicapCourse)
+                        .handicapIndex(player.getHandicapIndex())
                         .status(scorecard.getStatus().name())
                         .pagado(inscription.getPagado() != null ? inscription.getPagado() : false)
                         .build();
@@ -165,6 +166,7 @@ public class LeaderboardService {
                         .categoryId(fallbackCategoryId)
                         .categoryName(fallbackCategoryName)
                         .handicapCourse(handicapCourse)
+                        .handicapIndex(player.getHandicapIndex())
                         .status(status)
                         .pagado(inscription.getPagado() != null ? inscription.getPagado() : false)
                         .build();

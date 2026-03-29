@@ -330,7 +330,7 @@ const TournamentLeaderboardPage = () => {
     { header: 'Matrícula', accessor: 'matricula' as keyof LeaderboardEntry, width: '10%' },
     {
       header: 'HCP',
-      accessor: (row: LeaderboardEntry) => row.handicapCourse?.toFixed(1) || '-',
+      accessor: (row: LeaderboardEntry) => row.handicapIndex?.toFixed(1) || '-',
       width: '8%',
     },
     { 

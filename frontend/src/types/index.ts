@@ -161,6 +161,7 @@ export interface LeaderboardEntry {
   totalPar: number;
   scoreToPar: number;
   handicapCourse?: number;
+  handicapIndex?: number;
   status?: string;
   pagado?: boolean;
 }
