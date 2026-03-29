@@ -132,7 +132,6 @@ const LeaderboardPage: React.FC = () => {
                   <th>Score Neto</th>
                   <th>To Par</th>
                   <th>Club</th>
-                  {selectedCategory === undefined && <th>Categoría</th>}
                 </tr>
               </thead>
               <tbody>
@@ -158,9 +157,6 @@ const LeaderboardPage: React.FC = () => {
                       </span>
                     </td>
                     <td className="club">{entry.clubOrigen || '-'}</td>
-                    {selectedCategory === undefined && (
-                      <td className="category">{entry.categoryName || '-'}</td>
-                    )}
                   </tr>
                 ))}
               </tbody>

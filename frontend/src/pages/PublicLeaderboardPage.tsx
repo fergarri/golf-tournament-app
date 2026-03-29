@@ -83,6 +83,14 @@ const PublicLeaderboardPage = () => {
       });
     });
 
+    // Add "Scratch" tab: all delivered players ranked by Score Gross
+    const deliveredCount = leaderboard.filter(entry => entry.status === 'DELIVERED').length;
+    tabsList.push({
+      id: 'scratch',
+      label: 'Scratch',
+      count: deliveredCount,
+    });
+
     // Note: "Sin Categoría" tab is NOT added for public leaderboard
 
     return tabsList;
@@ -95,6 +103,12 @@ const PublicLeaderboardPage = () => {
     // Filter by active tab
     if (activeTab === 'general') {
       filtered = leaderboard.filter(entry => entry.status === 'DELIVERED');
+    } else if (activeTab === 'scratch') {
+      // All delivered players, sorted by Score Gross
+      const delivered = leaderboard
+        .filter(entry => entry.status === 'DELIVERED')
+        .sort((a, b) => (a.scoreGross ?? 0) - (b.scoreGross ?? 0));
+      return delivered.map((entry, index) => ({ ...entry, position: index + 1 }));
     } else {
       // Filter by specific category ID
       const categoryId = parseInt(activeTab);
@@ -147,7 +161,12 @@ const PublicLeaderboardPage = () => {
     { header: 'Jugador', accessor: 'playerName' as keyof LeaderboardEntry, width: '15%' },
     { header: 'Matrícula', accessor: 'matricula' as keyof LeaderboardEntry, width: '10%' },
     {
-      header: 'HCP',
+      header: 'HCP I',
+      accessor: (row: LeaderboardEntry) => row.handicapIndex?.toFixed(1) || '-',
+      width: '8%',
+    },
+    {
+      header: 'HCP C',
       accessor: (row: LeaderboardEntry) => row.handicapCourse?.toFixed(1) || '-',
       width: '8%',
     },
