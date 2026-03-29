@@ -641,7 +641,7 @@ const TournamentsPage = () => {
 
           {formData.tipo !== 'FRUTALES' && (
           <div className="form-group">
-            <label>Categorías</label>
+            <label>Categorías (HCP Index)</label>
             {formData.categories.map((category: TournamentCategory, index: number) => (
               <div key={index} className="category-row" style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
                 <input
@@ -655,7 +655,7 @@ const TournamentsPage = () => {
                 <input
                   type="number"
                   step="0.1"
-                  placeholder="Mínimo"
+                  placeholder="Índice mín"
                   value={category.handicapMin}
                   onChange={(e) => updateCategory(index, 'handicapMin', parseFloat(e.target.value))}
                   required
@@ -664,7 +664,7 @@ const TournamentsPage = () => {
                 <input
                   type="number"
                   step="0.1"
-                  placeholder="Máximo"
+                  placeholder="Índice máx"
                   value={category.handicapMax}
                   onChange={(e) => updateCategory(index, 'handicapMax', parseFloat(e.target.value))}
                   required

@@ -89,8 +89,8 @@ public class ScorecardService {
             }
 
             if (CONTINUE_EXISTING.equalsIgnoreCase(inProgressAction.trim())) {
-                if (scorecard.getHandicapCourse() != null) {
-                    assignCategoryToInscription(tournamentId, playerId, scorecard.getHandicapCourse());
+                if (player.getHandicapIndex() != null) {
+                    assignCategoryToInscription(tournamentId, playerId, player.getHandicapIndex());
                 }
                 return convertToDTO(scorecard);
             }
@@ -112,8 +112,8 @@ public class ScorecardService {
             scorecard = completePendingScorecard(scorecard, tournament, player, request, sexo);
         }
 
-        if (scorecard.getHandicapCourse() != null) {
-            assignCategoryToInscription(tournamentId, playerId, scorecard.getHandicapCourse());
+        if (player.getHandicapIndex() != null) {
+            assignCategoryToInscription(tournamentId, playerId, player.getHandicapIndex());
         }
         return convertToDTO(scorecard);
     }
@@ -130,7 +130,7 @@ public class ScorecardService {
         return dto;
     }
 
-    private void assignCategoryToInscription(Long tournamentId, Long playerId, BigDecimal handicapCourse) {
+    private void assignCategoryToInscription(Long tournamentId, Long playerId, BigDecimal handicapIndex) {
         TournamentInscription inscription = inscriptionRepository
                 .findByTournamentIdAndPlayerId(tournamentId, playerId)
                 .orElse(null);
@@ -142,7 +142,7 @@ public class ScorecardService {
         
         List<TournamentCategory> categories = categoryRepository.findByTournamentId(tournamentId);
         TournamentCategory matchingCategory = findCategoryForHandicap(
-                handicapCourse,
+                handicapIndex,
                 inscription.getPlayer().getSexo(),
                 categories
         );
@@ -154,15 +154,15 @@ public class ScorecardService {
             log.debug("Assigned category {} to player {} in tournament {}", 
                      matchingCategory.getNombre(), playerId, tournamentId);
         } else {
-            log.debug("No matching category for player {} in tournament {} (handicap: {})", 
-                     playerId, tournamentId, handicapCourse);
+            log.debug("No matching category for player {} in tournament {} (handicapIndex: {})", 
+                     playerId, tournamentId, handicapIndex);
         }
     }
 
-    private TournamentCategory findCategoryForHandicap(BigDecimal handicapCourse,
+    private TournamentCategory findCategoryForHandicap(BigDecimal handicapIndex,
                                                        String playerSex,
                                                        List<TournamentCategory> categories) {
-        if (handicapCourse == null || categories == null || categories.isEmpty()) {
+        if (handicapIndex == null || categories == null || categories.isEmpty()) {
             return null;
         }
 
@@ -171,8 +171,8 @@ public class ScorecardService {
             if (!categoryAppliesToPlayerSex(category, normalizedPlayerSex)) {
                 continue;
             }
-            if (handicapCourse.compareTo(category.getHandicapMin()) >= 0 &&
-                handicapCourse.compareTo(category.getHandicapMax()) <= 0) {
+            if (handicapIndex.compareTo(category.getHandicapMin()) >= 0 &&
+                handicapIndex.compareTo(category.getHandicapMax()) <= 0) {
                 return category;
             }
         }
