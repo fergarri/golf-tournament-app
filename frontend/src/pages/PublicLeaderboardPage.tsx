@@ -212,6 +212,26 @@ const PublicLeaderboardPage = () => {
               <strong>Jugadores:</strong> {tournament?.currentInscriptos}
             </span>
           </div>
+          {(tournament?.prizes || []).length > 0 && (
+            <div style={{ marginTop: '0.75rem', color: '#7f8c8d', fontSize: '0.95rem' }}>
+              {(tournament?.prizes || []).map((prize) => {
+                const labels: Record<string, string> = {
+                  LONG_DRIVER: 'Long Driver',
+                  BEST_DRIVER: 'Best Driver',
+                  BEST_APPROACH: 'Best Approach',
+                };
+                return (
+                  <div key={prize.id} style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.50rem' }}>
+                    <strong style={{ color: '#2c3e50' }}>{labels[prize.prizeType] || prize.prizeType}:</strong>
+                    {prize.winnerName
+                      ? <span>{prize.winnerName}</span>
+                      : <em>Pendiente</em>
+                    }
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

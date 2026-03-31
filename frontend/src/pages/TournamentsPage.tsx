@@ -40,6 +40,7 @@ const TournamentsPage = () => {
     valorInscripcion: '',
     doublePoints: false,
     controlCruzado: false,
+    prizes: [] as string[],
     categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54, sexoCategoria: 'X' }],
   });
 
@@ -112,6 +113,7 @@ const TournamentsPage = () => {
       limiteInscriptos: '',
       doublePoints: false,
       controlCruzado: false,
+      prizes: [] as string[],
       categories: [{ nombre: 'General', handicapMin: 0, handicapMax: 54, sexoCategoria: 'X' }],
     });
     setShowModal(true);
@@ -133,6 +135,7 @@ const TournamentsPage = () => {
       valorInscripcion: tournament.valorInscripcion ? formatCurrency(tournament.valorInscripcion) : '',
       doublePoints: tournament.doublePoints || false,
       controlCruzado: tournament.controlCruzado || false,
+      prizes: (tournament.prizes || []).map((p) => p.prizeType),
       categories: tournament.categories.map((category) => ({
         ...category,
         sexoCategoria: category.sexoCategoria || 'X',
@@ -519,15 +522,47 @@ const TournamentsPage = () => {
           </div>
 
           <div className="form-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={formData.controlCruzado || false}
-                onChange={(e) => setFormData({ ...formData, controlCruzado: e.target.checked })}
-                style={{ width: '18px', height: '18px' }}
-              />
-              Control cruzado de hoyos obligatorio
-            </label>
+            <label>Premios</label>
+            <div style={{ display: 'flex', flexDirection: 'row', gap: '1.5rem', flexWrap: 'wrap' }}>
+              {[
+                { type: 'LONG_DRIVER', label: 'Long Driver' },
+                { type: 'BEST_DRIVER', label: 'Best Driver' },
+                { type: 'BEST_APPROACH', label: 'Best Approach' },
+              ].map(({ type, label }) => (
+                <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginRight: '15%' }}>
+                  <input
+                    type="checkbox"
+                    checked={(formData.prizes || []).includes(type)}
+                    onChange={(e) => {
+                      const current: string[] = formData.prizes || [];
+                      setFormData({
+                        ...formData,
+                        prizes: e.target.checked
+                          ? [...current, type]
+                          : current.filter((p: string) => p !== type),
+                      });
+                    }}
+                    style={{ width: '18px', height: '18px' }}
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label>Control cruzado de hoyos</label>
+            <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem', flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={formData.controlCruzado || false}
+                  onChange={(e) => setFormData({ ...formData, controlCruzado: e.target.checked })}
+                  style={{ width: '18px', height: '18px' }}
+                />
+                Obligatorio
+              </label>
+            </div>
           </div>
 
           <div className="form-row">

@@ -34,4 +34,5 @@ public class TournamentDTO {
     private Boolean controlCruzado;
     private Integer currentInscriptos;
     private List<TournamentCategoryDTO> categories;
+    private List<TournamentPrizeDTO> prizes;
 }

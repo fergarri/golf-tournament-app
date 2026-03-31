@@ -32,6 +32,12 @@ const TournamentLeaderboardPage = () => {
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [showInscriptionModal, setShowInscriptionModal] = useState(false);
+  const [prizeConfirmation, setPrizeConfirmation] = useState<{
+    prizeType: string;
+    prizeLabel: string;
+    row: LeaderboardEntry;
+  } | null>(null);
+  const [assigningPrize, setAssigningPrize] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -376,6 +382,25 @@ const TournamentLeaderboardPage = () => {
     },
   ];
 
+  const PRIZE_LABELS: Record<string, string> = {
+    LONG_DRIVER: 'Long Driver',
+    BEST_DRIVER: 'Best Driver',
+    BEST_APPROACH: 'Best Approach',
+  };
+
+  const prizeActions: TableAction<LeaderboardEntry>[] = (tournament?.prizes || []).map((prize) => ({
+    label: PRIZE_LABELS[prize.prizeType] || prize.prizeType,
+    onClick: (row) => {
+      setPrizeConfirmation({
+        prizeType: prize.prizeType,
+        prizeLabel: PRIZE_LABELS[prize.prizeType] || prize.prizeType,
+        row,
+      });
+    },
+    variant: 'primary' as const,
+    show: (row) => prize.winnerInscriptionId !== row.inscriptionId,
+  }));
+
   const actions: TableAction<LeaderboardEntry>[] = [
     {
       label: 'Editar',
@@ -398,6 +423,7 @@ const TournamentLeaderboardPage = () => {
       },
       variant: 'danger',
     },
+    ...prizeActions,
   ];
 
   if (loading) return <div className="loading">Cargando leaderboard...</div>;
@@ -477,6 +503,26 @@ const TournamentLeaderboardPage = () => {
               </span>
             </span>
           </div>
+          {(tournament?.prizes || []).length > 0 && (
+            <div style={{ marginTop: '0.75rem', color: '#7f8c8d', fontSize: '0.95rem' }}>
+              {(tournament?.prizes || []).map((prize) => {
+                const labels: Record<string, string> = {
+                  LONG_DRIVER: 'Long Driver',
+                  BEST_DRIVER: 'Best Driver',
+                  BEST_APPROACH: 'Best Approach',
+                };
+                return (
+                  <div key={prize.id} style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.50rem' }}>
+                    <strong style={{ color: '#2c3e50' }}>{labels[prize.prizeType] || prize.prizeType}:</strong>
+                    {prize.winnerName
+                      ? <span>{prize.winnerName}</span>
+                      : <em>Pendiente</em>
+                    }
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
@@ -590,6 +636,58 @@ const TournamentLeaderboardPage = () => {
             await loadData();
           }}
         />
+      )}
+
+      {/* Prize Confirmation Modal */}
+      {prizeConfirmation && (
+        <div className="modal-overlay" onClick={() => setPrizeConfirmation(null)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '460px' }}>
+            <div className="modal-header">
+              <h2>Asignar Premio</h2>
+              <button className="modal-close" onClick={() => setPrizeConfirmation(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: 0 }}>
+                ¿Está seguro que desea seleccionar a{' '}
+                <strong>{prizeConfirmation.row.playerName}</strong> como ganador del{' '}
+                <strong>{prizeConfirmation.prizeLabel}</strong>?
+              </p>
+            </div>
+            <div className="modal-footer" style={{ justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                onClick={() => setPrizeConfirmation(null)}
+                className="btn-cancel"
+                disabled={assigningPrize}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={async () => {
+                  if (!tournament || !prizeConfirmation) return;
+                  try {
+                    setAssigningPrize(true);
+                    await tournamentService.assignPrizeWinner(
+                      tournament.id,
+                      prizeConfirmation.prizeType,
+                      prizeConfirmation.row.inscriptionId
+                    );
+                    setPrizeConfirmation(null);
+                    await loadData();
+                  } catch (err: any) {
+                    setError(err.response?.data?.message || 'Error al asignar ganador');
+                    setPrizeConfirmation(null);
+                  } finally {
+                    setAssigningPrize(false);
+                  }
+                }}
+                className="btn-save"
+                disabled={assigningPrize}
+              >
+                {assigningPrize ? 'Guardando...' : 'Confirmar'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Edit Scorecard Modal */}

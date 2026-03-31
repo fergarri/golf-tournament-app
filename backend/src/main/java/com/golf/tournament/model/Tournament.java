@@ -87,6 +87,10 @@ public class Tournament {
     @Builder.Default
     private List<TournamentInscription> inscriptions = new ArrayList<>();
 
+    @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<TournamentPrize> prizes = new ArrayList<>();
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

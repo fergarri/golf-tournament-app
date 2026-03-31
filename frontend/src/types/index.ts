@@ -80,6 +80,14 @@ export interface Hole {
   distancesByTee: { [key: number]: number };
 }
 
+export interface TournamentPrize {
+  id: number;
+  prizeType: 'LONG_DRIVER' | 'BEST_DRIVER' | 'BEST_APPROACH';
+  winnerId?: number | null;
+  winnerInscriptionId?: number | null;
+  winnerName?: string | null;
+}
+
 export interface Tournament {
   id: number;
   nombre: string;
@@ -101,6 +109,7 @@ export interface Tournament {
   currentInscriptos: number;
   categories: TournamentCategory[];
   teeConfig?: TournamentTeeConfig;
+  prizes?: TournamentPrize[];
 }
 
 export interface TournamentCategory {

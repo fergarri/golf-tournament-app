@@ -42,6 +42,7 @@ public class CreateTournamentRequest {
     private BigDecimal valorInscripcion;
     private Boolean doublePoints;
     private Boolean controlCruzado;
+    private List<String> prizes;
     
     @NotNull(message = "At least one category is required")
     private List<TournamentCategoryDTO> categories;

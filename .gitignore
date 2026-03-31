@@ -1,3 +1,6 @@
+# Mobile app (managed separately)
+mobile/
+
 # OS Files
 .DS_Store
 

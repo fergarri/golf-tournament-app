@@ -26,6 +26,7 @@ public class TournamentService {
     private final TournamentCategoryRepository tournamentCategoryRepository;
     private final TournamentInscriptionRepository tournamentInscriptionRepository;
     private final ScorecardRepository scorecardRepository;
+    private final TournamentPrizeService tournamentPrizeService;
 
     private static final String CODIGO_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int CODIGO_LENGTH = 8;
@@ -98,6 +99,8 @@ public class TournamentService {
             tournamentCategoryRepository.save(category);
         }
 
+        tournamentPrizeService.syncPrizesForTournament(tournament, request.getPrizes());
+
         log.info("Tournament created with id: {} and code: {}", tournament.getId(), codigo);
         return convertToDTO(tournament);
     }
@@ -136,6 +139,8 @@ public class TournamentService {
         if (categoriesChanged) {
             reassignInscriptionCategories(tournament.getId());
         }
+
+        tournamentPrizeService.syncPrizesForTournament(tournament, request.getPrizes());
 
         log.info("Tournament updated with id: {}, categories changed: {}", tournament.getId(), categoriesChanged);
         return convertToDTO(tournament);
@@ -334,6 +339,8 @@ public class TournamentService {
                 .map(this::convertCategoryToDTO)
                 .collect(Collectors.toList());
 
+        List<TournamentPrizeDTO> prizes = tournamentPrizeService.getPrizesForTournament(tournament.getId());
+
         return TournamentDTO.builder()
                 .id(tournament.getId())
                 .nombre(tournament.getNombre())
@@ -354,6 +361,7 @@ public class TournamentService {
                 .controlCruzado(tournament.getControlCruzado())
                 .currentInscriptos(inscriptos.intValue())
                 .categories(categories)
+                .prizes(prizes)
                 .build();
     }
 
