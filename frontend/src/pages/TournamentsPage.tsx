@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { courseService } from '../services/courseService';
 import { Tournament, Course, TournamentCategory } from '../types';
@@ -26,6 +26,10 @@ const TournamentsPage = () => {
   const [selectedTournamentForInscription, setSelectedTournamentForInscription] = useState<Tournament | null>(null);
   const [createdTournament, setCreatedTournament] = useState<Tournament | null>(null);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
+  const [tournamentConfirm, setTournamentConfirm] = useState<
+    null | { type: 'finalize' | 'reopen' | 'delete'; tournament: Tournament }
+  >(null);
+  const [tournamentConfirmLoading, setTournamentConfirmLoading] = useState(false);
   const [formData, setFormData] = useState<any>({
     nombre: '',
     tipo: 'CLASICO',
@@ -205,28 +209,43 @@ const TournamentsPage = () => {
     }
   };
 
-  const handleFinalizeTournament = async (tournament: Tournament) => {
-    if (!confirm(`¿Estás seguro de querer finalizar ${tournament.nombre}? Esto cerrará el torneo y mostrará los resultados finales.`)) return;
-    try {
-      await tournamentService.finalize(tournament.id);
-      await loadTournaments();
-      if (tournament.tipo === 'FRUTALES') {
-        navigate(`/tournaments/${tournament.id}/frutales-leaderboard?final=true`);
-      } else {
-        navigate(`/tournaments/${tournament.id}/leaderboard?final=true`);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error finalizando torneo');
-    }
+  const requestFinalizeTournament = (tournament: Tournament) => {
+    setTournamentConfirm({ type: 'finalize', tournament });
   };
 
-  const handleDelete = async (tournament: Tournament) => {
-    if (!confirm(`Are you sure you want to delete ${tournament.nombre}?`)) return;
+  const requestReopenTournament = (tournament: Tournament) => {
+    setTournamentConfirm({ type: 'reopen', tournament });
+  };
+
+  const requestDeleteTournament = (tournament: Tournament) => {
+    setTournamentConfirm({ type: 'delete', tournament });
+  };
+
+  const executeTournamentConfirm = async () => {
+    if (!tournamentConfirm) return;
     try {
-      await tournamentService.delete(tournament.id);
-      loadData();
+      setTournamentConfirmLoading(true);
+      const t = tournamentConfirm.tournament;
+      if (tournamentConfirm.type === 'finalize') {
+        await tournamentService.finalize(t.id);
+        await loadTournaments();
+        if (t.tipo === 'FRUTALES') {
+          navigate(`/tournaments/${t.id}/frutales-leaderboard?final=true`);
+        } else {
+          navigate(`/tournaments/${t.id}/leaderboard?final=true`);
+        }
+      } else if (tournamentConfirm.type === 'reopen') {
+        await tournamentService.reopen(t.id);
+        await loadTournaments();
+      } else {
+        await tournamentService.delete(t.id);
+        loadData();
+      }
+      setTournamentConfirm(null);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error deleting tournament');
+      setError(err.response?.data?.message || 'Error al procesar la acción');
+    } finally {
+      setTournamentConfirmLoading(false);
     }
   };
 
@@ -326,7 +345,21 @@ const TournamentsPage = () => {
   const selectedCourse = courses.find((c) => c.id === parseInt(formData.courseId));
 
   const columns = [
-    { header: 'Nombre', accessor: 'nombre' as keyof Tournament },
+    {
+      header: 'Nombre',
+      accessor: (row: Tournament) => (
+        <Link
+          to={
+            row.tipo === 'FRUTALES'
+              ? `/tournaments/${row.id}/frutales-leaderboard`
+              : `/tournaments/${row.id}/leaderboard`
+          }
+          className="tournament-name-link"
+        >
+          {row.nombre}
+        </Link>
+      ),
+    },
     { header: 'Código', accessor: 'codigo' as keyof Tournament },
     { header: 'Campo', accessor: 'courseName' as keyof Tournament },
     { header: 'Tipo', accessor: 'tipo' as keyof Tournament },
@@ -385,13 +418,19 @@ const TournamentsPage = () => {
     },
     {
       label: 'Finalizar',
-      onClick: handleFinalizeTournament,
+      onClick: requestFinalizeTournament,
       variant: 'danger',
       show: (tournament) => tournament.estado === 'IN_PROGRESS',
     },
     {
+      label: 'Habilitar',
+      onClick: requestReopenTournament,
+      variant: 'primary',
+      show: (tournament) => tournament.estado === 'FINALIZED',
+    },
+    {
       label: 'Eliminar',
-      onClick: handleDelete,
+      onClick: requestDeleteTournament,
       variant: 'danger',
     },
   ];
@@ -411,6 +450,77 @@ const TournamentsPage = () => {
 
       <Table data={tournaments} columns={columns} actions={tournamentActions} />
 
+      <Modal
+        isOpen={tournamentConfirm !== null}
+        onClose={() => {
+          if (!tournamentConfirmLoading) setTournamentConfirm(null);
+        }}
+        title={
+          tournamentConfirm?.type === 'finalize'
+            ? 'Finalizar torneo'
+            : tournamentConfirm?.type === 'reopen'
+              ? 'Habilitar torneo'
+              : 'Eliminar torneo'
+        }
+        size="medium"
+        footer={
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              width: '100%',
+            }}
+          >
+            <button
+              type="button"
+              className="modal-btn modal-btn-cancel"
+              onClick={() => !tournamentConfirmLoading && setTournamentConfirm(null)}
+              disabled={tournamentConfirmLoading}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="modal-btn modal-btn-primary"
+              onClick={executeTournamentConfirm}
+              disabled={tournamentConfirmLoading}
+              style={
+                tournamentConfirm?.type === 'delete'
+                  ? { backgroundColor: '#c0392b', color: '#fff', border: 'none' }
+                  : undefined
+              }
+            >
+              {tournamentConfirmLoading
+                ? 'Procesando…'
+                : tournamentConfirm?.type === 'delete'
+                  ? 'Eliminar'
+                  : 'Confirmar'}
+            </button>
+          </div>
+        }
+      >
+        <p style={{ margin: 0, lineHeight: 1.6, color: '#5a6c7d' }}>
+          {tournamentConfirm?.type === 'finalize' && (
+            <>
+              ¿Finalizar «{tournamentConfirm.tournament.nombre}»? Se cerrará el torneo y se mostrarán los
+              resultados finales; las tarjetas aún en curso se cancelarán.
+            </>
+          )}
+          {tournamentConfirm?.type === 'reopen' && (
+            <>
+              ¿Habilitar «{tournamentConfirm.tournament.nombre}»? El torneo volverá al estado En Proceso y se
+              podrán cargar o corregir tarjetas.
+            </>
+          )}
+          {tournamentConfirm?.type === 'delete' && (
+            <>
+              ¿Eliminar definitivamente «{tournamentConfirm.tournament.nombre}»? Esta acción no se puede
+              deshacer.
+            </>
+          )}
+        </p>
+      </Modal>
 
       <Modal
         isOpen={showCopyLinkModal}

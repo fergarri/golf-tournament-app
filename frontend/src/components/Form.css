@@ -172,3 +172,14 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Nombre de torneo como enlace a la tabla de líderes */
+a.tournament-name-link {
+  color: #2980b9;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a.tournament-name-link:hover {
+  text-decoration: underline;
+}

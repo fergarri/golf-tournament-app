@@ -1,0 +1,31 @@
+# Reglas del proyecto Golf Tournament App
+
+## Stack técnico
+- Backend: Java 21 + Spring Boot 3.x
+- Frontend: React + TypeScript
+- Base de datos: PostgreSQL
+- Migraciones: Flyway
+
+## Estructura del repositorio
+- Backend: `backend/` — código Java en `backend/src/main/java/`, recursos y Flyway en `backend/src/main/resources/` (migraciones SQL: `db/migration/`, p. ej. `Vxx__descripcion.sql`).
+- Frontend: `frontend/src/` — páginas en `pages/`, componentes en `components/`, servicios API en `services/`, tipos en `types/`.
+- Configuración raíz: `pom.xml` / `package.json` según capa.
+
+## Convenciones de código
+
+### Backend (Java)
+- Arquitectura por capas: Controller → Service → Repository
+- Nombres de tablas en snake_case plural (tournaments, players)
+- Incluir `created_at` y `updated_at` en entidades nuevas cuando aplique
+- Autenticación con **Spring Security + JWT**; API **stateless** (`SessionCreationPolicy.STATELESS`). No proponer sesiones HTTP server-side ni cookies de sesión para la API REST salvo que el código ya lo use explícitamente
+
+### Frontend (React)
+- Componentes funcionales con hooks
+- Usar el componente **Modal** (`frontend/src/components/Modal.tsx`) para confirmaciones y mensajes al usuario; evitar `alert()` y `confirm()` del navegador
+
+## Idioma
+- Código y nombres de variables en inglés
+- Comentarios en código: pueden ser en español
+- **Interfaz de usuario (UI)**: textos visibles al usuario (títulos, botones, labels, mensajes de error/éxito, placeholders, tooltips) en **español**, alineados con el vocabulario ya usado en la app (torneo, tarjeta, inscripción, etc.)
+- Mensajes de error devueltos por el backend expuestos al usuario: mantener o traducir a español según el contexto de la pantalla
+- Las respuestas del asistente (Cursor) deben ser siempre en español

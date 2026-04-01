@@ -371,6 +371,12 @@
   overflow-y: visible;
 }
 
+/* Modal de edición de scorecard: mismas tablas que la vista jugador (IDA / VTA / GROSS / NETO) */
+.scorecard-modal-table-inner .scorecard-table-container {
+  background: #fff;
+  border-radius: 8px;
+}
+
 .modal-scorecard-table {
   width: 100%;
   border-collapse: collapse;

@@ -46,6 +46,11 @@ export const tournamentService = {
     return response.data;
   },
 
+  reopen: async (id: number): Promise<Tournament> => {
+    const response = await api.post<Tournament>(`/tournaments/${id}/reopen`);
+    return response.data;
+  },
+
   getPrizes: async (tournamentId: number): Promise<TournamentPrize[]> => {
     const response = await api.get<TournamentPrize[]>(`/tournaments/${tournamentId}/prizes`);
     return response.data;

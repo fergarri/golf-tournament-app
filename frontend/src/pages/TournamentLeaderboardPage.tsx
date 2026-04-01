@@ -8,9 +8,11 @@ import { Tournament, LeaderboardEntry, Scorecard } from '../types';
 import Table, { TableAction } from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
+import Modal from '../components/Modal';
 import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
+import './TournamentScorecardPage.css';
 
 const TournamentLeaderboardPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -38,22 +40,22 @@ const TournamentLeaderboardPage = () => {
     row: LeaderboardEntry;
   } | null>(null);
   const [assigningPrize, setAssigningPrize] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<
+    | null
+    | { kind: 'finalize' }
+    | { kind: 'reopen' }
+    | { kind: 'removeInscription'; entry: LeaderboardEntry }
+  >(null);
+  const [confirmActionLoading, setConfirmActionLoading] = useState(false);
 
   useEffect(() => {
     loadData();
-    
-    // Poll for updates every 100 seconds for real-time updates
-    const interval = setInterval(() => {
-      loadData();
-    }, 100000); // 100 seconds
-
-    return () => clearInterval(interval);
   }, [id]); // Removed selectedCategory from dependencies since we filter in frontend
 
-  const loadData = async () => {
+  const loadData = async (options?: { silent?: boolean }) => {
     if (!id) return;
     try {
-      setLoading(true);
+      if (!options?.silent) setLoading(true);
       const tournamentData = await tournamentService.getById(parseInt(id));
       setTournament(tournamentData);
 
@@ -64,7 +66,49 @@ const TournamentLeaderboardPage = () => {
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error loading leaderboard');
     } finally {
-      setLoading(false);
+      if (!options?.silent) setLoading(false);
+    }
+  };
+
+  const openFinalizeConfirm = () => {
+    if (!tournament || !id) return;
+    setConfirmDialog({ kind: 'finalize' });
+  };
+
+  const openReopenConfirm = () => {
+    if (!tournament || !id) return;
+    setConfirmDialog({ kind: 'reopen' });
+  };
+
+  const executeConfirmDialog = async () => {
+    if (!confirmDialog || !id) return;
+    try {
+      setConfirmActionLoading(true);
+      if (confirmDialog.kind === 'finalize') {
+        await tournamentService.finalize(parseInt(id, 10));
+        await loadData({ silent: true });
+        navigate(`/tournaments/${id}/leaderboard?final=true`, { replace: true });
+      } else if (confirmDialog.kind === 'reopen') {
+        await tournamentService.reopen(parseInt(id, 10));
+        await loadData({ silent: true });
+        navigate(`/tournaments/${id}/leaderboard`, { replace: true });
+      } else if (confirmDialog.kind === 'removeInscription') {
+        await inscriptionService.removeInscription(confirmDialog.entry.inscriptionId);
+        await loadData();
+        setError('');
+      }
+      setConfirmDialog(null);
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.message ||
+        (confirmDialog.kind === 'finalize'
+          ? 'Error al finalizar el torneo'
+          : confirmDialog.kind === 'reopen'
+            ? 'Error al habilitar el torneo'
+            : 'Error dando de baja al jugador');
+      setError(msg);
+    } finally {
+      setConfirmActionLoading(false);
     }
   };
 
@@ -172,16 +216,51 @@ const TournamentLeaderboardPage = () => {
     setEditingScorecard(null);
   };
 
-  const handleScoreChange = (holeScoreId: number, newScore: number) => {
+  const handleScoreChange = (holeScoreId: number, value: string) => {
     if (!editingScorecard) return;
-    
+    const parsed = value === '' ? undefined : parseInt(value, 10);
+    const newScore = parsed === undefined || Number.isNaN(parsed) ? undefined : parsed;
+
     setEditingScorecard({
       ...editingScorecard,
-      holeScores: editingScorecard.holeScores.map(hs =>
+      holeScores: editingScorecard.holeScores.map((hs) =>
         hs.id === holeScoreId ? { ...hs, golpesPropio: newScore } : hs
-      )
+      ),
     });
   };
+
+  const scorecardModalLayout = useMemo(() => {
+    if (!editingScorecard?.holeScores?.length) return null;
+    const sorted = [...editingScorecard.holeScores].sort((a, b) => a.numeroHoyo - b.numeroHoyo);
+    const hasBackNine = sorted.some((h) => h.numeroHoyo > 9);
+    const frontNine = sorted.filter((h) => h.numeroHoyo <= 9);
+    const backNine = sorted.filter((h) => h.numeroHoyo > 9);
+    const sumGolpes = (holes: typeof sorted) =>
+      holes.reduce((s, h) => s + (h.golpesPropio ?? 0), 0);
+    const sumPar = (holes: typeof sorted) => holes.reduce((s, h) => s + h.par, 0);
+    const totalGross = sumGolpes(sorted);
+    const totalParSum = sumPar(sorted);
+    const frontGross = sumGolpes(frontNine);
+    const backGross = sumGolpes(backNine);
+    const frontPar = sumPar(frontNine);
+    const backPar = sumPar(backNine);
+    const hc = editingScorecard.handicapCourse;
+    const neto =
+      totalGross > 0 && hc != null && !Number.isNaN(Number(hc)) ? totalGross - Number(hc) : null;
+    return {
+      sorted,
+      hasBackNine,
+      frontNine,
+      backNine,
+      frontGross,
+      backGross,
+      frontPar,
+      backPar,
+      totalGross,
+      totalParSum,
+      neto,
+    };
+  }, [editingScorecard]);
 
   const handleSaveScorecard = async () => {
     if (!editingScorecard) return;
@@ -292,15 +371,8 @@ const TournamentLeaderboardPage = () => {
     }
   };
 
-  const handleRemoveInscription = async (entry: LeaderboardEntry) => {
-    if (!confirm(`¿Dar de baja a ${entry.playerName} de este torneo?`)) return;
-    try {
-      await inscriptionService.removeInscription(entry.inscriptionId);
-      await loadData();
-      setError('');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error dando de baja al jugador');
-    }
+  const handleRemoveInscription = (entry: LeaderboardEntry) => {
+    setConfirmDialog({ kind: 'removeInscription', entry });
   };
 
   const getResultsLink = (codigo: string) => {
@@ -435,7 +507,7 @@ const TournamentLeaderboardPage = () => {
           <button onClick={() => navigate('/tournaments')} className="btn-back">
             ← Volver a Torneos
           </button>
-          <button onClick={loadData} className="btn-refresh" disabled={loading}>
+          <button onClick={() => loadData()} className="btn-refresh" disabled={loading}>
             {loading ? '⟳ Actualizando...' : '⟳ Actualizar'}
           </button>
           {tournament && (tournament.estado === 'PENDING' || tournament.estado === 'IN_PROGRESS') && (
@@ -458,6 +530,42 @@ const TournamentLeaderboardPage = () => {
               }}
             >
               📋 Link Resultados
+            </button>
+          )}
+          {tournament?.estado === 'IN_PROGRESS' && (
+            <button
+              type="button"
+              onClick={openFinalizeConfirm}
+              className="btn-finalize-tournament"
+              style={{
+                backgroundColor: '#c0392b',
+                color: 'white',
+                padding: '10px 20px',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+              }}
+            >
+              Finalizar
+            </button>
+          )}
+          {tournament?.estado === 'FINALIZED' && (
+            <button
+              type="button"
+              onClick={openReopenConfirm}
+              className="btn-reopen-tournament"
+              style={{
+                backgroundColor: '#27ae60',
+                color: 'white',
+                padding: '10px 20px',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontWeight: 'bold',
+              }}
+            >
+              Habilitar
             </button>
           )}
           <button 
@@ -587,8 +695,6 @@ const TournamentLeaderboardPage = () => {
             />
           </div>
           <div className="update-info">
-            <span className="live-indicator"></span>
-            <span>Actualizando en tiempo real cada 100 segundos</span>
             {filteredByCategory.filter(entry => entry.status === 'DELIVERED').length > 0 && (
               <span style={{ marginLeft: '20px' }}>
                 • Tarjetas entregadas: {filteredByCategory.filter(entry => entry.status === 'DELIVERED').length} de {filteredByCategory.length}
@@ -637,6 +743,72 @@ const TournamentLeaderboardPage = () => {
           }}
         />
       )}
+
+      <Modal
+        isOpen={confirmDialog !== null}
+        onClose={() => {
+          if (!confirmActionLoading) setConfirmDialog(null);
+        }}
+        title={
+          confirmDialog?.kind === 'finalize'
+            ? 'Finalizar torneo'
+            : confirmDialog?.kind === 'reopen'
+              ? 'Habilitar torneo'
+              : 'Dar de baja'
+        }
+        size="medium"
+        footer={
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              gap: '0.75rem',
+              width: '100%',
+            }}
+          >
+            <button
+              type="button"
+              className="modal-btn modal-btn-cancel"
+              onClick={() => !confirmActionLoading && setConfirmDialog(null)}
+              disabled={confirmActionLoading}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="modal-btn modal-btn-primary"
+              onClick={executeConfirmDialog}
+              disabled={confirmActionLoading}
+            >
+              {confirmActionLoading
+                ? 'Procesando…'
+                : confirmDialog?.kind === 'removeInscription'
+                  ? 'Dar de baja'
+                  : 'Confirmar'}
+            </button>
+          </div>
+        }
+      >
+        <p style={{ margin: 0, lineHeight: 1.6, color: '#5a6c7d' }}>
+          {confirmDialog?.kind === 'finalize' && tournament && (
+            <>
+              ¿Finalizar «{tournament.nombre}»? Se cancelarán las tarjetas aún en curso y el torneo
+              quedará cerrado.
+            </>
+          )}
+          {confirmDialog?.kind === 'reopen' && tournament && (
+            <>
+              ¿Habilitar «{tournament.nombre}»? El torneo volverá al estado En Proceso y se podrán cargar o
+              corregir tarjetas.
+            </>
+          )}
+          {confirmDialog?.kind === 'removeInscription' && (
+            <>
+              ¿Dar de baja a <strong>{confirmDialog.entry.playerName}</strong> de este torneo?
+            </>
+          )}
+        </p>
+      </Modal>
 
       {/* Prize Confirmation Modal */}
       {prizeConfirmation && (
@@ -698,65 +870,166 @@ const TournamentLeaderboardPage = () => {
               <div>
                 <h2>Editar Tarjeta - {editingScorecard.playerName}</h2>
                 <p className="scorecard-info">
-                  HCP: {editingScorecard.handicapCourse?.toFixed(1)} | 
-                  Score: {editingScorecard.holeScores.reduce((sum, hs) => sum + (hs.golpesPropio || 0), 0) || '-'}
+                  HCP: {editingScorecard.handicapCourse?.toFixed(1)} | Gross:{' '}
+                  {scorecardModalLayout?.totalGross != null && scorecardModalLayout.totalGross > 0
+                    ? scorecardModalLayout.totalGross
+                    : '-'}
+                  {scorecardModalLayout?.neto != null && (
+                    <> | Neto: {Number.isInteger(scorecardModalLayout.neto) ? scorecardModalLayout.neto : scorecardModalLayout.neto.toFixed(1)}</>
+                  )}
                 </p>
               </div>
               <button className="modal-close" onClick={handleCloseModal}>×</button>
             </div>
             
             <div className="modal-body">
-              <div className="scorecard-table-wrapper">
-                <table className="modal-scorecard-table">
-                  <thead>
-                    <tr className="scorecard-header-row">
-                      <th className="scorecard-sticky-col">HOYO</th>
-                      {editingScorecard.holeScores
-                        .sort((a, b) => a.numeroHoyo - b.numeroHoyo)
-                        .map((holeScore) => (
-                          <th key={holeScore.id}>{holeScore.numeroHoyo}</th>
-                        ))}
-                      <th className="scorecard-total-col">TOTAL</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="scorecard-par-row">
-                      <td className="scorecard-sticky-col scorecard-label">PAR</td>
-                      {editingScorecard.holeScores
-                        .sort((a, b) => a.numeroHoyo - b.numeroHoyo)
-                        .map((holeScore) => (
-                          <td key={holeScore.id} className="scorecard-par-cell">
-                            {holeScore.par}
-                          </td>
-                        ))}
-                      <td className="scorecard-total-cell">
-                        {editingScorecard.holeScores.reduce((sum, hs) => sum + hs.par, 0)}
-                      </td>
-                    </tr>
-                    <tr className="scorecard-score-row">
-                      <td className="scorecard-sticky-col scorecard-label scorecard-player-label">
-                        SCORE
-                      </td>
-                      {editingScorecard.holeScores
-                        .sort((a, b) => a.numeroHoyo - b.numeroHoyo)
-                        .map((holeScore) => (
-                          <td key={holeScore.id} className="scorecard-input-cell">
-                            <input
-                              type="number"
-                              min="1"
-                              max="15"
-                              value={holeScore.golpesPropio || ''}
-                              onChange={(e) => handleScoreChange(holeScore.id, parseInt(e.target.value))}
-                              className="scorecard-score-input"
-                            />
-                          </td>
-                        ))}
-                      <td className="scorecard-total-cell scorecard-score-total">
-                        {editingScorecard.holeScores.reduce((sum, hs) => sum + (hs.golpesPropio || 0), 0) || '-'}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div className="scorecard-table-wrapper scorecard-modal-table-inner">
+                {scorecardModalLayout && (
+                  <div className="scorecard-table-container">
+                    <table className="scorecard-table">
+                      <tbody>
+                        {scorecardModalLayout.hasBackNine ? (
+                          <>
+                            <tr className="handicap-row">
+                              <td className="sticky-col label-cell">HCP</td>
+                              {scorecardModalLayout.frontNine.map((holeScore) => (
+                                <td key={holeScore.id} className="hcp-cell">
+                                  -
+                                </td>
+                              ))}
+                              <td className="subtotal-cell hcp-cell"></td>
+                              {scorecardModalLayout.backNine.map((holeScore) => (
+                                <td key={holeScore.id} className="hcp-cell">
+                                  -
+                                </td>
+                              ))}
+                              <td className="subtotal-cell hcp-cell"></td>
+                              <td></td>
+                              <td></td>
+                            </tr>
+                            <tr className="par-row">
+                              <td className="sticky-col label-cell">PAR</td>
+                              {scorecardModalLayout.frontNine.map((holeScore) => (
+                                <td key={holeScore.id} className="par-cell">
+                                  {holeScore.par}
+                                </td>
+                              ))}
+                              <td className="subtotal-cell par-cell">{scorecardModalLayout.frontPar}</td>
+                              {scorecardModalLayout.backNine.map((holeScore) => (
+                                <td key={holeScore.id} className="par-cell">
+                                  {holeScore.par}
+                                </td>
+                              ))}
+                              <td className="subtotal-cell par-cell">{scorecardModalLayout.backPar}</td>
+                              <td className="total-cell final-total-cell">{scorecardModalLayout.totalParSum}</td>
+                              <td className="total-cell final-total-cell"></td>
+                            </tr>
+                            <tr className="hoyo-row">
+                              <td className="sticky-col label-cell">HOYO</td>
+                              {scorecardModalLayout.frontNine.map((holeScore) => (
+                                <td key={holeScore.id} className="hoyo-cell">
+                                  {holeScore.numeroHoyo}
+                                </td>
+                              ))}
+                              <td className="subtotal-cell hoyo-cell">IDA</td>
+                              {scorecardModalLayout.backNine.map((holeScore) => (
+                                <td key={holeScore.id} className="hoyo-cell">
+                                  {holeScore.numeroHoyo}
+                                </td>
+                              ))}
+                              <td className="subtotal-cell hoyo-cell">VTA</td>
+                              <td className="total-cell final-total-cell">GROSS</td>
+                              <td className="total-cell final-total-cell">NETO</td>
+                            </tr>
+                            <tr className="score-row player-row">
+                              <td className="sticky-col label-cell player-label">TU</td>
+                              {scorecardModalLayout.frontNine.map((holeScore) => (
+                                <td key={holeScore.id}>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="15"
+                                    value={holeScore.golpesPropio ?? ''}
+                                    onChange={(e) => handleScoreChange(holeScore.id, e.target.value)}
+                                    className="score-input"
+                                  />
+                                </td>
+                              ))}
+                              <td className="subtotal-cell score-total">
+                                {scorecardModalLayout.frontGross || '-'}
+                              </td>
+                              {scorecardModalLayout.backNine.map((holeScore) => (
+                                <td key={holeScore.id}>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="15"
+                                    value={holeScore.golpesPropio ?? ''}
+                                    onChange={(e) => handleScoreChange(holeScore.id, e.target.value)}
+                                    className="score-input"
+                                  />
+                                </td>
+                              ))}
+                              <td className="subtotal-cell score-total">
+                                {scorecardModalLayout.backGross || '-'}
+                              </td>
+                              <td className="total-cell score-total">
+                                {scorecardModalLayout.totalGross || '-'}
+                              </td>
+                              <td className="total-cell score-total neto-cell">
+                                {scorecardModalLayout.neto != null ? scorecardModalLayout.neto : '-'}
+                              </td>
+                            </tr>
+                          </>
+                        ) : (
+                          <>
+                            <tr className="par-row">
+                              <td className="sticky-col label-cell">PAR</td>
+                              {scorecardModalLayout.sorted.map((holeScore) => (
+                                <td key={holeScore.id} className="par-cell">
+                                  {holeScore.par}
+                                </td>
+                              ))}
+                              <td className="total-cell final-total-cell">{scorecardModalLayout.totalParSum}</td>
+                              <td className="total-cell final-total-cell"></td>
+                            </tr>
+                            <tr className="hoyo-row">
+                              <td className="sticky-col label-cell">HOYO</td>
+                              {scorecardModalLayout.sorted.map((holeScore) => (
+                                <td key={holeScore.id} className="hoyo-cell">
+                                  {holeScore.numeroHoyo}
+                                </td>
+                              ))}
+                              <td className="total-cell final-total-cell">GROSS</td>
+                              <td className="total-cell final-total-cell">NETO</td>
+                            </tr>
+                            <tr className="score-row player-row">
+                              <td className="sticky-col label-cell player-label">TU</td>
+                              {scorecardModalLayout.sorted.map((holeScore) => (
+                                <td key={holeScore.id}>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="15"
+                                    value={holeScore.golpesPropio ?? ''}
+                                    onChange={(e) => handleScoreChange(holeScore.id, e.target.value)}
+                                    className="score-input"
+                                  />
+                                </td>
+                              ))}
+                              <td className="total-cell score-total">
+                                {scorecardModalLayout.totalGross || '-'}
+                              </td>
+                              <td className="total-cell score-total neto-cell">
+                                {scorecardModalLayout.neto != null ? scorecardModalLayout.neto : '-'}
+                              </td>
+                            </tr>
+                          </>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             </div>
             

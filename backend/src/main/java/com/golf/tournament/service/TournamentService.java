@@ -407,6 +407,24 @@ public class TournamentService {
         return convertToDTO(tournament);
     }
 
+    /**
+     * Vuelve un torneo finalizado al estado en curso para permitir correcciones.
+     */
+    @Transactional
+    public TournamentDTO reopenTournament(Long id) {
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
+
+        if (!"FINALIZED".equals(tournament.getEstado())) {
+            throw new BadRequestException("Solo se puede habilitar un torneo que esté finalizado");
+        }
+
+        tournament.setEstado("IN_PROGRESS");
+        tournament = tournamentRepository.save(tournament);
+        log.info("Tournament {} reopened to IN_PROGRESS", id);
+        return convertToDTO(tournament);
+    }
+
     private TournamentCategoryDTO convertCategoryToDTO(TournamentCategory category) {
         return TournamentCategoryDTO.builder()
                 .id(category.getId())

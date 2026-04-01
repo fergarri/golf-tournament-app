@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { Tournament } from '../types';
 import Table, { TableAction } from '../components/Table';
@@ -61,7 +61,11 @@ const DashboardPage = () => {
   };
 
   const handleViewLeaderboard = (tournament: Tournament) => {
-    navigate(`/tournaments/${tournament.id}/leaderboard`);
+    if (tournament.tipo === 'FRUTALES') {
+      navigate(`/tournaments/${tournament.id}/frutales-leaderboard`);
+    } else {
+      navigate(`/tournaments/${tournament.id}/leaderboard`);
+    }
   };
 
   const showModal = (
@@ -107,7 +111,22 @@ const DashboardPage = () => {
   };
 
   const columns = [
-    { header: 'Nombre del Torneo', accessor: 'nombre' as keyof Tournament, width: '25%' },
+    {
+      header: 'Nombre del Torneo',
+      accessor: (row: Tournament) => (
+        <Link
+          to={
+            row.tipo === 'FRUTALES'
+              ? `/tournaments/${row.id}/frutales-leaderboard`
+              : `/tournaments/${row.id}/leaderboard`
+          }
+          className="tournament-name-link"
+        >
+          {row.nombre}
+        </Link>
+      ),
+      width: '25%',
+    },
     { header: 'Campo', accessor: 'courseName' as keyof Tournament, width: '20%' },
     { 
       header: 'Fecha de Inicio', 

@@ -38,13 +38,6 @@ const LeaderboardPage: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-
-    // Poll for updates every 10 seconds
-    const interval = setInterval(() => {
-      fetchData();
-    }, 10000);
-
-    return () => clearInterval(interval);
   }, [codigo, selectedCategory]);
 
   const handleCategoryChange = (categoryId: number | undefined) => {
@@ -116,7 +109,6 @@ const LeaderboardPage: React.FC = () => {
       {leaderboard.length === 0 ? (
         <div className="no-data">
           <p>No hay tarjetas entregadas aún.</p>
-          <p>El leaderboard se actualizará automáticamente cuando los jugadores entreguen sus tarjetas.</p>
         </div>
       ) : (
         <div className="leaderboard-container">
@@ -161,12 +153,6 @@ const LeaderboardPage: React.FC = () => {
                 ))}
               </tbody>
             </table>
-          </div>
-          <div className="update-info">
-            <p>
-              <span className="live-indicator"></span>
-              Actualizando en tiempo real
-            </p>
           </div>
         </div>
       )}
