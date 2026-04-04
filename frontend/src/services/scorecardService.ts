@@ -73,6 +73,11 @@ export const scorecardService = {
     return response.data;
   },
 
+  clearMarker: async (scorecardId: number): Promise<Scorecard> => {
+    const response = await api.delete<Scorecard>(`/scorecards/${scorecardId}/marker`);
+    return response.data;
+  },
+
   disqualifyScorecard: async (scorecardId: number): Promise<Scorecard> => {
     const response = await api.post<Scorecard>(`/scorecards/${scorecardId}/disqualify`);
     return response.data;

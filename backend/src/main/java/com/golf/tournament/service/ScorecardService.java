@@ -231,10 +231,72 @@ public class ScorecardService {
             throw new BadRequestException("No se puede marcar a uno mismo");
         }
 
+        if (Boolean.TRUE.equals(scorecard.getTournament().getControlCruzado())) {
+            List<Scorecard> scorecardsQueMarcanAEsteJugador = scorecardRepository
+                    .findByTournamentIdAndMarkerId(scorecard.getTournament().getId(), markerId);
+            boolean otroYaLoMarca = scorecardsQueMarcanAEsteJugador.stream()
+                    .anyMatch(s -> !s.getId().equals(scorecardId));
+            if (otroYaLoMarca) {
+                String nombreMarcado = (marker.getNombre() != null ? marker.getNombre().trim() : "")
+                        + " "
+                        + (marker.getApellido() != null ? marker.getApellido().trim() : "");
+                nombreMarcado = nombreMarcado.trim();
+                if (nombreMarcado.isEmpty()) {
+                    nombreMarcado = "Ese jugador";
+                }
+                throw new BadRequestException(
+                        nombreMarcado + " ya está siendo marcado por otro participante. "
+                                + "Seleccione otro jugador a quien marcar los golpes.");
+            }
+        }
+
         scorecard.setMarker(marker);
         scorecard = scorecardRepository.save(scorecard);
 
         log.info("Marker {} assigned to scorecard {}", markerId, scorecardId);
+        return convertToDTO(scorecard);
+    }
+
+    /**
+     * Quita el jugador asignado en "marcar a…", limpia golpes cargados en esa fila y el estado de validación.
+     */
+    @Transactional
+    public ScorecardDTO clearMarker(Long scorecardId) {
+        Scorecard scorecard = scorecardRepository.findById(scorecardId)
+                .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+        ensureScorecardConfigured(scorecard);
+
+        if (scorecard.getStatus() == ScorecardStatus.DELIVERED) {
+            throw new BadRequestException("No se puede quitar el marcador de una tarjeta entregada");
+        }
+        if (scorecard.getStatus() == ScorecardStatus.CANCELLED) {
+            throw new BadRequestException("No se puede quitar el marcador de una tarjeta cancelada");
+        }
+
+        if (scorecard.getMarker() == null) {
+            return convertToDTO(scorecard);
+        }
+
+        scorecard.setMarker(null);
+        scorecard.setMarcadorValidado(false);
+
+        for (HoleScore hs : holeScoreRepository.findByScorecardId(scorecardId)) {
+            hs.setGolpesMarcador(null);
+            hs.setValidado(false);
+            holeScoreRepository.save(hs);
+        }
+
+        scorecard = scorecardRepository.save(scorecard);
+
+        final Long idParaEvento = scorecard.getId();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                scorecardEventService.notifyConcordanciaActualizada(idParaEvento);
+            }
+        });
+
+        log.info("Marker cleared from scorecard {}", scorecardId);
         return convertToDTO(scorecard);
     }
 

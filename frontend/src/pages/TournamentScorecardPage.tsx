@@ -44,6 +44,8 @@ const TournamentScorecardPage = () => {
   const [markerFound, setMarkerFound] = useState<Player | null>(null);
   const [markerStep, setMarkerStep] = useState<'search' | 'confirm'>('search');
   const [searchingMarker, setSearchingMarker] = useState(false);
+  const [assigningMarker, setAssigningMarker] = useState(false);
+  const [markerAssignmentError, setMarkerAssignmentError] = useState<string | null>(null);
   
   // Para evitar múltiples guardados simultáneos
   const saveTimeoutRef = useRef<number | null>(null);
@@ -304,7 +306,59 @@ const TournamentScorecardPage = () => {
     setMarkerMatricula('');
     setMarkerFound(null);
     setMarkerStep('search');
+    setMarkerAssignmentError(null);
     setMarkerModalOpen(true);
+  };
+
+  const handleMarkerLabelClick = () => {
+    if (scorecard?.status === 'DELIVERED') {
+      setTimeout(() => {
+        showModal('Error', 'No se puede modificar el marcador en una tarjeta entregada', 'error');
+      }, 100);
+      return;
+    }
+    if (scorecard?.markerId && scorecard.markerName) {
+      showModal(
+        'Quitar marcador',
+        `¿Desea eliminar a ${scorecard.markerName} del control de golpes?`,
+        'confirm',
+        () => {
+          void confirmClearMarker();
+        }
+      );
+      return;
+    }
+    openMarkerModal();
+  };
+
+  const confirmClearMarker = async () => {
+    if (!scorecard?.id) return;
+    try {
+      const updated = await scorecardService.clearMarker(scorecard.id);
+      setScorecard(updated);
+      setScores((prev) => {
+        const next = { ...prev };
+        holes.forEach((hole) => {
+          const hs = updated.holeScores.find((x) => x.numeroHoyo === hole.numeroHoyo);
+          next[hole.numeroHoyo] = {
+            propio: hs?.golpesPropio ?? null,
+            marcador: hs?.golpesMarcador ?? null,
+          };
+        });
+        return next;
+      });
+      setMarkerMatricula('');
+      setMarkerFound(null);
+      setMarkerStep('search');
+      setMarkerAssignmentError(null);
+      setMarkerModalOpen(true);
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.message ||
+        (typeof err.response?.data === 'string' ? err.response.data : null) ||
+        'Error al quitar el marcador';
+      setTimeout(() => showModal('Error', msg, 'error'), 200);
+    }
   };
 
   const searchMarkerByMatricula = async () => {
@@ -341,6 +395,7 @@ const TournamentScorecardPage = () => {
       }
 
       setMarkerFound(foundPlayer);
+      setMarkerAssignmentError(null);
       setMarkerStep('confirm');
     } catch (err: any) {
       setMarkerModalOpen(false);
@@ -356,18 +411,24 @@ const TournamentScorecardPage = () => {
   const confirmMarkerAssignment = async () => {
     if (!markerFound || !scorecard) return;
 
+    setMarkerAssignmentError(null);
     try {
+      setAssigningMarker(true);
       const updatedScorecard = await scorecardService.assignMarker(scorecard.id, markerFound.id);
       setScorecard(updatedScorecard);
       setMarkerModalOpen(false);
+      setMarkerAssignmentError(null);
       setTimeout(() => {
         showModal('Success', `${markerFound.apellido} ha sido asignado como tu marcador`, 'success');
       }, 200);
     } catch (err: any) {
-      setMarkerModalOpen(false);
-      setTimeout(() => {
-        showModal('Error', err.response?.data?.message || 'Error asignando marcador', 'error');
-      }, 200);
+      const msg =
+        err.response?.data?.message ||
+        (typeof err.response?.data === 'string' ? err.response.data : null) ||
+        'Error al asignar el marcador';
+      setMarkerAssignmentError(msg);
+    } finally {
+      setAssigningMarker(false);
     }
   };
 
@@ -376,6 +437,7 @@ const TournamentScorecardPage = () => {
     setMarkerMatricula('');
     setMarkerFound(null);
     setMarkerStep('search');
+    setMarkerAssignmentError(null);
   };
 
   const deliverScorecardAction = async () => {
@@ -673,9 +735,9 @@ const TournamentScorecardPage = () => {
               <tr className="score-row marker-row">
                 <td 
                   className="sticky-col label-cell marker-label clickable"
-                  onClick={openMarkerModal}
+                  onClick={handleMarkerLabelClick}
                   style={{ cursor: 'pointer' }}
-                  title="Click to assign marker"
+                  title={scorecard?.markerName ? 'Cambiar o quitar jugador a marcar' : 'Asignar jugador a marcar'}
                 >
                   {scorecard?.markerName ? scorecard.markerName : 'MARCAR A...'}
                 </td>
@@ -837,11 +899,28 @@ const TournamentScorecardPage = () => {
             <p style={{ 
               fontSize: '1.1rem', 
               color: '#2c3e50',
-              marginBottom: '2rem',
+              marginBottom: markerAssignmentError ? '1rem' : '2rem',
               lineHeight: 1.6
             }}>
               Confirmar jugador <strong>{markerFound?.nombre} {markerFound?.apellido}</strong> como tu marcador?
             </p>
+            {markerAssignmentError && (
+              <div
+                role="alert"
+                style={{
+                  marginBottom: '1.25rem',
+                  padding: '0.75rem 1rem',
+                  backgroundColor: '#f8d7da',
+                  color: '#721c24',
+                  borderRadius: '8px',
+                  fontSize: '0.95rem',
+                  lineHeight: 1.5,
+                  textAlign: 'left',
+                }}
+              >
+                {markerAssignmentError}
+              </div>
+            )}
             <div style={{ 
               display: 'flex', 
               gap: '0.75rem',
@@ -849,6 +928,7 @@ const TournamentScorecardPage = () => {
             }}>
               <button
                 onClick={cancelMarkerAssignment}
+                disabled={assigningMarker}
                 style={{
                   padding: '0.75rem 2rem',
                   backgroundColor: '#ecf0f1',
@@ -857,15 +937,17 @@ const TournamentScorecardPage = () => {
                   borderRadius: '8px',
                   fontSize: '1rem',
                   fontWeight: 600,
-                  cursor: 'pointer',
+                  cursor: assigningMarker ? 'not-allowed' : 'pointer',
                   minWidth: '120px',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  opacity: assigningMarker ? 0.7 : 1,
                 }}
               >
                 Cancelar
               </button>
               <button
                 onClick={confirmMarkerAssignment}
+                disabled={assigningMarker}
                 style={{
                   padding: '0.75rem 2rem',
                   background: 'linear-gradient(135deg, #3498db 0%, #2980b9 100%)',
@@ -874,12 +956,13 @@ const TournamentScorecardPage = () => {
                   borderRadius: '8px',
                   fontSize: '1rem',
                   fontWeight: 600,
-                  cursor: 'pointer',
+                  cursor: assigningMarker ? 'not-allowed' : 'pointer',
                   minWidth: '120px',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s',
+                  opacity: assigningMarker ? 0.75 : 1,
                 }}
               >
-                Confirmar
+                {assigningMarker ? 'Guardando…' : 'Confirmar'}
               </button>
             </div>
           </div>

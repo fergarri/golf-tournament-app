@@ -55,6 +55,11 @@ public class ScorecardController {
         return ResponseEntity.ok(scorecardService.assignMarker(scorecardId, markerId));
     }
 
+    @DeleteMapping("/{scorecardId}/marker")
+    public ResponseEntity<ScorecardDTO> clearMarker(@PathVariable Long scorecardId) {
+        return ResponseEntity.ok(scorecardService.clearMarker(scorecardId));
+    }
+
     @PatchMapping("/{scorecardId}/scores")
     public ResponseEntity<Void> updateScore(
             @PathVariable Long scorecardId,
