@@ -296,7 +296,6 @@ public class ScorecardService {
             }
         });
 
-        log.info("Marker cleared from scorecard {}", scorecardId);
         return convertToDTO(scorecard);
     }
 

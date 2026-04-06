@@ -50,9 +50,17 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
   const availablePlayers = allPlayers.filter(p => !inscribedPlayerIds.has(p.id));
 
   const filteredPlayers = searchQuery
-    ? availablePlayers.filter(p =>
-        `${p.nombre} ${p.apellido} ${p.matricula}`.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? availablePlayers.filter((p) => {
+        const q = searchQuery.toLowerCase().trim();
+        const haystack = [
+          `${p.nombre} ${p.apellido}`,
+          p.matricula,
+          p.clubOrigen ?? '',
+        ]
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(q);
+      })
     : availablePlayers;
 
   const togglePlayer = (playerId: number) => {
@@ -135,7 +143,7 @@ const ManualInscriptionModal = ({ isOpen, onClose, tournament, onSuccess }: Manu
                 <div className="search-input-wrapper" style={{ width: '100%' }}>
                   <input
                     type="text"
-                    placeholder="Buscar jugadores por nombre o matrícula..."
+                    placeholder="Buscar por nombre, matrícula o club..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="search-input"
