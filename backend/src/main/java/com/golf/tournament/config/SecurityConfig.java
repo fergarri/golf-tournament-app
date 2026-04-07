@@ -55,7 +55,7 @@ public class SecurityConfig {
                                 "/courses/*/holes",
                                 "/courses/*/tees",
                                 "/locations/**",
-                                "/leaderboard/public/*"
+                                "/leaderboard/public/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
