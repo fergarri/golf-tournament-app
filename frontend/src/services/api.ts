@@ -10,19 +10,34 @@ const api = axios.create({
   },
 });
 
+// Rutas públicas que no requieren autenticación
+const PUBLIC_PATHS = [
+  /^\/inscribe\//,
+  /^\/play\//,
+  /^\/results\//,
+  /^\/frutales-results\//,
+  /^\/stage-results\//,
+  /^\/playoff-results\//,
+  /^\/tournaments\/[^/]+\/scorecard/,
+];
+
+const isPublicPage = () =>
+  PUBLIC_PATHS.some((regex) => regex.test(window.location.pathname));
+
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    
-    // Verificar si el token está expirado ANTES de hacer la petición
+
     if (token && isTokenExpired(token)) {
-      console.log('⏰ Token expirado detectado - redirigiendo al login');
+      // Limpiar el token expirado sin interrumpir la petición.
+      // En páginas públicas el backend acepta la petición sin token (permitAll).
+      // En páginas protegidas el backend devolverá 401 y el interceptor de
+      // response se encargará de redirigir al login.
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
-      return Promise.reject(new Error('Token expirado'));
+      return config;
     }
-    
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -37,12 +52,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
-    
+
     if (window.location.pathname === '/login') {
       return Promise.reject(error);
     }
 
-    if (status === 401) {
+    // No redirigir al login si el usuario está en una página pública
+    if (status === 401 && !isPublicPage()) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
