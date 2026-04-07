@@ -4,6 +4,9 @@ Allow: /inscribe/
 Allow: /play/
 Allow: /tournaments/
 Allow: /results/
+Allow: /frutales-results/
+Allow: /stage-results/
+Allow: /playoff-results/
 
 Disallow: /dashboard
 Disallow: /admin

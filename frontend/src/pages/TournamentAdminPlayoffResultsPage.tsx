@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { tournamentAdminPlayoffResultService } from '../services/tournamentAdminPlayoffResultService';
 import { TournamentAdminPlayoffResults } from '../types';
+import Modal from '../components/Modal';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 
@@ -14,6 +15,7 @@ const TournamentAdminPlayoffResultsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [calculating, setCalculating] = useState(false);
+  const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
 
   useEffect(() => {
     if (!Number.isFinite(tournamentAdminId)) {
@@ -37,6 +39,15 @@ const TournamentAdminPlayoffResultsPage = () => {
     }
   };
 
+  const getPublicPlayoffResultsLink = () => {
+    return `${window.location.origin}/playoff-results/${tournamentAdminId}`;
+  };
+
+  const copyPublicPlayoffResultsLink = () => {
+    navigator.clipboard.writeText(getPublicPlayoffResultsLink());
+    setShowCopyLinkModal(true);
+  };
+
   const handleCalculate = async () => {
     try {
       setCalculating(true);
@@ -54,6 +65,8 @@ const TournamentAdminPlayoffResultsPage = () => {
   if (!results) return <div className="error-message">No se encontraron resultados</div>;
 
   const hasStages = results.stages.length > 0;
+  const qualifiedCount = results.rows.filter((r) => r.qualified).length;
+  const colCount = 4 + results.stages.length;
 
   return (
     <div className="leaderboard-page">
@@ -64,6 +77,9 @@ const TournamentAdminPlayoffResultsPage = () => {
           </button>
           <button onClick={loadData} className="btn-refresh">
             ⟳ Actualizar
+          </button>
+          <button type="button" onClick={copyPublicPlayoffResultsLink} className="btn-compact btn-compact-primary">
+            Link resultados públicos
           </button>
           <button
             onClick={handleCalculate}
@@ -80,7 +96,7 @@ const TournamentAdminPlayoffResultsPage = () => {
           <div className="tournament-details">
             <span className="detail-item"><strong>Etapas:</strong> {results.stages.length}</span>
             <span className="detail-item"><strong>Jugadores:</strong> {results.rows.length}</span>
-            <span className="detail-item"><strong>Clasificados:</strong> 8</span>
+            <span className="detail-item"><strong>Clasificados:</strong> {qualifiedCount}</span>
           </div>
         </div>
       </div>
@@ -111,7 +127,7 @@ const TournamentAdminPlayoffResultsPage = () => {
             <tbody>
               {results.rows.length === 0 ? (
                 <tr>
-                  <td colSpan={5 + results.stages.length} className="empty-row">
+                  <td colSpan={colCount} className="empty-row">
                     Aún no hay resultados calculados
                   </td>
                 </tr>
@@ -143,6 +159,23 @@ const TournamentAdminPlayoffResultsPage = () => {
           </table>
         </div>
       </div>
+
+      <Modal
+        isOpen={showCopyLinkModal}
+        onClose={() => setShowCopyLinkModal(false)}
+        title="Link copiado"
+        size="medium"
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', color: '#27ae60', marginBottom: '1rem' }}>✓</div>
+          <p style={{ marginBottom: '1rem' }}>
+            El link público de resultados Play Off fue copiado al portapapeles
+          </p>
+          <button type="button" onClick={() => setShowCopyLinkModal(false)} className="btn btn-primary">
+            Cerrar
+          </button>
+        </div>
+      </Modal>
     </div>
   );
 };

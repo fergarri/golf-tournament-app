@@ -83,24 +83,63 @@ const TournamentScorecardPage = () => {
     };
   }, []);
 
-  // SSE: recibe notificación del servidor cuando el jugador marcado guarda un golpe.
-  // EventSource usa HTTP puro — no requiere WebSocket ni configuración especial de CORS.
+  // SSE + Polling híbrido: garantiza que los colores de concordancia se actualicen
+  // incluso en mobile donde el OS puede matar la conexión SSE en background.
+  //
+  // Tres capas de actualización:
+  //   1. SSE (fast path): actualizaciones en tiempo real cuando la conexión está activa.
+  //   2. Page Visibility API: refresh inmediato cuando el usuario vuelve al primer plano.
+  //   3. Polling cada 30s: safety net garantizado, independiente del estado del SSE.
   useEffect(() => {
     if (!scorecard?.id || scorecard.status === 'DELIVERED' || scorecard.status === 'CANCELLED') return;
 
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+
+    // Capa 1: SSE como fast path
     const es = new EventSource(`${apiUrl}/scorecards/${scorecard.id}/events`);
+    let isInitialOpen = true;
 
     es.addEventListener('concordanciaActualizada', () => {
       const id = scorecardIdRef.current;
       if (id) refreshScorecard(id);
     });
 
-    es.onerror = () => {
-      // El navegador reconecta automáticamente; el error es esperado al cerrar la pestaña
+    // Al reconectar el SSE tras una caída, traer el estado actual para recuperar
+    // eventos que llegaron durante la desconexión (ej: pantalla apagada en mobile).
+    es.onopen = () => {
+      if (!isInitialOpen) {
+        const id = scorecardIdRef.current;
+        if (id) refreshScorecard(id);
+      }
+      isInitialOpen = false;
     };
 
-    return () => es.close();
+    es.onerror = () => {
+      // El navegador reconecta automáticamente; onopen disparará el refresh al volver.
+    };
+
+    // Capa 2: Page Visibility API — refresh inmediato al volver al primer plano
+    // Cubre el caso más común en mobile: usuario cambia de app o apaga la pantalla.
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const id = scorecardIdRef.current;
+        if (id) refreshScorecard(id);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Capa 3: Polling cada 30s como safety net obligatorio
+    // Garantiza convergencia incluso si SSE y visibilitychange fallan.
+    const pollInterval = window.setInterval(() => {
+      const id = scorecardIdRef.current;
+      if (id) refreshScorecard(id);
+    }, 30_000);
+
+    return () => {
+      es.close();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(pollInterval);
+    };
   }, [scorecard?.id, scorecard?.status]);
 
   const loadData = async () => {

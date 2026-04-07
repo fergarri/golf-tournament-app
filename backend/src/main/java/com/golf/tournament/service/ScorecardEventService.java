@@ -1,6 +1,7 @@
 package com.golf.tournament.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -45,6 +46,25 @@ public class ScorecardEventService {
         }
         list.removeAll(dead);
         log.debug("SSE evento enviado a scorecard {}, emitters activos: {}", scorecardId, list.size());
+    }
+
+    // Heartbeat cada 25s para evitar que proxies/load-balancers cierren conexiones idle.
+    // También detecta y limpia emitters muertos antes de intentar enviar un evento real.
+    @Scheduled(fixedDelay = 25_000)
+    public void sendHeartbeat() {
+        if (emitters.isEmpty()) return;
+        emitters.forEach((scorecardId, list) -> {
+            if (list.isEmpty()) return;
+            List<SseEmitter> dead = new CopyOnWriteArrayList<>();
+            for (SseEmitter emitter : list) {
+                try {
+                    emitter.send(SseEmitter.event().comment("heartbeat"));
+                } catch (IOException e) {
+                    dead.add(emitter);
+                }
+            }
+            list.removeAll(dead);
+        });
     }
 
     private void remove(Long scorecardId, SseEmitter emitter) {

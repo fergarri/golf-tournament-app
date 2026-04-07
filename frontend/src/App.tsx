@@ -21,6 +21,7 @@ import TournamentAdminStagesPage from './pages/TournamentAdminStagesPage'
 import TournamentAdminStageBoardPage from './pages/TournamentAdminStageBoardPage'
 import TournamentAdminPlayoffResultsPage from './pages/TournamentAdminPlayoffResultsPage'
 import PublicTournamentAdminStageBoardPage from './pages/PublicTournamentAdminStageBoardPage'
+import PublicTournamentAdminPlayoffResultsPage from './pages/PublicTournamentAdminPlayoffResultsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import PermissionRoute from './components/PermissionRoute'
 import Layout from './components/Layout'
@@ -56,6 +57,7 @@ function App() {
         <Route path="/results/:codigo" element={<PublicLeaderboardPage />} />
         <Route path="/frutales-results/:codigo" element={<PublicFrutalesLeaderboardPage />} />
         <Route path="/stage-results/:tournamentAdminId/:stageId" element={<PublicTournamentAdminStageBoardPage />} />
+        <Route path="/playoff-results/:tournamentAdminId" element={<PublicTournamentAdminPlayoffResultsPage />} />
       </Routes>
     </AuthProvider>
   )

@@ -9,6 +9,13 @@ export const tournamentAdminPlayoffResultService = {
     return response.data;
   },
 
+  getPublic: async (tournamentAdminId: number): Promise<TournamentAdminPlayoffResults> => {
+    const response = await api.get<TournamentAdminPlayoffResults>(
+      `/public/tournament-admin/${tournamentAdminId}/playoff-results`
+    );
+    return response.data;
+  },
+
   calculate: async (tournamentAdminId: number): Promise<TournamentAdminPlayoffResults> => {
     const response = await api.post<TournamentAdminPlayoffResults>(
       `/tournament-admin/${tournamentAdminId}/stages/playoff-results/calculate`

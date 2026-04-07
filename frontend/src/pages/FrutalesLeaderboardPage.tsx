@@ -189,12 +189,19 @@ const FrutalesLeaderboardPage = () => {
     return '';
   };
 
-  const handleEditScorecard = async (scorecardId: number) => {
+  const handleEditScorecard = async (row: FrutalesScore) => {
+    if (!id) return;
+    const tournamentId = parseInt(id, 10);
+    if (!Number.isFinite(tournamentId)) return;
+
     try {
-      const scorecard = await scorecardService.getById(scorecardId);
+      const scorecard =
+        row.scorecardId != null
+          ? await scorecardService.getById(row.scorecardId)
+          : await scorecardService.getOrCreate(tournamentId, row.playerId);
       setMarkAsDelivered(scorecard.status === 'DELIVERED');
       setEditingScorecard(scorecard);
-      setEditingScorecardId(scorecardId);
+      setEditingScorecardId(scorecard.id);
     } catch (err) {
       console.error('Error loading scorecard:', err);
       setError('Error al cargar la scorecard');
@@ -358,14 +365,11 @@ const FrutalesLeaderboardPage = () => {
 
   const actions: TableAction<FrutalesScore>[] = [
     {
-      label: 'Editar',
+      label: 'Editar tarjetas',
       onClick: (row) => {
-        if (row.scorecardId != null) {
-          handleEditScorecard(row.scorecardId);
-        }
+        void handleEditScorecard(row);
       },
       variant: 'primary',
-      show: (row) => row.scorecardId != null,
     },
     {
       label: 'Dar de baja',
