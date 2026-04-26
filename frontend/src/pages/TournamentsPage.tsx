@@ -359,12 +359,13 @@ const TournamentsPage = () => {
           {row.nombre}
         </Link>
       ),
+      sortValue: (row: Tournament) => row.nombre,
     },
     { header: 'Código', accessor: 'codigo' as keyof Tournament },
     { header: 'Campo', accessor: 'courseName' as keyof Tournament },
     { header: 'Tipo', accessor: 'tipo' as keyof Tournament },
-    { header: 'Fecha Inicio', accessor: (row: Tournament) => formatDateSafe(row.fechaInicio) },
-    { header: 'Inscriptos', accessor: (row: Tournament) => `${row.currentInscriptos}${row.limiteInscriptos ? `/${row.limiteInscriptos}` : ''}` },
+    { header: 'Fecha Inicio', accessor: (row: Tournament) => formatDateSafe(row.fechaInicio), sortValue: (row: Tournament) => row.fechaInicio ?? '' },
+    { header: 'Inscriptos', accessor: (row: Tournament) => `${row.currentInscriptos}${row.limiteInscriptos ? `/${row.limiteInscriptos}` : ''}`, sortValue: (row: Tournament) => row.currentInscriptos },
     { 
       header: 'Estado', 
       accessor: (row: Tournament) => (
@@ -372,6 +373,7 @@ const TournamentsPage = () => {
           {row.estado || 'PENDIENTE'}
         </span>
       ),
+      sortValue: (row: Tournament) => row.estado ?? '',
     },
   ];
 
@@ -633,7 +635,7 @@ const TournamentsPage = () => {
 
           <div className="form-group">
             <label>Premios</label>
-            <div style={{ display: 'flex', flexDirection: 'row', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'block', flexDirection: 'row', gap: '0.5rem', flexWrap: 'wrap' }}>
               {[
                 { type: 'LONG_DRIVER', label: 'Long Driver' },
                 { type: 'BEST_DRIVER', label: 'Best Driver' },

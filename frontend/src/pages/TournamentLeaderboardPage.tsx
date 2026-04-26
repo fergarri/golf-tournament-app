@@ -519,15 +519,6 @@ const TournamentLeaderboardPage = () => {
             <button 
               onClick={copyResultsLink} 
               className="btn-copy-link"
-              style={{
-                backgroundColor: '#3498db',
-                color: 'white',
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
             >
               📋 Link Resultados
             </button>
@@ -537,15 +528,6 @@ const TournamentLeaderboardPage = () => {
               type="button"
               onClick={openFinalizeConfirm}
               className="btn-finalize-tournament"
-              style={{
-                backgroundColor: '#c0392b',
-                color: 'white',
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-              }}
             >
               Finalizar
             </button>
@@ -555,15 +537,6 @@ const TournamentLeaderboardPage = () => {
               type="button"
               onClick={openReopenConfirm}
               className="btn-reopen-tournament"
-              style={{
-                backgroundColor: '#27ae60',
-                color: 'white',
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-              }}
             >
               Habilitar
             </button>
@@ -573,13 +546,7 @@ const TournamentLeaderboardPage = () => {
             className="btn-save-payments" 
             disabled={savingPayments || paymentChanges.size === 0}
             style={{
-              backgroundColor: paymentChanges.size > 0 ? '#4CAF50' : '#ccc',
-              color: 'white',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: paymentChanges.size > 0 ? 'pointer' : 'not-allowed',
-              fontWeight: 'bold'
+              backgroundColor: paymentChanges.size > 0 ? '#3e75ad' : '#ccc',
             }}
           >
             {savingPayments ? 'Guardando...' : `Guardar Pagos ${paymentChanges.size > 0 ? `(${paymentChanges.size})` : ''}`}

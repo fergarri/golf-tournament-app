@@ -17,4 +17,8 @@ public class BulkUpdateResponse {
     private int creados;
     @Builder.Default
     private List<String> matriculasNoProcesadas = new ArrayList<>();
+    @Builder.Default
+    private List<BulkUpdateAltaItem> altas = new ArrayList<>();
+    @Builder.Default
+    private List<BulkUpdateHandicapChangeItem> cambiosHandicapIndex = new ArrayList<>();
 }

@@ -1,5 +1,7 @@
 package com.golf.tournament.service;
 
+import com.golf.tournament.dto.player.BulkUpdateAltaItem;
+import com.golf.tournament.dto.player.BulkUpdateHandicapChangeItem;
 import com.golf.tournament.dto.player.BulkUpdateResponse;
 import com.golf.tournament.dto.player.CreatePlayerRequest;
 import com.golf.tournament.dto.player.PlayerDTO;
@@ -120,10 +122,14 @@ public class PlayerService {
                 .actualizados(0)
                 .creados(0)
                 .matriculasNoProcesadas(new ArrayList<>())
+                .altas(new ArrayList<>())
+                .cambiosHandicapIndex(new ArrayList<>())
                 .build();
         int actualizados = 0;
         int creados = 0;
         List<String> matriculasNoProcesadas = new ArrayList<>();
+        List<BulkUpdateAltaItem> altas = new ArrayList<>();
+        List<BulkUpdateHandicapChangeItem> cambiosHandicapIndex = new ArrayList<>();
 
         try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
@@ -183,8 +189,16 @@ public class PlayerService {
                             updated = true;
                         }
                         if (player.getHandicapIndex().compareTo(handicapIndex) != 0) {
+                            BigDecimal handicapAnterior = player.getHandicapIndex();
                             player.setHandicapIndex(handicapIndex);
                             updated = true;
+                            cambiosHandicapIndex.add(BulkUpdateHandicapChangeItem.builder()
+                                    .matricula(matricula)
+                                    .nombre(nombre)
+                                    .apellido(apellido)
+                                    .handicapAnterior(handicapAnterior)
+                                    .handicapNuevo(handicapIndex)
+                                    .build());
                         }
                         if (!Objects.equals(player.getTelefono(), telefono)) {
                             player.setTelefono(telefono);
@@ -224,6 +238,11 @@ public class PlayerService {
                         
                         playerRepository.save(newPlayer);
                         creados++;
+                        altas.add(BulkUpdateAltaItem.builder()
+                                .matricula(matricula)
+                                .nombre(nombre)
+                                .apellido(apellido)
+                                .build());
                         log.info("Player created: {}", matricula);
                     }
                     
@@ -237,6 +256,8 @@ public class PlayerService {
             response.setActualizados(actualizados);
             response.setCreados(creados);
             response.setMatriculasNoProcesadas(matriculasNoProcesadas);
+            response.setAltas(altas);
+            response.setCambiosHandicapIndex(cambiosHandicapIndex);
             
         } catch (Exception e) {
             log.error("Error processing Excel file: {}", e.getMessage());

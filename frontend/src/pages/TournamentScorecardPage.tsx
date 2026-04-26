@@ -51,6 +51,8 @@ const TournamentScorecardPage = () => {
   const saveTimeoutRef = useRef<number | null>(null);
   // Ref para mantener el scorecardId accesible desde el callback WebSocket sin cerrar sobre estado stale
   const scorecardIdRef = useRef<number | null>(null);
+  // Ref que siempre apunta a los scores más recientes — evita el problema de closure en setTimeout
+  const scoresRef = useRef(scores);
 
   useEffect(() => {
     if (!matricula) {
@@ -73,6 +75,11 @@ const TournamentScorecardPage = () => {
       }));
     }
   }, [scores, scorecard, tournament, matricula]);
+
+  // Mantener scoresRef siempre actualizado para evitar el problema de closure en setTimeout
+  useEffect(() => {
+    scoresRef.current = scores;
+  }, [scores]);
 
   // Limpiar timeout al desmontar
   useEffect(() => {
@@ -217,26 +224,50 @@ const TournamentScorecardPage = () => {
 
   const updateScore = (holeNumber: number, type: 'propio' | 'marcador', value: string) => {
     const newScore = value ? parseInt(value) : null;
-    
-    setScores({
-      ...scores,
+
+    setScores(prev => ({
+      ...prev,
       [holeNumber]: {
-        ...scores[holeNumber],
+        ...prev[holeNumber],
         [type]: newScore,
       },
-    });
+    }));
 
-    // Auto-guardar al backend con debounce
-    if (newScore !== null && scorecard) {
-      // Cancelar guardado previo si existe
+    // Reprogramar el debounce unificado: cuando dispare, enviará TODOS los hoyos
+    // con el estado más reciente (via scoresRef), evitando que el tipeo rápido
+    // entre hoyos descarte saves intermedios.
+    if (scorecard) {
       if (saveTimeoutRef.current !== null) {
         clearTimeout(saveTimeoutRef.current);
       }
-
-      // Programar nuevo guardado después de 1 segundo sin cambios
       saveTimeoutRef.current = window.setTimeout(() => {
-        saveScoreToBackend(holeNumber, type, newScore);
+        void saveAllScoresToBackend();
       }, 1000);
+    }
+  };
+
+  // Guarda inmediatamente todos los hoyos — se llama tanto desde el debounce
+  // como desde el onBlur de cada input.
+  const saveAllScoresToBackend = async () => {
+    if (!scorecard) return;
+
+    const currentScores = scoresRef.current;
+    const holeScoresUpdate = holes.map(hole => ({
+      holeId: hole.id,
+      golpesPropio: currentScores[hole.numeroHoyo]?.propio ?? undefined,
+      golpesMarcador: currentScores[hole.numeroHoyo]?.marcador ?? undefined,
+    }));
+
+    try {
+      setSaving(true);
+      await scorecardService.updateScorecard(scorecard.id, { holeScores: holeScoresUpdate });
+      setLastSaved(new Date());
+      // Refrescar para obtener estadoConcordancia actualizado y mostrar colores
+      await refreshScorecard(scorecard.id);
+    } catch (err: any) {
+      console.error('Error guardando puntuación:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -248,29 +279,6 @@ const TournamentScorecardPage = () => {
       setScorecard(updated);
     } catch (err) {
       console.error('Error refrescando scorecard:', err);
-    }
-  };
-
-  const saveScoreToBackend = async (holeNumber: number, type: 'propio' | 'marcador', golpes: number) => {
-    if (!scorecard) return;
-
-    const hole = holes.find(h => h.numeroHoyo === holeNumber);
-    if (!hole) return;
-
-    try {
-      setSaving(true);
-      await scorecardService.updateScore(scorecard.id, {
-        holeId: hole.id,
-        golpes,
-        tipo: type === 'propio' ? 'PROPIO' : 'MARCADOR',
-      });
-      setLastSaved(new Date());
-      // Refrescar scorecard para obtener estadoConcordancia actualizado y mostrar colores
-      await refreshScorecard(scorecard.id);
-    } catch (err: any) {
-      console.error('Error guardando puntuación:', err);
-    } finally {
-      setSaving(false);
     }
   };
 
@@ -743,6 +751,7 @@ const TournamentScorecardPage = () => {
                       max="15"
                       value={scores[hole.numeroHoyo]?.propio || ''}
                       onChange={(e) => updateScore(hole.numeroHoyo, 'propio', e.target.value)}
+                      onBlur={() => { if (scorecard && scorecard.status !== 'DELIVERED') void saveAllScoresToBackend(); }}
                       className="score-input"
                       placeholder="-"
                       disabled={scorecard?.status === 'DELIVERED' || false}
@@ -758,6 +767,7 @@ const TournamentScorecardPage = () => {
                       max="15"
                       value={scores[hole.numeroHoyo]?.propio || ''}
                       onChange={(e) => updateScore(hole.numeroHoyo, 'propio', e.target.value)}
+                      onBlur={() => { if (scorecard && scorecard.status !== 'DELIVERED') void saveAllScoresToBackend(); }}
                       className="score-input"
                       placeholder="-"
                       disabled={scorecard?.status === 'DELIVERED' || false}
@@ -788,6 +798,7 @@ const TournamentScorecardPage = () => {
                       max="15"
                       value={scores[hole.numeroHoyo]?.marcador || ''}
                       onChange={(e) => updateScore(hole.numeroHoyo, 'marcador', e.target.value)}
+                      onBlur={() => { if (scorecard && scorecard.status !== 'DELIVERED') void saveAllScoresToBackend(); }}
                       className="score-input"
                       placeholder="-"
                       disabled={scorecard?.status === 'DELIVERED' || false}
@@ -803,6 +814,7 @@ const TournamentScorecardPage = () => {
                       max="15"
                       value={scores[hole.numeroHoyo]?.marcador || ''}
                       onChange={(e) => updateScore(hole.numeroHoyo, 'marcador', e.target.value)}
+                      onBlur={() => { if (scorecard && scorecard.status !== 'DELIVERED') void saveAllScoresToBackend(); }}
                       className="score-input"
                       placeholder="-"
                       disabled={scorecard?.status === 'DELIVERED' || false}

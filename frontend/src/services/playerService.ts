@@ -1,5 +1,5 @@
 import api from './api';
-import { Player } from '../types';
+import { BulkUpdateResult, Player } from '../types';
 
 export const playerService = {
   getAll: async (): Promise<Player[]> => {
@@ -36,11 +36,11 @@ export const playerService = {
     await api.delete(`/players/${id}`);
   },
 
-  bulkUpdate: async (file: File) => {
+  bulkUpdate: async (file: File): Promise<BulkUpdateResult> => {
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await api.post('/players/bulk-update', formData, {
+    const response = await api.post<BulkUpdateResult>('/players/bulk-update', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },

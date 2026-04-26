@@ -51,6 +51,28 @@ export interface Player {
   clubOrigen?: string;
 }
 
+export interface BulkUpdateAltaItem {
+  matricula: string;
+  nombre: string;
+  apellido: string;
+}
+
+export interface BulkUpdateHandicapChangeItem {
+  matricula: string;
+  nombre: string;
+  apellido: string;
+  handicapAnterior: number;
+  handicapNuevo: number;
+}
+
+export interface BulkUpdateResult {
+  actualizados: number;
+  creados: number;
+  matriculasNoProcesadas: string[];
+  altas: BulkUpdateAltaItem[];
+  cambiosHandicapIndex: BulkUpdateHandicapChangeItem[];
+}
+
 export interface Course {
   id: number;
   nombre: string;

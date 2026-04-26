@@ -14,56 +14,123 @@
 }
 
 .btn-back {
-  background-color: #95a5a6;
-  color: white;
-  border: none;
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: 0.375rem;
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 0.2s;
+  font-size: 0.875rem;
+  transition: background-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  height: 2.25rem;
 }
 
 .btn-back:hover {
-  background-color: #7f8c8d;
+  background-color: #e2e8f0;
+  color: #1e293b;
 }
 
 .btn-refresh {
-  background-color: #4CAF50;
+  background-color: #16a34a;
   color: white;
   border: none;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: 0.375rem;
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 0.2s;
-  display: flex;
+  font-size: 0.875rem;
+  transition: background-color 0.15s;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  height: 2.25rem;
+}
+
+.btn-finalize-tournament {
+  background-color: #c0392b;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+}
+
+.btn-reopen-tournament {
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+}
+
+.btn-save-payments {
+  background-color: #3e75ad;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.25rem;
+}
+
+.btn-copy-link {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-weight: 500;
 }
 
 .btn-refresh:hover:not(:disabled) {
-  background-color: #45a049;
+  background-color: #15803d;
 }
 
 .btn-refresh:disabled {
-  background-color: #cccccc;
+  background-color: #e2e8f0;
+  color: #94a3b8;
   cursor: not-allowed;
-  opacity: 0.7;
 }
 
 .btn-admin-stages {
-  background-color: #4c86af;
+  background-color: #2563eb;
   color: white;
   border: none;
   padding: 0.5rem 1rem;
-  border-radius: 6px;
+  border-radius: 0.375rem;
   cursor: pointer;
   font-weight: 500;
-  transition: background-color 0.2s;
-  display: flex;
+  font-size: 0.875rem;
+  transition: background-color 0.15s;
+  display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  height: 2.25rem;
 }
 
 .btn-compact {
@@ -123,13 +190,14 @@
 .tournament-info {
   background: white;
   padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
 }
 
 .tournament-info h1 {
   margin: 0 0 1rem 0;
-  color: #2c3e50;
+  color: #1e293b;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -184,10 +252,11 @@
 
 .leaderboard-container {
   background: white;
-  border-radius: 12px;
+  border-radius: 0.75rem;
   overflow-x: auto;
   overflow-y: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
 }
 
 .position {

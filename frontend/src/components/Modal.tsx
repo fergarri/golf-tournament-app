@@ -1,5 +1,7 @@
 import { useEffect, ReactNode } from 'react';
-import './Modal.css';
+import { X, CheckCircle2, XCircle, AlertTriangle, Info, HelpCircle } from 'lucide-react';
+import { Button } from './ui/button';
+import { cn } from '@/lib/utils';
 
 interface ModalProps {
   isOpen: boolean;
@@ -15,6 +17,20 @@ interface ModalProps {
   footer?: ReactNode;
 }
 
+const sizeClasses = {
+  small: 'max-w-sm',
+  medium: 'max-w-lg',
+  large: 'max-w-2xl',
+};
+
+const typeConfig = {
+  success: { icon: CheckCircle2, iconClass: 'text-emerald-500', bgClass: 'bg-emerald-50' },
+  error: { icon: XCircle, iconClass: 'text-red-500', bgClass: 'bg-red-50' },
+  warning: { icon: AlertTriangle, iconClass: 'text-amber-500', bgClass: 'bg-amber-50' },
+  confirm: { icon: HelpCircle, iconClass: 'text-blue-500', bgClass: 'bg-blue-50' },
+  info: { icon: Info, iconClass: 'text-sky-500', bgClass: 'bg-sky-50' },
+};
+
 const Modal = ({
   isOpen,
   onClose,
@@ -23,109 +39,85 @@ const Modal = ({
   message,
   type = 'info',
   confirmText = 'OK',
-  cancelText = 'Cancel',
+  cancelText = 'Cancelar',
   size = 'small',
   children,
   footer,
 }: ModalProps) => {
   useEffect(() => {
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    document.body.style.overflow = isOpen ? 'hidden' : 'unset';
+    return () => { document.body.style.overflow = 'unset'; };
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const handleConfirm = () => {
-    if (onConfirm) {
-      onConfirm();
-    }
+    onConfirm?.();
     onClose();
   };
 
-  const getIcon = () => {
-    switch (type) {
-      case 'success':
-        return (
-          <div className="modal-icon success">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-        );
-      case 'error':
-        return (
-          <div className="modal-icon error">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </div>
-        );
-      case 'warning':
-        return (
-          <div className="modal-icon warning">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-          </div>
-        );
-      case 'confirm':
-        return (
-          <div className="modal-icon confirm">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        );
-      default:
-        return (
-          <div className="modal-icon info">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-        );
-    }
-  };
+  const config = typeConfig[type];
+  const Icon = config.icon;
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className={`modal-container modal-${size}`} onClick={(e) => e.stopPropagation()}>
-        {children ? (
-          // Custom content mode with separate header, body, and footer
-          <>
-            <div className="modal-header">
-              <h2 className="modal-title">{title}</h2>
-            </div>
-            <div className="modal-body">{children}</div>
-            {footer && <div className="modal-footer">{footer}</div>}
-          </>
-        ) : (
-          // Alert/Confirm mode (centered content)
-          <div className="modal-content">
-            {getIcon()}
-            <h2 className="modal-title">{title}</h2>
-            <p className="modal-message">{message}</p>
-            <div className="modal-actions">
-              {type === 'confirm' && (
-                <button className="modal-btn modal-btn-cancel" onClick={onClose}>
-                  {cancelText}
+    /* El overlay hace scroll cuando el contenido es más alto que la pantalla */
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div
+          className={cn(
+            'relative w-full bg-white rounded-xl shadow-xl flex flex-col',
+            sizeClasses[size],
+            /* Máximo alto = viewport menos padding, el body hace scroll internamente */
+            'max-h-[calc(100vh-2rem)]'
+          )}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {children ? (
+            /* Custom content mode — header y footer fijos, body scrollable */
+            <>
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 flex-shrink-0">
+                <h2 className="text-lg font-semibold text-slate-800">{title}</h2>
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-md text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="h-4 w-4" />
                 </button>
+              </div>
+              <div className="p-6 overflow-y-auto flex-1">{children}</div>
+              {footer && (
+                <div className="px-6 py-4 border-t border-slate-200 flex-shrink-0">
+                  {footer}
+                </div>
               )}
-              <button
-                className={`modal-btn modal-btn-primary ${type === 'confirm' ? 'confirm' : ''}`}
-                onClick={handleConfirm}
-              >
-                {confirmText}
-              </button>
+            </>
+          ) : (
+            /* Alert / Confirm mode */
+            <div className="p-6 text-center overflow-y-auto">
+              <div className={cn('mx-auto w-14 h-14 rounded-full flex items-center justify-center mb-4', config.bgClass)}>
+                <Icon className={cn('h-7 w-7', config.iconClass)} />
+              </div>
+              <h2 className="text-lg font-semibold text-slate-800 mb-2">{title}</h2>
+              {message && <p className="text-slate-500 text-sm mb-6">{message}</p>}
+              <div className="flex gap-3 justify-center">
+                {type === 'confirm' && (
+                  <Button variant="outline" onClick={onClose}>
+                    {cancelText}
+                  </Button>
+                )}
+                <Button
+                  variant={type === 'error' || type === 'confirm' ? (type === 'error' ? 'destructive' : 'default') : 'default'}
+                  onClick={handleConfirm}
+                >
+                  {confirmText}
+                </Button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );

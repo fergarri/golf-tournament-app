@@ -1,9 +1,19 @@
 import { useState, useEffect } from 'react';
 import { playerService } from '../services/playerService';
-import { Player } from '../types';
+import { BulkUpdateResult, Player } from '../types';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Badge } from '../components/ui/badge';
+import { Users, Plus, Upload, Search, CheckCircle2, Loader2, X } from 'lucide-react';
 import '../components/Form.css';
+
+const formatHcpIndex = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+  return Number(value).toFixed(1);
+};
 
 const PlayersPage = () => {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -12,25 +22,16 @@ const PlayersPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [formData, setFormData] = useState<Partial<Player>>({
-    nombre: '',
-    apellido: '',
-    email: '',
-    matricula: '',
-    fechaNacimiento: '',
-    sexo: 'M',
-    handicapIndex: 0,
-    telefono: '',
-    clubOrigen: '',
+    nombre: '', apellido: '', email: '', matricula: '',
+    fechaNacimiento: '', sexo: 'M', handicapIndex: 0, telefono: '', clubOrigen: '',
   });
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [bulkUpdateResult, setBulkUpdateResult] = useState<any>(null);
+  const [bulkUpdateResult, setBulkUpdateResult] = useState<BulkUpdateResult | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    loadPlayers();
-  }, []);
+  useEffect(() => { loadPlayers(); }, []);
 
   const loadPlayers = async () => {
     try {
@@ -39,7 +40,7 @@ const PlayersPage = () => {
       setPlayers(data);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error loading players');
+      setError(err.response?.data?.message || 'Error cargando jugadores');
     } finally {
       setLoading(false);
     }
@@ -47,32 +48,17 @@ const PlayersPage = () => {
 
   const handleCreate = () => {
     setEditingPlayer(null);
-    setFormData({
-      nombre: '',
-      apellido: '',
-      email: '',
-      matricula: '',
-      fechaNacimiento: '',
-      sexo: 'M',
-      handicapIndex: 0,
-      telefono: '',
-      clubOrigen: '',
-    });
+    setFormData({ nombre: '', apellido: '', email: '', matricula: '', fechaNacimiento: '', sexo: 'M', handicapIndex: 0, telefono: '', clubOrigen: '' });
     setShowModal(true);
   };
 
   const handleEdit = (player: Player) => {
     setEditingPlayer(player);
     setFormData({
-      nombre: player.nombre,
-      apellido: player.apellido,
-      email: player.email || '',
-      matricula: player.matricula,
-      fechaNacimiento: player.fechaNacimiento || '',
-      sexo: player.sexo,
-      handicapIndex: player.handicapIndex,
-      telefono: player.telefono || '',
-      clubOrigen: player.clubOrigen || '',
+      nombre: player.nombre, apellido: player.apellido, email: player.email || '',
+      matricula: player.matricula, fechaNacimiento: player.fechaNacimiento || '',
+      sexo: player.sexo, handicapIndex: player.handicapIndex,
+      telefono: player.telefono || '', clubOrigen: player.clubOrigen || '',
     });
     setShowModal(true);
   };
@@ -103,17 +89,11 @@ const PlayersPage = () => {
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
-    }
+    if (e.target.files && e.target.files[0]) setSelectedFile(e.target.files[0]);
   };
 
   const handleBulkUpdate = async () => {
-    if (!selectedFile) {
-      setError('Por favor seleccione un archivo');
-      return;
-    }
-    
+    if (!selectedFile) { setError('Por favor seleccioná un archivo'); return; }
     try {
       setIsProcessing(true);
       setError('');
@@ -136,16 +116,34 @@ const PlayersPage = () => {
   };
 
   const filteredPlayers = searchQuery
-    ? players.filter(p =>
-        `${p.nombre} ${p.apellido} ${p.matricula}`.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    ? players.filter(p => `${p.nombre} ${p.apellido} ${p.matricula}`.toLowerCase().includes(searchQuery.toLowerCase()))
     : players;
 
   const columns = [
-    { header: 'Nombre', accessor: (row: Player) => `${row.apellido} ${row.nombre}` },
-    { header: 'Matricula', accessor: 'matricula' as keyof Player },
-    { header: 'Sexo', accessor: 'sexo' as keyof Player },
-    { header: 'Handicap', accessor: 'handicapIndex' as keyof Player },
+    {
+      header: 'Nombre',
+      accessor: (row: Player) => <span className="font-medium">{row.apellido}, {row.nombre}</span>,
+      sortValue: (row: Player) => `${row.apellido} ${row.nombre}`,
+    },
+    {
+      header: 'Matrícula',
+      accessor: (row: Player) => <span className="font-mono text-xs bg-slate-100 px-2 py-0.5 rounded">{row.matricula}</span>,
+      sortValue: (row: Player) => row.matricula,
+    },
+    {
+      header: 'Sexo',
+      accessor: (row: Player) => (
+        <Badge variant={row.sexo === 'M' ? 'info' : 'secondary'} className="text-xs">
+          {row.sexo === 'M' ? 'Masculino' : 'Femenino'}
+        </Badge>
+      ),
+      sortValue: (row: Player) => row.sexo,
+    },
+    {
+      header: 'Handicap',
+      accessor: (row: Player) => <span className="font-semibold text-slate-700">{formatHcpIndex(row.handicapIndex)}</span>,
+      sortValue: (row: Player) => row.handicapIndex ?? 0,
+    },
     { header: 'Club', accessor: 'clubOrigen' as keyof Player },
     { header: 'Email', accessor: 'email' as keyof Player },
   ];
@@ -154,50 +152,49 @@ const PlayersPage = () => {
 
   return (
     <div>
-      <div className="page-header">
-        <h1>Jugadores</h1>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setShowBulkUpdateModal(true)} className="btn btn-secondary" id="update-players">
-            Actualizar Jugadores
-          </button>
-          <button onClick={handleCreate} className="btn btn-primary">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Jugadores</h1>
+          <p className="text-slate-500 text-sm mt-0.5">{players.length} jugadores registrados</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowBulkUpdateModal(true)}>
+            <Upload className="h-4 w-4" />
+            Actualizar
+          </Button>
+          <Button size="sm" onClick={handleCreate}>
+            <Plus className="h-4 w-4" />
             Crear Jugador
-          </button>
+          </Button>
         </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
-      <div className="search-container" style={{ marginBottom: '1.5rem' }}>
-        <div className="search-input-wrapper" style={{ width: '50%' }}>
-          <input
+      {/* Search */}
+      <div className="mb-5">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
             type="text"
-            placeholder="Buscar jugadores por nombre, apellido o matrícula"
+            placeholder="Buscar por nombre, apellido o matrícula…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="search-input"
-            style={{
-              width: '100%',
-              padding: '0.75rem 2rem 0.75rem 1rem',
-              fontSize: '1rem',
-              border: '2px solid #e0e0e0',
-              borderRadius: '8px',
-              outline: 'none',
-              transition: 'border-color 0.2s',
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#3498db'}
-            onBlur={(e) => e.target.style.borderColor = '#e0e0e0'}
+            className="pl-9 pr-8"
           />
           {searchQuery && (
-            <button className="search-clear-btn" onClick={() => setSearchQuery('')} type="button">×</button>
+            <button
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              onClick={() => setSearchQuery('')}
+              type="button"
+            >
+              <X className="h-4 w-4" />
+            </button>
           )}
         </div>
         {searchQuery && (
-          <p style={{ 
-            marginTop: '0.5rem', 
-            fontSize: '0.875rem', 
-            color: '#7f8c8d' 
-          }}>
+          <p className="mt-1.5 text-xs text-slate-500">
             Mostrando {filteredPlayers.length} de {players.length} jugadores
           </p>
         )}
@@ -205,18 +202,20 @@ const PlayersPage = () => {
 
       <Table data={filteredPlayers} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
 
+      {/* Modal editar/crear jugador */}
       <Modal
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         title={editingPlayer ? 'Editar Jugador' : 'Crear Jugador'}
+        size="medium"
         footer={
-          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
-            <button type="button" onClick={() => setShowModal(false)} className="btn btn-cancel">
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" type="button" onClick={() => setShowModal(false)}>
               Cancelar
-            </button>
-            <button type="submit" form="player-form" className="btn btn-primary">
+            </Button>
+            <Button type="submit" form="player-form">
               {editingPlayer ? 'Actualizar' : 'Crear'}
-            </button>
+            </Button>
           </div>
         }
       >
@@ -224,192 +223,191 @@ const PlayersPage = () => {
           <div className="form-row">
             <div className="form-group">
               <label>Nombre *</label>
-              <input
-                type="text"
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                required
-              />
+              <input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required />
             </div>
             <div className="form-group">
               <label>Apellido *</label>
-              <input
-                type="text"
-                value={formData.apellido}
-                onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
-                required
-              />
+              <input type="text" value={formData.apellido} onChange={(e) => setFormData({ ...formData, apellido: e.target.value })} required />
             </div>
           </div>
-
           <div className="form-row">
             <div className="form-group">
-              <label>Matricula *</label>
-              <input
-                type="text"
-                value={formData.matricula}
-                onChange={(e) => setFormData({ ...formData, matricula: e.target.value })}
-                required
-              />
+              <label>Matrícula *</label>
+              <input type="text" value={formData.matricula} onChange={(e) => setFormData({ ...formData, matricula: e.target.value })} required />
             </div>
             <div className="form-group">
               <label>Sexo *</label>
-              <select
-                value={formData.sexo}
-                onChange={(e) => setFormData({ ...formData, sexo: e.target.value as 'M' | 'F' })}
-                required
-              >
+              <select value={formData.sexo} onChange={(e) => setFormData({ ...formData, sexo: e.target.value as 'M' | 'F' })} required>
                 <option value="M">M</option>
                 <option value="F">F</option>
               </select>
             </div>
             <div className="form-group">
               <label>Handicap Index *</label>
-              <input
-                type="number"
-                step="0.1"
-                value={formData.handicapIndex}
-                onChange={(e) => setFormData({ ...formData, handicapIndex: parseFloat(e.target.value) })}
-                required
-              />
+              <input type="number" step="0.1" value={formData.handicapIndex} onChange={(e) => setFormData({ ...formData, handicapIndex: parseFloat(e.target.value) })} required />
             </div>
           </div>
-
           <div className="form-row">
             <div className="form-group">
               <label>Email</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
+              <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} />
             </div>
             <div className="form-group">
               <label>Teléfono</label>
-              <input
-                type="tel"
-                value={formData.telefono}
-                onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-              />
+              <input type="tel" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
             </div>
           </div>
-
           <div className="form-row">
             <div className="form-group">
               <label>Fecha de Nacimiento</label>
-              <input
-                type="date"
-                value={formData.fechaNacimiento}
-                onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
-              />
+              <input type="date" value={formData.fechaNacimiento} onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })} />
             </div>
             <div className="form-group">
               <label>Club</label>
-              <input
-                type="text"
-                value={formData.clubOrigen}
-                onChange={(e) => setFormData({ ...formData, clubOrigen: e.target.value })}
-              />
+              <input type="text" value={formData.clubOrigen} onChange={(e) => setFormData({ ...formData, clubOrigen: e.target.value })} />
             </div>
           </div>
         </form>
       </Modal>
 
+      {/* Modal actualización masiva */}
       <Modal
         isOpen={showBulkUpdateModal}
         onClose={handleCloseBulkModal}
         title="Actualizar Jugadores"
+        size="medium"
         footer={
-          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+          <div className="flex gap-3 justify-end">
             {!bulkUpdateResult ? (
               <>
-                <button 
-                  onClick={handleCloseBulkModal} 
-                  className="btn btn-cancel"
-                  disabled={isProcessing}
-                >
+                <Button variant="outline" onClick={handleCloseBulkModal} disabled={isProcessing}>
                   Cancelar
-                </button>
-                <button 
-                  onClick={handleBulkUpdate} 
-                  className="btn btn-primary"
-                  disabled={!selectedFile || isProcessing}
-                >
-                  Procesar
-                </button>
+                </Button>
+                <Button onClick={handleBulkUpdate} disabled={!selectedFile || isProcessing}>
+                  {isProcessing ? <><Loader2 className="h-4 w-4 animate-spin" /> Procesando…</> : 'Procesar'}
+                </Button>
               </>
             ) : (
-              <button onClick={handleCloseBulkModal} className="btn btn-primary">
-                Cerrar
-              </button>
+              <Button onClick={handleCloseBulkModal}>Cerrar</Button>
             )}
           </div>
         }
       >
         {!bulkUpdateResult ? (
-          <div>
-            <p style={{ marginBottom: '20px' }}>
-              Seleccione el archivo para actualizar la lista de jugadores
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Seleccioná el archivo <span className="font-semibold">.xlsx</span> para actualizar la lista de jugadores.
             </p>
-            
-            <div className="form-group">
+            <div>
+              <Label htmlFor="bulk-file" className="mb-1.5 block">Archivo Excel (.xlsx)</Label>
               <input
+                id="bulk-file"
                 type="file"
                 accept=".xlsx"
                 onChange={handleFileChange}
                 disabled={isProcessing}
+                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-medium file:bg-primary file:text-primary-foreground hover:file:bg-primary/90 file:cursor-pointer cursor-pointer"
               />
+              {selectedFile && (
+                <p className="mt-1.5 text-xs text-slate-500 flex items-center gap-1.5">
+                  <Upload className="h-3 w-3" />
+                  {selectedFile.name}
+                </p>
+              )}
             </div>
-            
-            {selectedFile && (
-              <p style={{ marginTop: '10px', fontSize: '14px', color: '#666' }}>
-                Archivo seleccionado: {selectedFile.name}
-              </p>
-            )}
-            
             {isProcessing && (
-              <div style={{ 
-                textAlign: 'center', 
-                padding: '20px',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '10px'
-              }}>
-                <div className="loading-spinner"></div>
-                <p>Procesando archivo...</p>
+              <div className="flex flex-col items-center gap-2 py-4">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm text-slate-500">Procesando archivo…</p>
               </div>
             )}
-            
             {error && <div className="error-message">{error}</div>}
           </div>
         ) : (
-          <div>
-            <h3 style={{ color: '#28a745', marginBottom: '20px' }}>
-              ✓ Actualización exitosa
-            </h3>
-            
-            <div style={{ marginBottom: '15px' }}>
-              <p><strong>Jugadores creados:</strong> {bulkUpdateResult.creados}</p>
-              <p><strong>Jugadores actualizados:</strong> {bulkUpdateResult.actualizados}</p>
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 rounded-lg px-4 py-3">
+              <CheckCircle2 className="h-5 w-5 shrink-0" />
+              <span className="font-semibold">Actualización exitosa</span>
             </div>
-            
-            {bulkUpdateResult.matriculasNoProcesadas && 
-             bulkUpdateResult.matriculasNoProcesadas.length > 0 && (
-              <div style={{ marginTop: '20px' }}>
-                <p style={{ color: '#dc3545', fontWeight: 'bold' }}>
-                  Matrículas no procesadas:
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-center">
+                <p className="text-2xl font-bold text-slate-800">{bulkUpdateResult.creados}</p>
+                <p className="text-xs text-slate-500 mt-0.5">Jugadores creados</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 border border-slate-200 p-4 text-center">
+                <p className="text-2xl font-bold text-slate-800">{bulkUpdateResult.actualizados}</p>
+                <p className="text-xs text-slate-500 mt-0.5">Jugadores actualizados</p>
+              </div>
+            </div>
+
+            {(bulkUpdateResult.altas?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-1.5">
+                  <Users className="h-4 w-4" /> Nuevos jugadores ({bulkUpdateResult.altas!.length})
                 </p>
-                <ul style={{ 
-                  marginTop: '10px', 
-                  paddingLeft: '20px',
-                  maxHeight: '150px',
-                  overflowY: 'auto'
-                }}>
-                  {bulkUpdateResult.matriculasNoProcesadas.map((mat: string, idx: number) => (
-                    <li key={idx}>{mat}</li>
-                  ))}
-                </ul>
+                <div className="max-h-44 overflow-y-auto rounded-lg border border-slate-200">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-slate-50">
+                      <tr>
+                        <th className="text-left px-3 py-2 text-slate-600 font-semibold">Matrícula</th>
+                        <th className="text-left px-3 py-2 text-slate-600 font-semibold">Apellido y nombre</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkUpdateResult.altas!.map((a, idx) => (
+                        <tr key={idx} className="border-t border-slate-100 hover:bg-slate-50">
+                          <td className="px-3 py-2 font-mono">{a.matricula}</td>
+                          <td className="px-3 py-2">{a.apellido}, {a.nombre}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {(bulkUpdateResult.cambiosHandicapIndex?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-slate-700 mb-2">
+                  Cambios de HCP Index ({bulkUpdateResult.cambiosHandicapIndex!.length})
+                </p>
+                <div className="max-h-52 overflow-y-auto rounded-lg border border-slate-200">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-slate-50">
+                      <tr>
+                        <th className="text-left px-3 py-2 text-slate-600 font-semibold">Matrícula</th>
+                        <th className="text-left px-3 py-2 text-slate-600 font-semibold">Jugador</th>
+                        <th className="text-right px-3 py-2 text-slate-600 font-semibold">Anterior</th>
+                        <th className="text-right px-3 py-2 text-slate-600 font-semibold">Nuevo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {bulkUpdateResult.cambiosHandicapIndex!.map((c, idx) => (
+                        <tr key={idx} className="border-t border-slate-100 hover:bg-slate-50">
+                          <td className="px-3 py-2 font-mono">{c.matricula}</td>
+                          <td className="px-3 py-2">{c.apellido}, {c.nombre}</td>
+                          <td className="px-3 py-2 text-right text-slate-400">{formatHcpIndex(c.handicapAnterior)}</td>
+                          <td className="px-3 py-2 text-right font-semibold text-emerald-700">{formatHcpIndex(c.handicapNuevo)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {(bulkUpdateResult.matriculasNoProcesadas?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-sm font-semibold text-red-600 mb-2">
+                  Matrículas no procesadas ({bulkUpdateResult.matriculasNoProcesadas!.length})
+                </p>
+                <div className="max-h-36 overflow-y-auto rounded-lg bg-red-50 border border-red-200 p-3">
+                  <ul className="text-xs text-red-700 space-y-0.5 list-disc list-inside">
+                    {bulkUpdateResult.matriculasNoProcesadas!.map((mat: string, idx: number) => (
+                      <li key={idx}>{mat}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             )}
           </div>
