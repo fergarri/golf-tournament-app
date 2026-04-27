@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { tournamentAdminPlayoffResultService } from '../services/tournamentAdminPlayoffResultService';
 import { TournamentAdminPlayoffResults } from '../types';
 import '../components/Form.css';
+import '../components/Table.css';
 import './TournamentLeaderboardPage.css';
 
 const PublicTournamentAdminPlayoffResultsPage = () => {

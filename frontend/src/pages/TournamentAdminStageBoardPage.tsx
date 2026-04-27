@@ -5,6 +5,7 @@ import { TournamentAdminStageBoard } from '../types';
 import { formatDateSafe } from '../utils/dateUtils';
 import Modal from '../components/Modal';
 import '../components/Form.css';
+import '../components/Table.css';
 import './TournamentLeaderboardPage.css';
 
 const TournamentAdminStageBoardPage = () => {

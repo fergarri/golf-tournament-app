@@ -4,6 +4,7 @@ import { tournamentAdminStageService } from '../services/tournamentAdminStageSer
 import { TournamentAdminStageBoard } from '../types';
 import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
+import '../components/Table.css';
 import './TournamentLeaderboardPage.css';
 
 const PublicTournamentAdminStageBoardPage = () => {

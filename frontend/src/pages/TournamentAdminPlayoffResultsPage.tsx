@@ -4,6 +4,7 @@ import { tournamentAdminPlayoffResultService } from '../services/tournamentAdmin
 import { TournamentAdminPlayoffResults } from '../types';
 import Modal from '../components/Modal';
 import '../components/Form.css';
+import '../components/Table.css';
 import './TournamentLeaderboardPage.css';
 
 const TournamentAdminPlayoffResultsPage = () => {

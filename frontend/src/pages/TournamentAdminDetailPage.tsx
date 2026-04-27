@@ -8,6 +8,7 @@ import Modal from '../components/Modal';
 import { formatDateSafe } from '../utils/dateUtils';
 import { formatCurrency } from '../utils/currencyUtils';
 import '../components/Form.css';
+import '../components/Table.css';
 import './TournamentLeaderboardPage.css';
 
 const TournamentAdminDetailPage = () => {
