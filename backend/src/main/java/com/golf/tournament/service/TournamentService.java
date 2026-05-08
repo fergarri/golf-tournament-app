@@ -27,6 +27,8 @@ public class TournamentService {
     private final TournamentInscriptionRepository tournamentInscriptionRepository;
     private final ScorecardRepository scorecardRepository;
     private final TournamentPrizeService tournamentPrizeService;
+    private final TournamentAdminRepository tournamentAdminRepository;
+    private final TournamentAdminScoringConfigService tournamentAdminScoringConfigService;
 
     private static final String CODIGO_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int CODIGO_LENGTH = 8;
@@ -46,14 +48,22 @@ public class TournamentService {
     public TournamentDTO getTournamentById(Long id) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
-        return convertToDTO(tournament);
+        TournamentDTO dto = convertToDTO(tournament);
+        tournamentAdminRepository.findByTournamentInAnyStage(id)
+                .ifPresent(admin -> dto.setScoringConfig(
+                        tournamentAdminScoringConfigService.getOrDefaultByTournamentAdminId(admin.getId())));
+        return dto;
     }
 
     @Transactional(readOnly = true)
     public TournamentDTO getTournamentByCodigo(String codigo) {
         Tournament tournament = tournamentRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "codigo", codigo));
-        return convertToDTO(tournament);
+        TournamentDTO dto = convertToDTO(tournament);
+        tournamentAdminRepository.findByTournamentInAnyStage(tournament.getId())
+                .ifPresent(admin -> dto.setScoringConfig(
+                        tournamentAdminScoringConfigService.getOrDefaultByTournamentAdminId(admin.getId())));
+        return dto;
     }
 
     @Transactional

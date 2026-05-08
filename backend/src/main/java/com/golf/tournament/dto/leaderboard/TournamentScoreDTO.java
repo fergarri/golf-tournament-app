@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FrutalesScoreDTO {
+public class TournamentScoreDTO {
 
     private Long scorecardId;
     private Long playerId;
@@ -32,4 +32,13 @@ public class FrutalesScoreDTO {
     private Integer acePoints;
     private Integer participationPoints;
     private Integer totalPoints;
+
+    /** GLOBAL, CATEGORY o SCRATCH */
+    private String scoreType;
+
+    /** Solo cuando scoreType = CATEGORY: id de la categoría. */
+    private Long categoryId;
+
+    /** Nombre de categoría (solo para CATEGORY). */
+    private String categoryName;
 }

@@ -1,8 +1,9 @@
 package com.golf.tournament.controller;
 
-import com.golf.tournament.dto.leaderboard.FrutalesScoreDTO;
 import com.golf.tournament.dto.leaderboard.LeaderboardEntryDTO;
+import com.golf.tournament.dto.leaderboard.TournamentScoreDTO;
 import com.golf.tournament.dto.leaderboard.UpdatePaymentRequest;
+import com.golf.tournament.service.ClasicScoreService;
 import com.golf.tournament.service.FrutalesScoreService;
 import com.golf.tournament.service.LeaderboardService;
 import com.golf.tournament.service.TournamentService;
@@ -21,6 +22,7 @@ public class LeaderboardController {
 
     private final LeaderboardService leaderboardService;
     private final FrutalesScoreService frutalesScoreService;
+    private final ClasicScoreService clasicScoreService;
     private final TournamentService tournamentService;
 
     @GetMapping("/tournaments/{tournamentId}")
@@ -48,34 +50,56 @@ public class LeaderboardController {
     public ResponseEntity<Void> updatePayments(
             @PathVariable Long tournamentId,
             @RequestBody UpdatePaymentRequest request) {
-        
+
         List<Long> inscriptionIds = request.getPayments().stream()
                 .map(UpdatePaymentRequest.PaymentUpdate::getInscriptionId)
                 .collect(Collectors.toList());
-        
+
         List<Boolean> pagadoValues = request.getPayments().stream()
                 .map(UpdatePaymentRequest.PaymentUpdate::getPagado)
                 .collect(Collectors.toList());
-        
+
         leaderboardService.updatePayments(tournamentId, inscriptionIds, pagadoValues);
         return ResponseEntity.ok().build();
     }
 
+    // ── Frutales (GLOBAL scores) ────────────────────────────────────────────────
+
     @GetMapping("/tournaments/{tournamentId}/frutales")
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
-    public ResponseEntity<List<FrutalesScoreDTO>> getFrutalesLeaderboard(@PathVariable Long tournamentId) {
+    public ResponseEntity<List<TournamentScoreDTO>> getFrutalesLeaderboard(@PathVariable Long tournamentId) {
         return ResponseEntity.ok(frutalesScoreService.getScores(tournamentId));
     }
 
     @PostMapping("/tournaments/{tournamentId}/frutales/calculate")
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
-    public ResponseEntity<List<FrutalesScoreDTO>> calculateFrutalesScores(@PathVariable Long tournamentId) {
+    public ResponseEntity<List<TournamentScoreDTO>> calculateFrutalesScores(@PathVariable Long tournamentId) {
         return ResponseEntity.ok(frutalesScoreService.calculateScores(tournamentId));
     }
 
     @GetMapping("/public/{codigo}/frutales")
-    public ResponseEntity<List<FrutalesScoreDTO>> getPublicFrutalesLeaderboard(@PathVariable String codigo) {
+    public ResponseEntity<List<TournamentScoreDTO>> getPublicFrutalesLeaderboard(@PathVariable String codigo) {
         var tournament = tournamentService.getTournamentByCodigo(codigo);
         return ResponseEntity.ok(frutalesScoreService.getScores(tournament.getId()));
+    }
+
+    // ── Clásico (CATEGORY + SCRATCH scores) ────────────────────────────────────
+
+    @GetMapping("/tournaments/{tournamentId}/clasic")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    public ResponseEntity<List<TournamentScoreDTO>> getClasicLeaderboard(@PathVariable Long tournamentId) {
+        return ResponseEntity.ok(clasicScoreService.getScores(tournamentId));
+    }
+
+    @PostMapping("/tournaments/{tournamentId}/clasic/calculate")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    public ResponseEntity<List<TournamentScoreDTO>> calculateClasicScores(@PathVariable Long tournamentId) {
+        return ResponseEntity.ok(clasicScoreService.calculateScores(tournamentId));
+    }
+
+    @GetMapping("/public/{codigo}/clasic")
+    public ResponseEntity<List<TournamentScoreDTO>> getPublicClasicLeaderboard(@PathVariable String codigo) {
+        var tournament = tournamentService.getTournamentByCodigo(codigo);
+        return ResponseEntity.ok(clasicScoreService.getScores(tournament.getId()));
     }
 }

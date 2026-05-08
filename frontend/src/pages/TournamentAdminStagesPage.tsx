@@ -207,18 +207,11 @@ const TournamentAdminStagesPage = () => {
           <button
             onClick={handleCreate}
             className="btn-compact btn-compact-primary"
-            disabled={!adminDetail.canManageStages}
-          >
+            >
             + Crear Etapa
           </button>
         </div>
       </div>
-
-      {!adminDetail.canManageStages && (
-        <div className="error-message">
-          Este torneo no tiene fechas FRUTALES relacionadas para administrar etapas.
-        </div>
-      )}
 
       {error && <div className="error-message">{error}</div>}
 

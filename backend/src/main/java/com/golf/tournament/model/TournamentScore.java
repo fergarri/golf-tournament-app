@@ -7,17 +7,28 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "frutales_scores", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"tournament_id", "scorecard_id"})
+@Table(name = "tournament_scores", uniqueConstraints = {
+    @UniqueConstraint(columnNames = {"tournament_id", "scorecard_id", "score_type"},
+        name = "uq_tournament_scores_tournament_scorecard_score_type")
 })
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FrutalesScore {
+public class TournamentScore {
+
+    /** Valor para torneos Frutales (puntaje global de la fecha). */
+    public static final String SCORE_TYPE_GLOBAL = "GLOBAL";
+
+    /** Valor para torneos Clásico: puntaje por categoría (basado en score neto). */
+    public static final String SCORE_TYPE_CATEGORY = "CATEGORY";
+
+    /** Valor para torneos Clásico: puntaje scratch (basado en score gross). */
+    public static final String SCORE_TYPE_SCRATCH = "SCRATCH";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,6 +45,15 @@ public class FrutalesScore {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "player_id", nullable = false)
     private Player player;
+
+    /** GLOBAL, CATEGORY o SCRATCH */
+    @Column(name = "score_type", nullable = false, length = 20)
+    @Builder.Default
+    private String scoreType = SCORE_TYPE_GLOBAL;
+
+    /** Solo para CATEGORY: id de la categoría del jugador en el torneo. */
+    @Column(name = "category_id")
+    private Long categoryId;
 
     private Integer position;
 

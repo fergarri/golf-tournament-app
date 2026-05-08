@@ -14,7 +14,13 @@ public interface TournamentAdminPlayoffResultRepository extends JpaRepository<To
 
     List<TournamentAdminPlayoffResult> findByTournamentAdminIdOrderByPositionAsc(Long tournamentAdminId);
 
+    List<TournamentAdminPlayoffResult> findByTournamentAdminIdAndScoreTypeOrderByPositionAsc(Long tournamentAdminId, String scoreType);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM TournamentAdminPlayoffResult r WHERE r.tournamentAdmin.id = :tournamentAdminId")
     void deleteByTournamentAdminId(@Param("tournamentAdminId") Long tournamentAdminId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM TournamentAdminPlayoffResult r WHERE r.tournamentAdmin.id = :tournamentAdminId AND r.scoreType = :scoreType")
+    void deleteByTournamentAdminIdAndScoreType(@Param("tournamentAdminId") Long tournamentAdminId, @Param("scoreType") String scoreType);
 }

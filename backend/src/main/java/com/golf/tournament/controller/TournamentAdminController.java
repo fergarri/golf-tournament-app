@@ -2,6 +2,7 @@ package com.golf.tournament.controller;
 
 import com.golf.tournament.dto.tournamentadmin.*;
 import com.golf.tournament.service.TournamentAdminService;
+import com.golf.tournament.service.TournamentAdminScoringConfigService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,16 +18,11 @@ import java.util.List;
 public class TournamentAdminController {
 
     private final TournamentAdminService tournamentAdminService;
+    private final TournamentAdminScoringConfigService scoringConfigService;
 
     @GetMapping
     public ResponseEntity<List<TournamentAdminDTO>> getAll() {
         return ResponseEntity.ok(tournamentAdminService.getAll());
-    }
-
-    @GetMapping("/relations/options")
-    public ResponseEntity<List<TournamentRelationOptionDTO>> getRelationOptions(
-            @RequestParam(required = false) Long adminId) {
-        return ResponseEntity.ok(tournamentAdminService.getRelationOptions(adminId));
     }
 
     @PostMapping
@@ -70,6 +66,11 @@ public class TournamentAdminController {
         return ResponseEntity.ok(tournamentAdminService.importInscriptionsToRelatedPendingTournaments(id));
     }
 
+    @PostMapping("/from-tournament/{tournamentId}/export-inscriptions")
+    public ResponseEntity<ExportTournamentInscriptionsResultDTO> exportFromTournament(@PathVariable Long tournamentId) {
+        return ResponseEntity.ok(tournamentAdminService.exportTournamentInscriptionsToAdmin(tournamentId));
+    }
+
     @DeleteMapping("/inscriptions/{inscriptionId}")
     public ResponseEntity<Void> removeInscription(@PathVariable Long inscriptionId) {
         tournamentAdminService.removeInscription(inscriptionId);
@@ -87,5 +88,17 @@ public class TournamentAdminController {
             @RequestBody SavePaymentsRequest request) {
         tournamentAdminService.savePayments(id, request);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}/scoring-config")
+    public ResponseEntity<ScoringConfigDTO> getScoringConfig(@PathVariable Long id) {
+        return ResponseEntity.ok(scoringConfigService.getOrDefaultByTournamentAdminId(id));
+    }
+
+    @PutMapping("/{id}/scoring-config")
+    public ResponseEntity<ScoringConfigDTO> saveScoringConfig(
+            @PathVariable Long id,
+            @Valid @RequestBody SaveScoringConfigRequest request) {
+        return ResponseEntity.ok(scoringConfigService.save(id, request));
     }
 }

@@ -12,7 +12,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "tournament_admin_playoff_results", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"tournament_admin_id", "player_id"})
+        @UniqueConstraint(columnNames = {"tournament_admin_id", "player_id", "score_type"},
+                name = "uq_playoff_result_admin_player_type")
 })
 @Data
 @Builder
@@ -31,6 +32,11 @@ public class TournamentAdminPlayoffResult {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "player_id", nullable = false)
     private Player player;
+
+    /** HCP (por categoría/neto) o SCRATCH (por gross). */
+    @Column(name = "score_type", nullable = false, length = 20)
+    @Builder.Default
+    private String scoreType = "HCP";
 
     @Column(name = "total_points", nullable = false)
     @Builder.Default

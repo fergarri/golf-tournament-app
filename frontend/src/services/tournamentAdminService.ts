@@ -1,5 +1,5 @@
 import api from './api';
-import { ImportAdminInscriptionsResult, TournamentAdmin, TournamentAdminDetail, TournamentRelationOption } from '../types';
+import { ExportTournamentInscriptionsResult, ImportAdminInscriptionsResult, ScoringConfig, SaveScoringConfigRequest, TournamentAdmin, TournamentAdminDetail } from '../types';
 
 interface SavePaymentUpdate {
   paymentId: number;
@@ -20,7 +20,7 @@ export const tournamentAdminService = {
   create: async (data: {
     nombre: string;
     fecha: string;
-    relatedTournamentIds?: number[];
+    tipo: string;
     valorInscripcion: number;
     cantidadCuotas: number;
   }): Promise<TournamentAdmin> => {
@@ -31,7 +31,7 @@ export const tournamentAdminService = {
   update: async (id: number, data: {
     nombre: string;
     fecha: string;
-    relatedTournamentIds?: number[];
+    tipo: string;
     valorInscripcion: number;
     cantidadCuotas: number;
   }): Promise<TournamentAdmin> => {
@@ -66,13 +66,24 @@ export const tournamentAdminService = {
     return response.data;
   },
 
-  getRelationOptions: async (adminId?: number): Promise<TournamentRelationOption[]> => {
-    const query = adminId ? `?adminId=${adminId}` : '';
-    const response = await api.get<TournamentRelationOption[]>(`/tournament-admin/relations/options${query}`);
+  savePayments: async (tournamentAdminId: number, payments: SavePaymentUpdate[]): Promise<void> => {
+    await api.put(`/tournament-admin/${tournamentAdminId}/payments`, { payments });
+  },
+
+  getScoringConfig: async (tournamentAdminId: number): Promise<ScoringConfig> => {
+    const response = await api.get<ScoringConfig>(`/tournament-admin/${tournamentAdminId}/scoring-config`);
     return response.data;
   },
 
-  savePayments: async (tournamentAdminId: number, payments: SavePaymentUpdate[]): Promise<void> => {
-    await api.put(`/tournament-admin/${tournamentAdminId}/payments`, { payments });
+  saveScoringConfig: async (tournamentAdminId: number, data: SaveScoringConfigRequest): Promise<ScoringConfig> => {
+    const response = await api.put<ScoringConfig>(`/tournament-admin/${tournamentAdminId}/scoring-config`, data);
+    return response.data;
+  },
+
+  exportTournamentInscriptions: async (tournamentId: number): Promise<ExportTournamentInscriptionsResult> => {
+    const response = await api.post<ExportTournamentInscriptionsResult>(
+      `/tournament-admin/from-tournament/${tournamentId}/export-inscriptions`
+    );
+    return response.data;
   },
 };

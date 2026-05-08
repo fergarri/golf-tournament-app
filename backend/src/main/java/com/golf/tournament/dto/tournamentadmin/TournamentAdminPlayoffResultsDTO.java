@@ -16,8 +16,13 @@ import java.util.Map;
 public class TournamentAdminPlayoffResultsDTO {
 
     private Long tournamentAdminId;
+    /** FRUTALES o CLASICO */
+    private String tipo;
     private List<StageColumnDTO> stages;
+    /** Filas Con HCP. Para FRUTALES es el único listado. */
     private List<RowDTO> rows;
+    /** Filas Sin HCP (scratch). Solo poblado para tipo CLASICO. */
+    private List<RowDTO> scratchRows;
 
     @Data
     @Builder

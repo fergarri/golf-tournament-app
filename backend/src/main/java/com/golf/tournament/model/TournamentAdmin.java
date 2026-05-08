@@ -32,14 +32,9 @@ public class TournamentAdmin {
     @Column(nullable = false)
     private LocalDate fecha;
 
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "tournament_admin_related_tournaments",
-            joinColumns = @JoinColumn(name = "tournament_admin_id"),
-            inverseJoinColumns = @JoinColumn(name = "tournament_id")
-    )
+    @Column(nullable = false, length = 20)
     @Builder.Default
-    private List<Tournament> tournaments = new ArrayList<>();
+    private String tipo = "FRUTALES";
 
     @Column(name = "valor_inscripcion", nullable = false, precision = 10, scale = 2)
     @Builder.Default

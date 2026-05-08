@@ -1,13 +1,14 @@
 package com.golf.tournament.service;
 
-import com.golf.tournament.dto.leaderboard.FrutalesScoreDTO;
-import com.golf.tournament.exception.BadRequestException;
+import com.golf.tournament.dto.leaderboard.TournamentScoreDTO;
+import com.golf.tournament.dto.tournamentadmin.ScoringConfigDTO;
 import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.model.*;
-import com.golf.tournament.repository.FrutalesScoreRepository;
 import com.golf.tournament.repository.HoleScoreRepository;
 import com.golf.tournament.repository.ScorecardRepository;
+import com.golf.tournament.repository.TournamentAdminRepository;
 import com.golf.tournament.repository.TournamentRepository;
+import com.golf.tournament.repository.TournamentScoreRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -23,34 +24,25 @@ import java.util.stream.Collectors;
 public class FrutalesScoreService {
 
     private final TournamentRepository tournamentRepository;
+    private final TournamentAdminRepository tournamentAdminRepository;
     private final ScorecardRepository scorecardRepository;
     private final HoleScoreRepository holeScoreRepository;
-    private final FrutalesScoreRepository frutalesScoreRepository;
-
-    private static final Map<Integer, Integer> POSITION_POINTS = Map.of(
-            1, 12,
-            2, 10,
-            3, 8,
-            4, 6,
-            5, 4,
-            6, 2
-    );
+    private final TournamentScoreRepository tournamentScoreRepository;
+    private final TournamentAdminScoringConfigService scoringConfigService;
 
     @Transactional
-    public List<FrutalesScoreDTO> calculateScores(Long tournamentId) {
+    public List<TournamentScoreDTO> calculateScores(Long tournamentId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
 
-        if (!"FRUTALES".equals(tournament.getTipo())) {
-            throw new BadRequestException("El cálculo de puntos Frutales solo aplica a torneos de tipo FRUTALES");
-        }
-
         int multiplier = Boolean.TRUE.equals(tournament.getDoublePoints()) ? 2 : 1;
 
-        frutalesScoreRepository.deleteAllByTournamentId(tournamentId);
-        frutalesScoreRepository.flush();
+        ScoringConfigDTO config = loadScoringConfig(tournamentId);
+        Map<Integer, Integer> positionPointsMap = buildPositionPointsMap(config);
 
-        // DELIVERED + CANCELLED are scored.
+        tournamentScoreRepository.deleteAllByTournamentIdAndScoreType(tournamentId, TournamentScore.SCORE_TYPE_GLOBAL);
+        tournamentScoreRepository.flush();
+
         List<Scorecard> scorecards = scorecardRepository.findByTournamentIdAndStatusIn(
                 tournamentId, List.of(ScorecardStatus.DELIVERED, ScorecardStatus.CANCELLED));
 
@@ -64,25 +56,25 @@ public class FrutalesScoreService {
                 .map(this::buildPlayerScoreData)
                 .collect(Collectors.toList());
 
-        // 1) DELIVERED: rank by net + tie-breakers to assign position points.
-        deliveredData.sort(buildFrutalesComparator());
+        deliveredData.sort(buildComparator(config.getTieBreakMode()));
 
-        List<FrutalesScore> persistedScores = new ArrayList<>();
+        List<TournamentScore> persistedScores = new ArrayList<>();
 
         for (int i = 0; i < deliveredData.size(); i++) {
             PlayerScoreData data = deliveredData.get(i);
             int deliveredRank = i + 1;
-            int posPoints = POSITION_POINTS.getOrDefault(deliveredRank, 0) * multiplier;
-            int birdiePoints = data.birdieCount * multiplier;
-            int eaglePoints = data.eagleCount * 5 * multiplier;
-            int acePoints = data.aceCount * 10 * multiplier;
-            int participationPoints = 1 * multiplier;
+            int posPoints = positionPointsMap.getOrDefault(deliveredRank, config.getRemainingPositionsPoints()) * multiplier;
+            int birdiePoints = data.birdieCount * config.getBirdiePoints() * multiplier;
+            int eaglePoints = data.eagleCount * config.getEaglePoints() * multiplier;
+            int acePoints = data.aceCount * config.getAcePoints() * multiplier;
+            int participationPoints = config.getParticipationPoints() * multiplier;
             int total = posPoints + birdiePoints + eaglePoints + acePoints + participationPoints;
 
-            FrutalesScore score = FrutalesScore.builder()
+            TournamentScore score = TournamentScore.builder()
                     .tournament(tournament)
                     .scorecard(data.scorecard)
                     .player(data.scorecard.getPlayer())
+                    .scoreType(TournamentScore.SCORE_TYPE_GLOBAL)
                     .position(deliveredRank)
                     .positionPoints(posPoints)
                     .birdieCount(data.birdieCount)
@@ -98,30 +90,25 @@ public class FrutalesScoreService {
             persistedScores.add(score);
         }
 
-        // 2) CANCELLED: only participation point (no birdie/eagle/ace points),
-        // positioned after all DELIVERED.
         List<CalculatedScoreData> cancelledCalculated = new ArrayList<>();
         for (PlayerScoreData data : cancelledData) {
-            int birdiePoints = 0;
-            int eaglePoints = 0;
-            int acePoints = 0;
-            int participationPoints = 1 * multiplier;
-            int total = participationPoints;
+            int participationPoints = config.getParticipationPoints() * multiplier;
 
-            FrutalesScore score = FrutalesScore.builder()
+            TournamentScore score = TournamentScore.builder()
                     .tournament(tournament)
                     .scorecard(data.scorecard)
                     .player(data.scorecard.getPlayer())
+                    .scoreType(TournamentScore.SCORE_TYPE_GLOBAL)
                     .position(null)
                     .positionPoints(0)
                     .birdieCount(data.birdieCount)
-                    .birdiePoints(birdiePoints)
+                    .birdiePoints(0)
                     .eagleCount(data.eagleCount)
-                    .eaglePoints(eaglePoints)
+                    .eaglePoints(0)
                     .aceCount(data.aceCount)
-                    .acePoints(acePoints)
+                    .acePoints(0)
                     .participationPoints(participationPoints)
-                    .totalPoints(total)
+                    .totalPoints(participationPoints)
                     .build();
 
             cancelledCalculated.add(new CalculatedScoreData(score, data));
@@ -136,15 +123,15 @@ public class FrutalesScoreService {
                 .map(cs -> cs.score)
                 .collect(Collectors.toList()));
 
-        // DS always included with 0 points.
         List<Scorecard> disqualifiedScorecards = scorecardRepository
                 .findByTournamentIdAndStatus(tournamentId, ScorecardStatus.DISQUALIFIED);
 
         for (Scorecard sc : disqualifiedScorecards) {
-            FrutalesScore score = FrutalesScore.builder()
+            TournamentScore score = TournamentScore.builder()
                     .tournament(tournament)
                     .scorecard(sc)
                     .player(sc.getPlayer())
+                    .scoreType(TournamentScore.SCORE_TYPE_GLOBAL)
                     .position(null)
                     .positionPoints(0)
                     .birdieCount(0)
@@ -159,36 +146,37 @@ public class FrutalesScoreService {
             persistedScores.add(score);
         }
 
-        frutalesScoreRepository.saveAll(persistedScores);
+        tournamentScoreRepository.saveAll(persistedScores);
 
-        log.info("Frutales scores calculated for tournament {}: {} delivered, {} cancelled, multiplier={}",
-                tournamentId, deliveredData.size(), cancelledData.size(), multiplier);
+        log.info("Frutales scores calculados para torneo {}: {} delivered, {} cancelled, multiplier={}, tieBreakMode={}",
+                tournamentId, deliveredData.size(), cancelledData.size(), multiplier, config.getTieBreakMode());
 
         return getScores(tournamentId);
     }
 
     @Transactional(readOnly = true)
-    public List<FrutalesScoreDTO> getScores(Long tournamentId) {
+    public List<TournamentScoreDTO> getScores(Long tournamentId) {
         tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
 
-        List<FrutalesScore> scores = frutalesScoreRepository.findByTournamentIdOrderByTotalPointsDesc(tournamentId);
+        List<TournamentScore> scores = tournamentScoreRepository
+                .findByTournamentIdAndScoreTypeOrderByTotalPointsDesc(tournamentId, TournamentScore.SCORE_TYPE_GLOBAL);
 
-        List<FrutalesScore> positioned = scores.stream()
+        List<TournamentScore> positioned = scores.stream()
                 .filter(s -> s.getPosition() != null)
-                .sorted(Comparator.comparingInt(FrutalesScore::getPosition))
+                .sorted(Comparator.comparingInt(TournamentScore::getPosition))
                 .collect(Collectors.toList());
 
-        List<FrutalesScore> nmScores = scores.stream()
+        List<TournamentScore> nmScores = scores.stream()
                 .filter(s -> s.getPosition() == null && s.getScorecard().getStatus() != ScorecardStatus.DISQUALIFIED)
-                .sorted(Comparator.comparingInt(FrutalesScore::getTotalPoints).reversed())
+                .sorted(Comparator.comparingInt(TournamentScore::getTotalPoints).reversed())
                 .collect(Collectors.toList());
 
-        List<FrutalesScore> dsScores = scores.stream()
+        List<TournamentScore> dsScores = scores.stream()
                 .filter(s -> s.getScorecard().getStatus() == ScorecardStatus.DISQUALIFIED)
                 .collect(Collectors.toList());
 
-        List<FrutalesScore> ordered = new ArrayList<>();
+        List<TournamentScore> ordered = new ArrayList<>();
         ordered.addAll(positioned);
         ordered.addAll(nmScores);
         ordered.addAll(dsScores);
@@ -198,7 +186,110 @@ public class FrutalesScoreService {
                 .collect(Collectors.toList());
     }
 
-    private FrutalesScoreDTO convertToDTO(FrutalesScore score) {
+    /**
+     * Carga la configuración de puntuación para el torneo.
+     * Busca el TournamentAdmin que contiene este torneo en alguna de sus etapas y obtiene su config.
+     * Si no existe TournamentAdmin o no tiene config, retorna los valores por defecto.
+     */
+    private ScoringConfigDTO loadScoringConfig(Long tournamentId) {
+        return tournamentAdminRepository.findByTournamentInAnyStage(tournamentId)
+                .map(admin -> scoringConfigService.getOrDefaultByTournamentAdminId(admin.getId()))
+                .orElseGet(() -> scoringConfigService.getOrDefaultByTournamentAdminId(-1L));
+    }
+
+    private Map<Integer, Integer> buildPositionPointsMap(ScoringConfigDTO config) {
+        Map<Integer, Integer> map = new HashMap<>();
+        if (config.getPositionPoints() != null) {
+            for (ScoringConfigDTO.PositionPointsDTO pp : config.getPositionPoints()) {
+                map.put(pp.getPosition(), pp.getPoints());
+            }
+        }
+        return map;
+    }
+
+    private Comparator<PlayerScoreData> buildComparator(String tieBreakMode) {
+        if ("GROSS_BACK9".equals(tieBreakMode)) {
+            return buildGrossBack9Comparator();
+        }
+        return buildNetoHcpHoleComparator();
+    }
+
+    /**
+     * Desempate Frutales: neto ascendente → handicap índice ascendente → hoyo por hoyo desde el último
+     */
+    private Comparator<PlayerScoreData> buildNetoHcpHoleComparator() {
+        return (a, b) -> {
+            BigDecimal netoA = a.neto != null ? a.neto : BigDecimal.valueOf(9999);
+            BigDecimal netoB = b.neto != null ? b.neto : BigDecimal.valueOf(9999);
+            int netoCompare = netoA.compareTo(netoB);
+            if (netoCompare != 0) return netoCompare;
+
+            BigDecimal hcpA = a.handicapIndex != null ? a.handicapIndex : BigDecimal.valueOf(999);
+            BigDecimal hcpB = b.handicapIndex != null ? b.handicapIndex : BigDecimal.valueOf(999);
+            int hcpCompare = hcpA.compareTo(hcpB);
+            if (hcpCompare != 0) return hcpCompare;
+
+            return compareHoleByHoleFromLast(a, b);
+        };
+    }
+
+    /**
+     * Desempate vuelta gross: gross acumulado hoyos 10-18 ascendente → hoyo 18 → 17 → ... → 10
+     */
+    private Comparator<PlayerScoreData> buildGrossBack9Comparator() {
+        return (a, b) -> {
+            int backNineA = sumHoles(a.scoresByHole, 10, 18);
+            int backNineB = sumHoles(b.scoresByHole, 10, 18);
+            int backNineCompare = Integer.compare(backNineA, backNineB);
+            if (backNineCompare != 0) return backNineCompare;
+
+            for (int hole = 18; hole >= 10; hole--) {
+                int scoreA = a.scoresByHole.getOrDefault(hole, 99);
+                int scoreB = b.scoresByHole.getOrDefault(hole, 99);
+                if (scoreA != scoreB) return Integer.compare(scoreA, scoreB);
+            }
+            for (int hole = 9; hole >= 1; hole--) {
+                int scoreA = a.scoresByHole.getOrDefault(hole, 99);
+                int scoreB = b.scoresByHole.getOrDefault(hole, 99);
+                if (scoreA != scoreB) return Integer.compare(scoreA, scoreB);
+            }
+            return 0;
+        };
+    }
+
+    private int sumHoles(Map<Integer, Integer> scoresByHole, int from, int to) {
+        int sum = 0;
+        for (int h = from; h <= to; h++) {
+            sum += scoresByHole.getOrDefault(h, 99);
+        }
+        return sum;
+    }
+
+    private Comparator<CalculatedScoreData> buildCancelledRankingComparator() {
+        return (a, b) -> {
+            int totalCompare = Integer.compare(b.score.getTotalPoints(), a.score.getTotalPoints());
+            if (totalCompare != 0) return totalCompare;
+
+            BigDecimal hcpA = a.playerData.handicapIndex != null ? a.playerData.handicapIndex : BigDecimal.valueOf(999);
+            BigDecimal hcpB = b.playerData.handicapIndex != null ? b.playerData.handicapIndex : BigDecimal.valueOf(999);
+            int hcpCompare = hcpA.compareTo(hcpB);
+            if (hcpCompare != 0) return hcpCompare;
+
+            return compareHoleByHoleFromLast(a.playerData, b.playerData);
+        };
+    }
+
+    private int compareHoleByHoleFromLast(PlayerScoreData a, PlayerScoreData b) {
+        int startHole = Math.max(a.maxHole, b.maxHole);
+        for (int hole = startHole; hole >= 1; hole--) {
+            int scoreA = a.scoresByHole.getOrDefault(hole, 99);
+            int scoreB = b.scoresByHole.getOrDefault(hole, 99);
+            if (scoreA != scoreB) return Integer.compare(scoreA, scoreB);
+        }
+        return 0;
+    }
+
+    TournamentScoreDTO convertToDTO(TournamentScore score) {
         Scorecard sc = score.getScorecard();
         Player player = score.getPlayer();
 
@@ -216,7 +307,7 @@ public class FrutalesScoreService {
             scoreNeto = BigDecimal.valueOf(scoreGross).subtract(hcp);
         }
 
-        return FrutalesScoreDTO.builder()
+        return TournamentScoreDTO.builder()
                 .scorecardId(sc.getId())
                 .playerId(player.getId())
                 .playerName(player.getApellido() + " " + player.getNombre())
@@ -236,10 +327,12 @@ public class FrutalesScoreService {
                 .acePoints(score.getAcePoints())
                 .participationPoints(score.getParticipationPoints())
                 .totalPoints(score.getTotalPoints())
+                .scoreType(score.getScoreType())
+                .categoryId(score.getCategoryId())
                 .build();
     }
 
-    private PlayerScoreData buildPlayerScoreData(Scorecard scorecard) {
+    PlayerScoreData buildPlayerScoreData(Scorecard scorecard) {
         List<HoleScore> holeScores = holeScoreRepository.findByScorecardId(scorecard.getId());
 
         Integer gross = null;
@@ -291,47 +384,7 @@ public class FrutalesScoreService {
         );
     }
 
-    private Comparator<PlayerScoreData> buildFrutalesComparator() {
-        return (a, b) -> {
-            BigDecimal netoA = a.neto != null ? a.neto : BigDecimal.valueOf(9999);
-            BigDecimal netoB = b.neto != null ? b.neto : BigDecimal.valueOf(9999);
-            int netoCompare = netoA.compareTo(netoB);
-            if (netoCompare != 0) return netoCompare;
-
-            BigDecimal hcpA = a.handicapIndex != null ? a.handicapIndex : BigDecimal.valueOf(999);
-            BigDecimal hcpB = b.handicapIndex != null ? b.handicapIndex : BigDecimal.valueOf(999);
-            int hcpCompare = hcpA.compareTo(hcpB);
-            if (hcpCompare != 0) return hcpCompare;
-
-            return compareHoleByHole(a, b);
-        };
-    }
-
-    private Comparator<CalculatedScoreData> buildCancelledRankingComparator() {
-        return (a, b) -> {
-            int totalCompare = Integer.compare(b.score.getTotalPoints(), a.score.getTotalPoints());
-            if (totalCompare != 0) return totalCompare;
-
-            BigDecimal hcpA = a.playerData.handicapIndex != null ? a.playerData.handicapIndex : BigDecimal.valueOf(999);
-            BigDecimal hcpB = b.playerData.handicapIndex != null ? b.playerData.handicapIndex : BigDecimal.valueOf(999);
-            int hcpCompare = hcpA.compareTo(hcpB);
-            if (hcpCompare != 0) return hcpCompare;
-
-            return compareHoleByHole(a.playerData, b.playerData);
-        };
-    }
-
-    private int compareHoleByHole(PlayerScoreData a, PlayerScoreData b) {
-        int startHole = Math.max(a.maxHole, b.maxHole);
-        for (int hole = startHole; hole >= 1; hole--) {
-            int scoreA = a.scoresByHole.getOrDefault(hole, 99);
-            int scoreB = b.scoresByHole.getOrDefault(hole, 99);
-            if (scoreA != scoreB) return Integer.compare(scoreA, scoreB);
-        }
-        return 0;
-    }
-
-    private static class PlayerScoreData {
+    static class PlayerScoreData {
         final Scorecard scorecard;
         final BigDecimal neto;
         final BigDecimal handicapIndex;
@@ -355,11 +408,11 @@ public class FrutalesScoreService {
         }
     }
 
-    private static class CalculatedScoreData {
-        final FrutalesScore score;
+    static class CalculatedScoreData {
+        final TournamentScore score;
         final PlayerScoreData playerData;
 
-        CalculatedScoreData(FrutalesScore score, PlayerScoreData playerData) {
+        CalculatedScoreData(TournamentScore score, PlayerScoreData playerData) {
             this.score = score;
             this.playerData = playerData;
         }

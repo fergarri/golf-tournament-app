@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { tournamentAdminStageService } from '../services/tournamentAdminStageService';
-import { TournamentAdminStageBoard } from '../types';
+import { TournamentAdminStageBoard, TournamentAdminStageBoardRow } from '../types';
 import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
 import '../components/Table.css';
@@ -15,6 +15,7 @@ const PublicTournamentAdminStageBoardPage = () => {
   const [board, setBoard] = useState<TournamentAdminStageBoard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [activeTab, setActiveTab] = useState<string>('scratch');
 
   useEffect(() => {
     if (!Number.isFinite(adminIdNumber) || !Number.isFinite(stageIdNumber)) {
@@ -33,6 +34,12 @@ const PublicTournamentAdminStageBoardPage = () => {
       setLoading(true);
       const data = await tournamentAdminStageService.getPublicBoard(adminIdNumber, stageIdNumber);
       setBoard(data);
+      if (data.tipo === 'CLASICO' && data.categoryRows && data.categoryRows.length > 0) {
+        setActiveTab(prev => {
+          const isValidCat = data.categoryRows!.some(c => c.categoryId.toString() === prev);
+          return isValidCat || prev === 'scratch' ? prev : data.categoryRows![0].categoryId.toString();
+        });
+      }
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error cargando resultados de etapa');
@@ -43,6 +50,17 @@ const PublicTournamentAdminStageBoardPage = () => {
 
   if (loading) return <div className="loading">Cargando resultados de etapa...</div>;
   if (!board) return <div className="error-message">No se encontró la etapa</div>;
+
+  const isClasic = board.tipo === 'CLASICO';
+
+  const getDisplayRows = (): TournamentAdminStageBoardRow[] => {
+    if (!isClasic) return board.rows;
+    if (activeTab === 'scratch') return board.scratchRows ?? [];
+    const catId = parseInt(activeTab);
+    const catRows = board.categoryRows?.find(c => c.categoryId === catId);
+    return catRows?.rows ?? [];
+  };
+  const displayRows = getDisplayRows();
 
   return (
     <div className="leaderboard-page">
@@ -55,13 +73,56 @@ const PublicTournamentAdminStageBoardPage = () => {
               <strong>Fechas:</strong> {board.tournaments.length}
             </span>
             <span className="detail-item">
-              <strong>Jugadores:</strong> {board.rows.length}
+              <strong>Jugadores:</strong> {displayRows.length}
             </span>
           </div>
         </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
+
+      {/* Tabs por categoría + Scratch para CLASICO */}
+      {isClasic && board.categoryRows && board.categoryRows.length > 0 && (
+        <div style={{ display: 'flex', gap: '0', marginBottom: '1.5rem', borderBottom: '2px solid #e0e0e0', flexWrap: 'wrap' }}>
+          {board.categoryRows.map(cat => {
+            const tabId = cat.categoryId.toString();
+            const isActive = activeTab === tabId;
+            return (
+              <button
+                key={cat.categoryId}
+                onClick={() => setActiveTab(tabId)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: 'none',
+                  borderBottom: isActive ? '3px solid #2980b9' : '3px solid transparent',
+                  background: 'none',
+                  cursor: 'pointer',
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? '#2980b9' : '#555',
+                  fontSize: '1rem',
+                }}
+              >
+                {cat.categoryName} ({cat.handicapMin}-{cat.handicapMax})
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setActiveTab('scratch')}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              borderBottom: activeTab === 'scratch' ? '3px solid #2980b9' : '3px solid transparent',
+              background: 'none',
+              cursor: 'pointer',
+              fontWeight: activeTab === 'scratch' ? 700 : 400,
+              color: activeTab === 'scratch' ? '#2980b9' : '#555',
+              fontSize: '1rem',
+            }}
+          >
+            Scratch
+          </button>
+        </div>
+      )}
 
       <div className="leaderboard-container">
         <div style={{ overflowX: 'auto' }}>
@@ -88,14 +149,14 @@ const PublicTournamentAdminStageBoardPage = () => {
               </tr>
             </thead>
             <tbody>
-              {board.rows.length === 0 ? (
+              {displayRows.length === 0 ? (
                 <tr>
                   <td colSpan={5 + board.tournaments.length} className="empty-row">
                     No hay jugadores para mostrar en esta etapa
                   </td>
                 </tr>
               ) : (
-                board.rows.map((row, index) => (
+                displayRows.map((row, index) => (
                   <tr key={row.playerId}>
                     <td style={{ textAlign: 'center', fontWeight: 600 }}>{index + 1}</td>
                     <td>{row.playerName}</td>

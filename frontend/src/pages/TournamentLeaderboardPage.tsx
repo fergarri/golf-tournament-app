@@ -4,7 +4,8 @@ import { tournamentService } from '../services/tournamentService';
 import { leaderboardService } from '../services/leaderboardService';
 import { scorecardService } from '../services/scorecardService';
 import { inscriptionService } from '../services/inscriptionService';
-import { Tournament, LeaderboardEntry, Scorecard } from '../types';
+import { tournamentAdminService } from '../services/tournamentAdminService';
+import { Tournament, LeaderboardEntry, Scorecard, TournamentScore, ExportTournamentInscriptionsResult } from '../types';
 import Table, { TableAction } from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
@@ -22,7 +23,9 @@ const TournamentLeaderboardPage = () => {
 
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('general'); // 'general', categoryId, or 'sin-categoria'
+  const [tournamentScores, setTournamentScores] = useState<TournamentScore[]>([]);
+  const [calculating, setCalculating] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('general'); // 'general', categoryId, 'scratch'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [editingScorecardId, setEditingScorecardId] = useState<number | null>(null);
@@ -32,6 +35,8 @@ const TournamentLeaderboardPage = () => {
   const [savingPayments, setSavingPayments] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
+  const [exportingInscriptions, setExportingInscriptions] = useState(false);
+  const [exportResult, setExportResult] = useState<ExportTournamentInscriptionsResult | null>(null);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [showInscriptionModal, setShowInscriptionModal] = useState(false);
   const [prizeConfirmation, setPrizeConfirmation] = useState<{
@@ -50,7 +55,17 @@ const TournamentLeaderboardPage = () => {
 
   useEffect(() => {
     loadData();
-  }, [id]); // Removed selectedCategory from dependencies since we filter in frontend
+  }, [id]);
+
+  // Para CLASICO asociado a Torneo Administrativo: activar la primera categoría por defecto
+  useEffect(() => {
+    if (tournament?.tipo === 'CLASICO' && tournament.scoringConfig != null && tournament.categories && tournament.categories.length > 0) {
+      const sorted = [...tournament.categories].sort((a, b) => a.handicapMin - b.handicapMin);
+      if (sorted[0]?.id) {
+        setActiveTab(sorted[0].id.toString());
+      }
+    }
+  }, [tournament?.tipo, tournament?.scoringConfig, tournament?.categories]);
 
   const loadData = async (options?: { silent?: boolean }) => {
     if (!id) return;
@@ -59,14 +74,56 @@ const TournamentLeaderboardPage = () => {
       const tournamentData = await tournamentService.getById(parseInt(id));
       setTournament(tournamentData);
 
-      // Always fetch all players - filtering is done in frontend
-      const leaderboardData = await leaderboardService.getLeaderboard(parseInt(id));
+      const isClasic = tournamentData.tipo === 'CLASICO' && tournamentData.scoringConfig != null;
+      const isFrutales = tournamentData.tipo === 'FRUTALES' && tournamentData.scoringConfig != null;
+      const promises: [Promise<LeaderboardEntry[]>, Promise<TournamentScore[]>?] = [
+        leaderboardService.getLeaderboard(parseInt(id)),
+        isClasic ? leaderboardService.getClasicScores(parseInt(id))
+          : isFrutales ? leaderboardService.getFrutalesScores(parseInt(id))
+          : undefined,
+      ];
+      const [leaderboardData, scoresData] = await Promise.all(promises);
       setLeaderboard(leaderboardData);
+      setTournamentScores(scoresData ?? []);
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error loading leaderboard');
     } finally {
       if (!options?.silent) setLoading(false);
+    }
+  };
+
+  const handleCalculateScores = async () => {
+    if (!id || !tournament) return;
+    try {
+      setCalculating(true);
+      const isClasic = tournament.tipo === 'CLASICO' && tournament.scoringConfig != null;
+      const [leaderboardData, scoresData] = await Promise.all([
+        leaderboardService.getLeaderboard(parseInt(id)),
+        isClasic
+          ? leaderboardService.calculateClasicScores(parseInt(id))
+          : leaderboardService.calculateFrutalesScores(parseInt(id)),
+      ]);
+      setLeaderboard(leaderboardData);
+      setTournamentScores(scoresData);
+      setError('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al calcular puntos');
+    } finally {
+      setCalculating(false);
+    }
+  };
+
+  const handleExportInscriptions = async () => {
+    if (!id) return;
+    try {
+      setExportingInscriptions(true);
+      const result = await tournamentAdminService.exportTournamentInscriptions(parseInt(id));
+      setExportResult(result);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al exportar inscriptos');
+    } finally {
+      setExportingInscriptions(false);
     }
   };
 
@@ -112,29 +169,89 @@ const TournamentLeaderboardPage = () => {
     }
   };
 
+  /** Para FRUTALES y tab General de CLASICO Scratch: mapa playerId → score global */
+  const globalScoreMap = useMemo(() => {
+    const map = new Map<number, TournamentScore>();
+    // Para FRUTALES usamos todos los scores (GLOBAL). Para CLASICO se filtrará por tab.
+    tournamentScores
+      .filter(ts => ts.scoreType === 'GLOBAL' || ts.scoreType == null)
+      .forEach(ts => map.set(ts.playerId, ts));
+    return map;
+  }, [tournamentScores]);
+
+  /** Mapa de scores por categoría: categoryId → (playerId → score) */
+  const categoryScoreMap = useMemo(() => {
+    const map = new Map<number, Map<number, TournamentScore>>();
+    tournamentScores
+      .filter(ts => ts.scoreType === 'CATEGORY' && ts.categoryId != null)
+      .forEach(ts => {
+        const catId = ts.categoryId!;
+        if (!map.has(catId)) map.set(catId, new Map());
+        map.get(catId)!.set(ts.playerId, ts);
+      });
+    return map;
+  }, [tournamentScores]);
+
+  /** Mapa de scores Scratch: playerId → score */
+  const scratchScoreMap = useMemo(() => {
+    const map = new Map<number, TournamentScore>();
+    tournamentScores
+      .filter(ts => ts.scoreType === 'SCRATCH')
+      .forEach(ts => map.set(ts.playerId, ts));
+    return map;
+  }, [tournamentScores]);
+
+  /** Mapa activo según el tab seleccionado */
+  const activeScoreMap = useMemo((): Map<number, TournamentScore> => {
+    if (tournament?.tipo === 'CLASICO' && tournament?.scoringConfig != null) {
+      if (activeTab === 'scratch') return scratchScoreMap;
+      const catId = parseInt(activeTab);
+      if (!isNaN(catId)) return categoryScoreMap.get(catId) ?? new Map();
+      return new Map();
+    }
+    // FRUTALES o CLASICO sin admin: siempre scores globales
+    return globalScoreMap;
+  }, [tournament?.tipo, tournament?.scoringConfig, activeTab, globalScoreMap, categoryScoreMap, scratchScoreMap]);
+
+  const daPlayerIds = useMemo(() => {
+    if (!tournament?.scoringConfig || tournamentScores.length === 0) return new Set<number>();
+    const scoresForTab = Array.from(activeScoreMap.values());
+    const byNeto = new Map<string, number[]>();
+    for (const entry of scoresForTab) {
+      if (entry.status !== 'DELIVERED' || entry.scoreNeto == null || entry.position == null || entry.position > 6) continue;
+      const key = entry.scoreNeto.toString();
+      const ids = byNeto.get(key) || [];
+      ids.push(entry.playerId);
+      byNeto.set(key, ids);
+    }
+    const result = new Set<number>();
+    for (const ids of byNeto.values()) {
+      if (ids.length > 1) ids.forEach(pid => result.add(pid));
+    }
+    return result;
+  }, [tournamentScores, activeScoreMap, tournament?.scoringConfig]);
+
   // Build tabs based on tournament categories
   const tabs = useMemo((): Tab[] => {
     if (!tournament || !tournament.categories) return [];
+    if (tournament.categories.length === 0) return [];
 
+    // Solo se comporta como CLASICO con admin (sin tab General) si tiene scoringConfig
+    const isClasic = tournament.tipo === 'CLASICO' && tournament.scoringConfig != null;
     const tabsList: Tab[] = [];
-    
-    // Always add "General" tab first
-    tabsList.push({
-      id: 'general',
-      label: 'General',
-      count: leaderboard.length,
-    });
 
-    // Sort categories by handicap range (min to max)
-    const sortedCategories = [...tournament.categories].sort((a, b) => 
-      a.handicapMin - b.handicapMin
-    );
+    if (!isClasic) {
+      // FRUTALES u otro tipo: tab General primero
+      tabsList.push({ id: 'general', label: 'General', count: leaderboard.length });
+    }
 
-    // Add tab for each category
+    // Categorías ordenadas por HCP mínimo
+    const sortedCategories = [...tournament.categories].sort((a, b) => a.handicapMin - b.handicapMin);
     sortedCategories.forEach(category => {
-      if (!category.id) return; // Skip categories without id
-      
-      const count = leaderboard.filter(entry => entry.categoryId === category.id).length;
+      if (!category.id) return;
+      const count = isClasic
+        ? (categoryScoreMap.get(category.id)?.size ?? leaderboard.filter(e => e.categoryId === category.id).length)
+        : leaderboard.filter(entry => entry.categoryId === category.id).length;
       tabsList.push({
         id: category.id.toString(),
         label: `${category.nombre} (${category.handicapMin}-${category.handicapMax})`,
@@ -142,49 +259,65 @@ const TournamentLeaderboardPage = () => {
       });
     });
 
-    // Add "Scratch" tab: all delivered players ranked by Score Gross
-    const deliveredCount = leaderboard.filter(entry => entry.status === 'DELIVERED').length;
-    tabsList.push({
-      id: 'scratch',
-      label: 'Scratch',
-      count: deliveredCount,
-    });
+    // Scratch tab
+    const scratchCount = isClasic
+      ? scratchScoreMap.size
+      : leaderboard.filter(e => e.status === 'DELIVERED').length;
+    tabsList.push({ id: 'scratch', label: 'Scratch', count: scratchCount });
 
     return tabsList;
-  }, [tournament, leaderboard]);
+  }, [tournament, leaderboard, categoryScoreMap, scratchScoreMap]);
 
   // Filter leaderboard based on active tab and recalculate positions per category
   const filteredByCategory = useMemo(() => {
-    let filtered: LeaderboardEntry[] = [];
-    
-    // Filter by active tab
-    if (activeTab === 'general') {
-      filtered = [...leaderboard];
-    } else if (activeTab === 'scratch') {
-      // All delivered players, sorted by Score Gross
+    const isClasic = tournament?.tipo === 'CLASICO' && tournament?.scoringConfig != null;
+
+    if (activeTab === 'scratch') {
+      if (isClasic && scratchScoreMap.size > 0) {
+        // CLASICO: ordenar por posición scratch calculada
+        const playersWithScores = leaderboard
+          .filter(e => scratchScoreMap.has(e.playerId))
+          .sort((a, b) => {
+            const posA = scratchScoreMap.get(a.playerId)?.position ?? 9999;
+            const posB = scratchScoreMap.get(b.playerId)?.position ?? 9999;
+            return posA - posB;
+          });
+        return playersWithScores.map((e, i) => ({ ...e, position: i + 1 }));
+      }
+      // FRUTALES u otros: ordenar por Gross
       const delivered = leaderboard
         .filter(entry => entry.status === 'DELIVERED')
         .sort((a, b) => (a.scoreGross ?? 0) - (b.scoreGross ?? 0));
       return delivered.map((entry, index) => ({ ...entry, position: index + 1 }));
+    }
+
+    let filtered: LeaderboardEntry[] = [];
+    if (activeTab === 'general') {
+      filtered = [...leaderboard];
     } else {
-      // Filter by specific category ID
       const categoryId = parseInt(activeTab);
       filtered = leaderboard.filter(entry => entry.categoryId === categoryId);
     }
-    
-    // Separate players with delivered scorecards from those without
+
     const withDeliveredScores = filtered.filter(entry => entry.status === 'DELIVERED');
     const withoutDeliveredScores = filtered.filter(entry => entry.status !== 'DELIVERED');
-    
-    // Assign positions ONLY for players with delivered scorecards
+
+    // Si hay scores calculados para este tab, ordenar por posición
+    if (activeScoreMap.size > 0) {
+      withDeliveredScores.sort((a, b) => {
+        const posA = activeScoreMap.get(a.playerId)?.position ?? 9999;
+        const posB = activeScoreMap.get(b.playerId)?.position ?? 9999;
+        return posA - posB;
+      });
+    }
+
     const withDeliveredAndPositions = withDeliveredScores.map((entry, index) => ({
       ...entry,
-      position: index + 1
+      position: index + 1,
     }));
-    
-    // Combine: delivered first (sorted by score), then undelivered (sorted by name)
+
     return [...withDeliveredAndPositions, ...withoutDeliveredScores];
-  }, [leaderboard, activeTab]);
+  }, [leaderboard, activeTab, activeScoreMap, scratchScoreMap, tournament?.tipo]);
 
   const getScoreToPar = (scoreToPar: number) => {
     if (scoreToPar === 0) return 'E';
@@ -392,6 +525,11 @@ const TournamentLeaderboardPage = () => {
       )
     : filteredByCategory;
 
+  // hasScoringConfig: tiene config de puntos (muestra el botón "Calcular Puntos")
+  const hasScoringConfig = tournament?.scoringConfig != null;
+  // hasScoringData: ya hay scores calculados (muestra las columnas de puntos)
+  const hasScoringData = hasScoringConfig && tournamentScores.length > 0;
+
   const columns = [
     {
       header: 'Pos',
@@ -417,28 +555,58 @@ const TournamentLeaderboardPage = () => {
       width: '8%',
     },
     { 
-      header: 'Score Gross', 
+      header: 'Gross', 
       accessor: (row: LeaderboardEntry) => row.status === 'DELIVERED' ? <strong>{row.scoreGross}</strong> : '-',
-      width: '10%' 
+      width: '7%' 
     },
     { 
-      header: 'Score Neto', 
+      header: 'Neto', 
       accessor: (row: LeaderboardEntry) => row.status === 'DELIVERED' ? <strong>{row.scoreNeto}</strong> : '-', 
-      width: '10%' 
+      width: '7%' 
     },
     {
       header: 'To Par',
-      accessor: (row: LeaderboardEntry) => (
-        row.status === 'DELIVERED' ? (
-          <span className={`score-to-par ${row.scoreToPar < 0 ? 'under-par' : row.scoreToPar > 0 ? 'over-par' : 'even-par'}`}>
-            {getScoreToPar(row.scoreToPar)}
+      accessor: (row: LeaderboardEntry) => {
+        if (row.status !== 'DELIVERED') return <span>-</span>;
+        // Scratch de CLASICO: To Par sobre Gross. Resto de tabs: To Par sobre Neto.
+        const isClasicScratch = tournament?.tipo === 'CLASICO' && tournament.scoringConfig != null && activeTab === 'scratch';
+        const toPar = isClasicScratch ? row.scoreGross - row.totalPar : row.scoreToPar;
+        return (
+          <span className={`score-to-par ${toPar < 0 ? 'under-par' : toPar > 0 ? 'over-par' : 'even-par'}`}>
+            {getScoreToPar(toPar)}
           </span>
-        ) : (
-          <span>-</span>
-        )
-      ),
+        );
+      },
       width: '8%',
     },
+    ...(hasScoringData && (tournament.scoringConfig!.birdiePoints > 0) ? [{
+      header: 'Birdie',
+      accessor: (row: LeaderboardEntry) => activeScoreMap.get(row.playerId)?.birdieCount || '-',
+      width: '5%',
+    }] : []),
+    ...(hasScoringData && (tournament.scoringConfig!.eaglePoints > 0) ? [{
+      header: 'Aguila',
+      accessor: (row: LeaderboardEntry) => activeScoreMap.get(row.playerId)?.eagleCount || '-',
+      width: '5%',
+    }] : []),
+    ...(hasScoringData && (tournament.scoringConfig!.acePoints > 0) ? [{
+      header: 'Ace',
+      accessor: (row: LeaderboardEntry) => activeScoreMap.get(row.playerId)?.aceCount || '-',
+      width: '5%',
+    }] : []),
+    ...(hasScoringData ? [{
+      header: 'Puntos',
+      accessor: (row: LeaderboardEntry) => {
+        const ts = activeScoreMap.get(row.playerId);
+        if (!ts) return <span>-</span>;
+        return (
+          <strong style={{ color: '#2980b9' }}>
+            {ts.totalPoints}{daPlayerIds.has(row.playerId) ? ' (DA)' : ''}
+          </strong>
+        );
+      },
+      width: '7%',
+    }] : []),
     { header: 'Club', accessor: (row: LeaderboardEntry) => row.clubOrigen || '-', width: '10%' },
     {
       header: 'Pagado',
@@ -532,6 +700,24 @@ const TournamentLeaderboardPage = () => {
               Finalizar
             </button>
           )}
+          {hasScoringConfig && (
+            <button
+              onClick={handleExportInscriptions}
+              disabled={exportingInscriptions}
+              className="btn-export"
+            >
+              {exportingInscriptions ? 'Exportando...' : 'Exportar a Torneo Administrativo'}
+            </button>
+          )}
+          {hasScoringConfig && (
+            <button
+              onClick={handleCalculateScores}
+              disabled={calculating}
+              className="btn-calculate"
+            >
+              {calculating ? 'Calculando...' : 'Calcular Puntos'}
+            </button>
+          )}
           {tournament?.estado === 'FINALIZED' && (
             <button
               type="button"
@@ -545,9 +731,6 @@ const TournamentLeaderboardPage = () => {
             onClick={handleSavePayments} 
             className="btn-save-payments" 
             disabled={savingPayments || paymentChanges.size === 0}
-            style={{
-              backgroundColor: paymentChanges.size > 0 ? '#3e75ad' : '#ccc',
-            }}
           >
             {savingPayments ? 'Guardando...' : `Guardar Pagos ${paymentChanges.size > 0 ? `(${paymentChanges.size})` : ''}`}
           </button>
@@ -555,7 +738,8 @@ const TournamentLeaderboardPage = () => {
         
         <div className="tournament-info">
           <h1>{tournament?.nombre}</h1>
-          {isFinal && <span className="final-badge">FINAL RESULTS</span>}
+          {tournament?.doublePoints && <span className="final-badge" style={{ backgroundColor: '#8e44ad' }}>FECHA DOBLE</span>}
+          {isFinal && <span className="final-badge">RESULTADOS FINALES</span>}
           <div className="tournament-details">
             <span className="detail-item">
               <strong>Campo:</strong> {tournament?.courseName}
@@ -670,6 +854,39 @@ const TournamentLeaderboardPage = () => {
           </div>
         </>
       )}
+
+      {/* Export Inscriptions Result Modal */}
+      <Modal
+        isOpen={exportResult !== null}
+        onClose={() => setExportResult(null)}
+        title="Exportación completada"
+        size="medium"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', width: '100%' }}>
+            <button
+              type="button"
+              className="modal-btn modal-btn-primary"
+              onClick={() => setExportResult(null)}
+            >
+              Cerrar
+            </button>
+          </div>
+        }
+      >
+        {exportResult && (
+          <div style={{ lineHeight: 1.8, color: '#5a6c7d' }}>
+            <p style={{ marginBottom: '0.5rem' }}>
+              Torneo Administrativo: <strong>{exportResult.tournamentAdminNombre}</strong>
+            </p>
+            <p style={{ marginBottom: '0.5rem' }}>
+              Inscriptos exportados: <strong style={{ color: '#27ae60' }}>{exportResult.importedCount}</strong>
+            </p>
+            <p style={{ margin: 0 }}>
+              Ya estaban inscriptos: <strong>{exportResult.skippedAlreadyInscribed}</strong>
+            </p>
+          </div>
+        )}
+      </Modal>
 
       {/* Copy Link Modal */}
       {showCopyLinkModal && (

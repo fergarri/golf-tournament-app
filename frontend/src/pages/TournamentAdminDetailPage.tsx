@@ -5,6 +5,7 @@ import { playerService } from '../services/playerService';
 import { TournamentAdminDetail, TournamentAdminInscriptionDetail, Player } from '../types';
 import ActionMenu from '../components/ActionMenu';
 import Modal from '../components/Modal';
+import ScoringConfigSection from '../components/ScoringConfigSection';
 import { formatDateSafe } from '../utils/dateUtils';
 import { formatCurrency } from '../utils/currencyUtils';
 import '../components/Form.css';
@@ -27,6 +28,7 @@ const TournamentAdminDetailPage = () => {
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [savingInscription, setSavingInscription] = useState(false);
   const [importingInscriptions, setImportingInscriptions] = useState(false);
+  const [showScoringConfigModal, setShowScoringConfigModal] = useState(false);
 
   // Track local payment changes: Map<paymentId, pagado>
   const [paymentChanges, setPaymentChanges] = useState<Map<number, boolean>>(new Map());
@@ -246,6 +248,12 @@ const TournamentAdminDetailPage = () => {
               Administrar Etapas
             </button>
           )}
+          <button
+            onClick={() => setShowScoringConfigModal(true)}
+            className="btn-admin-stages"
+          >
+            Configurar puntaje
+          </button>
           <button
             onClick={handleSavePayments}
             className="btn-save-payments"
@@ -477,6 +485,29 @@ const TournamentAdminDetailPage = () => {
             </>
           )}
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={showScoringConfigModal}
+        onClose={() => setShowScoringConfigModal(false)}
+        title="Configurar puntaje"
+        size="large"
+        footer={
+          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
+            <button
+              type="button"
+              onClick={() => setShowScoringConfigModal(false)}
+              className="btn btn-cancel"
+            >
+              Cerrar
+            </button>
+          </div>
+        }
+      >
+        <ScoringConfigSection
+          tournamentAdminId={detail.id}
+          onSaved={() => setShowScoringConfigModal(false)}
+        />
       </Modal>
     </div>
   );

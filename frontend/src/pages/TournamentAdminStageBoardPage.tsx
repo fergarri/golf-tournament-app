@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { tournamentAdminStageService } from '../services/tournamentAdminStageService';
-import { TournamentAdminStageBoard } from '../types';
+import { TournamentAdminStageBoard, TournamentAdminStageBoardRow } from '../types';
 import { formatDateSafe } from '../utils/dateUtils';
 import Modal from '../components/Modal';
 import '../components/Form.css';
@@ -19,6 +19,7 @@ const TournamentAdminStageBoardPage = () => {
   const [error, setError] = useState('');
   const [calculating, setCalculating] = useState(false);
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>('scratch');
 
   useEffect(() => {
     if (!Number.isFinite(tournamentAdminId) || !Number.isFinite(stageIdNumber)) {
@@ -34,6 +35,10 @@ const TournamentAdminStageBoardPage = () => {
       setLoading(true);
       const data = await tournamentAdminStageService.getBoard(tournamentAdminId, stageIdNumber);
       setBoard(data);
+      // Para CLASICO, activar la primera categoría por defecto
+      if (data.tipo === 'CLASICO' && data.categoryRows && data.categoryRows.length > 0) {
+        setActiveTab(data.categoryRows[0].categoryId.toString());
+      }
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error cargando fechas de la etapa');
@@ -47,6 +52,9 @@ const TournamentAdminStageBoardPage = () => {
       setCalculating(true);
       const data = await tournamentAdminStageService.calculate(tournamentAdminId, stageIdNumber);
       setBoard(data);
+      if (data.tipo === 'CLASICO' && data.categoryRows && data.categoryRows.length > 0) {
+        setActiveTab(prev => prev === 'scratch' ? prev : prev);
+      }
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error calculando puntos de etapa');
@@ -66,6 +74,80 @@ const TournamentAdminStageBoardPage = () => {
 
   if (loading) return <div className="loading">Cargando fechas de etapa...</div>;
   if (!board) return <div className="error-message">No se encontró la etapa</div>;
+
+  const isClasic = board.tipo === 'CLASICO';
+
+  // Para CLASICO: tabs por categoría + Scratch. Para FRUTALES: solo una vista sin tabs.
+  const getDisplayRows = (): TournamentAdminStageBoardRow[] => {
+    if (!isClasic) return board.rows;
+    if (activeTab === 'scratch') return board.scratchRows ?? [];
+    const catId = parseInt(activeTab);
+    const catRows = board.categoryRows?.find(c => c.categoryId === catId);
+    return catRows?.rows ?? [];
+  };
+  const displayRows = getDisplayRows();
+
+  const totalPlayers = isClasic
+    ? (board.categoryRows?.reduce((acc, c) => acc + c.rows.length, 0) ?? board.rows.length)
+    : board.rows.length;
+
+  const renderTable = (rows: TournamentAdminStageBoardRow[]) => (
+    <div style={{ overflowX: 'auto' }}>
+      <table className="data-table">
+        <thead>
+          <tr>
+            <th style={{ width: '60px', textAlign: 'center' }}>#</th>
+            <th>Jugador</th>
+            {board.tournaments.map(tournament => (
+              <th
+                key={tournament.tournamentId}
+                style={{
+                  minWidth: '150px',
+                  textAlign: 'center',
+                  background: tournament.doublePoints ? '#fff2cc' : undefined,
+                }}
+                title={tournament.tournamentName}
+              >
+                Fecha: {formatDateSafe(tournament.fechaInicio)}
+              </th>
+            ))}
+            <th style={{ textAlign: 'center' }}>Puntos</th>
+            <th style={{ textAlign: 'center' }}>Posición</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr>
+              <td colSpan={5 + board.tournaments.length} className="empty-row">
+                No hay jugadores para mostrar en esta etapa
+              </td>
+            </tr>
+          ) : (
+            rows.map((row, index) => (
+              <tr key={row.playerId}>
+                <td style={{ textAlign: 'center', fontWeight: 600 }}>{index + 1}</td>
+                <td>{row.playerName}</td>
+                {board.tournaments.map(tournament => (
+                  <td
+                    key={`${row.playerId}-${tournament.tournamentId}`}
+                    style={{
+                      textAlign: 'center',
+                      background: tournament.doublePoints ? '#fff2cc' : undefined,
+                      fontWeight: tournament.doublePoints ? 700 : 500,
+                    }}
+                  >
+                    {row.pointsByTournament[tournament.tournamentId] ?? 0}
+                  </td>
+                ))}
+                <td style={{ textAlign: 'center', fontWeight: 700 }}>{row.totalPoints}</td>
+                <td style={{ textAlign: 'center' }}>{row.position ?? '-'}</td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  );
 
   return (
     <div className="leaderboard-page">
@@ -102,7 +184,7 @@ const TournamentAdminStageBoardPage = () => {
               <strong>Fechas:</strong> {board.tournaments.length}
             </span>
             <span className="detail-item">
-              <strong>Jugadores:</strong> {board.rows.length}
+              <strong>Jugadores:</strong> {totalPlayers}
             </span>
           </div>
         </div>
@@ -110,62 +192,51 @@ const TournamentAdminStageBoardPage = () => {
 
       {error && <div className="error-message">{error}</div>}
 
-      <div className="leaderboard-container">
-        <div style={{ overflowX: 'auto' }}>
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th style={{ width: '60px', textAlign: 'center' }}>#</th>
-                <th>Jugador</th>
-                {board.tournaments.map(tournament => (
-                  <th
-                    key={tournament.tournamentId}
-                    style={{
-                      minWidth: '150px',
-                      textAlign: 'center',
-                      background: tournament.doublePoints ? '#fff2cc' : undefined,
-                    }}
-                    title={tournament.tournamentName}
-                  >
-                    Fecha: {formatDateSafe(tournament.fechaInicio)}
-                  </th>
-                ))}
-                <th style={{ textAlign: 'center' }}>Puntos</th>
-                <th style={{ textAlign: 'center' }}>Posición</th>
-              </tr>
-            </thead>
-            <tbody>
-              {board.rows.length === 0 ? (
-                <tr>
-                  <td colSpan={5 + board.tournaments.length} className="empty-row">
-                    No hay jugadores para mostrar en esta etapa
-                  </td>
-                </tr>
-              ) : (
-                board.rows.map((row, index) => (
-                  <tr key={row.playerId}>
-                    <td style={{ textAlign: 'center', fontWeight: 600 }}>{index + 1}</td>
-                    <td>{row.playerName}</td>
-                    {board.tournaments.map(tournament => (
-                      <td
-                        key={`${row.playerId}-${tournament.tournamentId}`}
-                        style={{
-                          textAlign: 'center',
-                          background: tournament.doublePoints ? '#fff2cc' : undefined,
-                          fontWeight: tournament.doublePoints ? 700 : 500,
-                        }}
-                      >
-                        {row.pointsByTournament[tournament.tournamentId] ?? 0}
-                      </td>
-                    ))}
-                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{row.totalPoints}</td>
-                    <td style={{ textAlign: 'center' }}>{row.position ?? '-'}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Tabs por categoría + Scratch para CLASICO */}
+      {isClasic && board.categoryRows && board.categoryRows.length > 0 && (
+        <div style={{ display: 'flex', gap: '0', marginBottom: '1.5rem', borderBottom: '2px solid #e0e0e0', flexWrap: 'wrap' }}>
+          {board.categoryRows.map(cat => {
+            const tabId = cat.categoryId.toString();
+            const isActive = activeTab === tabId;
+            return (
+              <button
+                key={cat.categoryId}
+                onClick={() => setActiveTab(tabId)}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  border: 'none',
+                  borderBottom: isActive ? '3px solid #2980b9' : '3px solid transparent',
+                  background: 'none',
+                  cursor: 'pointer',
+                  fontWeight: isActive ? 700 : 400,
+                  color: isActive ? '#2980b9' : '#555',
+                  fontSize: '1rem',
+                }}
+              >
+                {cat.categoryName} ({cat.handicapMin}-{cat.handicapMax})
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setActiveTab('scratch')}
+            style={{
+              padding: '0.75rem 1.5rem',
+              border: 'none',
+              borderBottom: activeTab === 'scratch' ? '3px solid #2980b9' : '3px solid transparent',
+              background: 'none',
+              cursor: 'pointer',
+              fontWeight: activeTab === 'scratch' ? 700 : 400,
+              color: activeTab === 'scratch' ? '#2980b9' : '#555',
+              fontSize: '1rem',
+            }}
+          >
+            Scratch
+          </button>
         </div>
+      )}
+
+      <div className="leaderboard-container">
+        {renderTable(displayRows)}
       </div>
 
       <Modal

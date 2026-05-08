@@ -1,5 +1,6 @@
 package com.golf.tournament.dto.tournament;
 
+import com.golf.tournament.dto.tournamentadmin.ScoringConfigDTO;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -35,4 +36,5 @@ public class TournamentDTO {
     private Integer currentInscriptos;
     private List<TournamentCategoryDTO> categories;
     private List<TournamentPrizeDTO> prizes;
+    private ScoringConfigDTO scoringConfig;
 }

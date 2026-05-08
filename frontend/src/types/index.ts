@@ -132,6 +132,7 @@ export interface Tournament {
   categories: TournamentCategory[];
   teeConfig?: TournamentTeeConfig;
   prizes?: TournamentPrize[];
+  scoringConfig?: ScoringConfig | null;
 }
 
 export interface TournamentCategory {
@@ -197,7 +198,7 @@ export interface LeaderboardEntry {
   pagado?: boolean;
 }
 
-export interface FrutalesScore {
+export interface TournamentScore {
   scorecardId?: number;
   playerId: number;
   playerName: string;
@@ -217,7 +218,16 @@ export interface FrutalesScore {
   acePoints: number;
   participationPoints: number;
   totalPoints: number;
+  /** GLOBAL, CATEGORY o SCRATCH */
+  scoreType?: string;
+  /** ID de categoría (solo cuando scoreType = CATEGORY) */
+  categoryId?: number;
+  /** Nombre de categoría (solo cuando scoreType = CATEGORY) */
+  categoryName?: string;
 }
+
+/** Alias para compatibilidad con las páginas de Frutales existentes */
+export type FrutalesScore = TournamentScore;
 
 export interface InscriptionResponse {
   inscriptionId: number;
@@ -233,19 +243,12 @@ export interface TournamentAdmin {
   id: number;
   nombre: string;
   fecha: string;
-  tournamentNombre?: string;
-  relatedTournamentIds: number[];
-  relatedTournaments: TournamentAdminRelatedTournament[];
+  tipo: string;
   valorInscripcion: number;
   cantidadCuotas: number;
   estado: string;
   currentInscriptos: number;
   totalRecaudado: number;
-}
-
-export interface TournamentAdminRelatedTournament {
-  id: number;
-  nombre: string;
 }
 
 export interface TournamentRelationOption {
@@ -289,6 +292,42 @@ export interface ImportAdminInscriptionsResult {
   skippedByCapacity: number;
 }
 
+export interface ExportTournamentInscriptionsResult {
+  tournamentAdminId: number;
+  tournamentAdminNombre: string;
+  importedCount: number;
+  skippedAlreadyInscribed: number;
+}
+
+export interface ScoringPositionPoints {
+  position: number;
+  points: number;
+}
+
+export interface ScoringConfig {
+  id?: number;
+  tournamentAdminId: number;
+  birdiePoints: number;
+  eaglePoints: number;
+  acePoints: number;
+  participationPoints: number;
+  remainingPositionsPoints: number;
+  qualifiedPlayoffPositions: number;
+  tieBreakMode: string;
+  positionPoints: ScoringPositionPoints[];
+}
+
+export interface SaveScoringConfigRequest {
+  birdiePoints: number;
+  eaglePoints: number;
+  acePoints: number;
+  participationPoints: number;
+  remainingPositionsPoints: number;
+  qualifiedPlayoffPositions: number;
+  tieBreakMode: string;
+  positionPoints: ScoringPositionPoints[];
+}
+
 export interface TournamentAdminStage {
   id: number;
   tournamentAdminId: number;
@@ -306,13 +345,28 @@ export interface TournamentAdminStageTournament {
   doublePoints: boolean;
 }
 
+export interface TournamentAdminStageCategoryRows {
+  categoryId: number;
+  categoryName: string;
+  handicapMin: number;
+  handicapMax: number;
+  rows: TournamentAdminStageBoardRow[];
+}
+
 export interface TournamentAdminStageBoard {
   stageId: number;
   tournamentAdminId: number;
   stageName: string;
   stageCreatedAt: string;
+  /** FRUTALES o CLASICO */
+  tipo?: string;
   tournaments: TournamentAdminStageBoardTournament[];
+  /** Filas Con HCP (para FRUTALES es el único listado) */
   rows: TournamentAdminStageBoardRow[];
+  /** Filas Sin HCP / Scratch — solo para tipo CLASICO */
+  scratchRows?: TournamentAdminStageBoardRow[] | null;
+  /** Filas agrupadas por categoría — solo para tipo CLASICO */
+  categoryRows?: TournamentAdminStageCategoryRows[] | null;
 }
 
 export interface TournamentAdminStageBoardTournament {
@@ -333,8 +387,13 @@ export interface TournamentAdminStageBoardRow {
 
 export interface TournamentAdminPlayoffResults {
   tournamentAdminId: number;
+  /** FRUTALES o CLASICO */
+  tipo?: string;
   stages: TournamentAdminPlayoffStageColumn[];
+  /** Filas Con HCP (para FRUTALES es el único listado) */
   rows: TournamentAdminPlayoffResultRow[];
+  /** Filas Sin HCP / Scratch — solo para tipo CLASICO */
+  scratchRows?: TournamentAdminPlayoffResultRow[] | null;
 }
 
 export interface TournamentAdminPlayoffStageColumn {

@@ -1,10 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createPortal } from 'react-dom';
 import { tournamentAdminService } from '../services/tournamentAdminService';
-import { tournamentService } from '../services/tournamentService';
 import { playerService } from '../services/playerService';
-import { TournamentAdmin, Tournament, Player, TournamentRelationOption } from '../types';
+import { TournamentAdmin, Player } from '../types';
 import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
 import { formatDateSafe } from '../utils/dateUtils';
@@ -14,7 +12,6 @@ import '../components/Form.css';
 const AdministrationPage = () => {
   const navigate = useNavigate();
   const [admins, setAdmins] = useState<TournamentAdmin[]>([]);
-  const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -24,14 +21,10 @@ const AdministrationPage = () => {
   const [formData, setFormData] = useState({
     nombre: '',
     fecha: '',
-    relatedTournamentIds: [] as number[],
+    tipo: 'FRUTALES',
     valorInscripcion: '',
     cantidadCuotas: '1',
   });
-  const [relationOptions, setRelationOptions] = useState<TournamentRelationOption[]>([]);
-  const [showRelationsDropdown, setShowRelationsDropdown] = useState(false);
-  const relationInputRef = useRef<HTMLDivElement | null>(null);
-  const [relationsDropdownStyle, setRelationsDropdownStyle] = useState<React.CSSProperties>({});
 
   // Inscription modal
   const [showInscriptionModal, setShowInscriptionModal] = useState(false);
@@ -53,12 +46,8 @@ const AdministrationPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [adminsData, tournamentsData] = await Promise.all([
-        tournamentAdminService.getAll(),
-        tournamentService.getAll(),
-      ]);
+      const adminsData = await tournamentAdminService.getAll();
       setAdmins(adminsData);
-      setTournaments(tournamentsData);
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error cargando datos');
@@ -88,95 +77,27 @@ const AdministrationPage = () => {
     setFormData({ ...formData, valorInscripcion: formatted });
   };
 
-  const loadRelationOptions = async (adminId?: number) => {
-    const options = await tournamentAdminService.getRelationOptions(adminId);
-    setRelationOptions(options);
-  };
-
-  const handleSelectRelatedTournament = (tournamentId: number) => {
-    setShowRelationsDropdown(false);
-    setRelationOptions(prev => prev.map(opt =>
-      opt.id === tournamentId ? { ...opt, related: true } : opt
-    ));
-
-    setFormData(prev => {
-      if (prev.relatedTournamentIds.includes(tournamentId)) return prev;
-      const tournament = tournaments.find(t => t.id === tournamentId);
-      const shouldSetDefaultValue = !prev.valorInscripcion && tournament?.valorInscripcion;
-      return {
-        ...prev,
-        relatedTournamentIds: [...prev.relatedTournamentIds, tournamentId],
-        valorInscripcion:
-          shouldSetDefaultValue && tournament?.valorInscripcion
-            ? formatCurrency(tournament.valorInscripcion)
-            : prev.valorInscripcion,
-      };
-    });
-  };
-
-  const handleRemoveRelatedTournament = (tournamentId: number) => {
-    setRelationOptions(prev => prev.map(opt =>
-      opt.id === tournamentId ? { ...opt, related: false } : opt
-    ));
-    setFormData(prev => ({
-      ...prev,
-      relatedTournamentIds: prev.relatedTournamentIds.filter(id => id !== tournamentId),
-    }));
-  };
-
-  const handleCreate = async () => {
+  const handleCreate = () => {
     setEditingAdmin(null);
     setFormData({
       nombre: '',
       fecha: '',
-      relatedTournamentIds: [],
+      tipo: 'FRUTALES',
       valorInscripcion: '',
       cantidadCuotas: '1',
     });
-    setShowRelationsDropdown(false);
-    await loadRelationOptions();
     setShowModal(true);
   };
 
-  useEffect(() => {
-    if (!showRelationsDropdown || !relationInputRef.current) return;
-
-    const updatePosition = () => {
-      if (!relationInputRef.current) return;
-      const rect = relationInputRef.current.getBoundingClientRect();
-      const availableAbove = Math.max(80, rect.top - 16);
-      const maxHeight = Math.min(220, availableAbove);
-      const bottom = Math.max(8, window.innerHeight - rect.top + 6);
-      setRelationsDropdownStyle({
-        position: 'fixed',
-        left: rect.left,
-        width: rect.width,
-        bottom,
-        maxHeight,
-        zIndex: 20000,
-      });
-    };
-
-    updatePosition();
-    window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true);
-    return () => {
-      window.removeEventListener('resize', updatePosition);
-      window.removeEventListener('scroll', updatePosition, true);
-    };
-  }, [showRelationsDropdown]);
-
-  const handleEdit = async (admin: TournamentAdmin) => {
+  const handleEdit = (admin: TournamentAdmin) => {
     setEditingAdmin(admin);
     setFormData({
       nombre: admin.nombre,
       fecha: admin.fecha,
-      relatedTournamentIds: admin.relatedTournamentIds || [],
+      tipo: admin.tipo,
       valorInscripcion: formatCurrency(admin.valorInscripcion),
       cantidadCuotas: String(admin.cantidadCuotas),
     });
-    setShowRelationsDropdown(false);
-    await loadRelationOptions(admin.id);
     setShowModal(true);
   };
 
@@ -186,7 +107,7 @@ const AdministrationPage = () => {
       const payload = {
         nombre: formData.nombre,
         fecha: formData.fecha,
-        relatedTournamentIds: formData.relatedTournamentIds,
+        tipo: formData.tipo,
         valorInscripcion: parseCurrency(formData.valorInscripcion),
         cantidadCuotas: parseInt(formData.cantidadCuotas),
       };
@@ -327,6 +248,19 @@ const AdministrationPage = () => {
 
   const columns = [
     { header: 'Nombre', accessor: 'nombre' as keyof TournamentAdmin },
+    { header: 'Tipo', accessor: (row: TournamentAdmin) => (
+      <span style={{
+        display: 'inline-block',
+        padding: '0.15rem 0.55rem',
+        borderRadius: '999px',
+        fontSize: '0.8rem',
+        fontWeight: 600,
+        background: row.tipo === 'FRUTALES' ? '#e8f5e9' : '#e3f2fd',
+        color: row.tipo === 'FRUTALES' ? '#2e7d32' : '#1565c0',
+      }}>
+        {row.tipo}
+      </span>
+    )},
     { header: 'Fecha', accessor: (row: TournamentAdmin) => formatDateSafe(row.fecha) },
     { header: 'Jugadores', accessor: (row: TournamentAdmin) => row.currentInscriptos },
     { header: 'Valor Inscripción', accessor: (row: TournamentAdmin) => `$${formatCurrency(row.valorInscripcion)}` },
@@ -405,20 +339,14 @@ const AdministrationPage = () => {
       {/* Create/Edit Modal */}
       <Modal
         isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setShowRelationsDropdown(false);
-        }}
+        onClose={() => setShowModal(false)}
         title={editingAdmin ? 'Editar Torneo' : 'Crear Torneo'}
-        size="large"
+        size="medium"
         footer={
           <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
             <button
               type="button"
-              onClick={() => {
-                setShowModal(false);
-                setShowRelationsDropdown(false);
-              }}
+              onClick={() => setShowModal(false)}
               className="btn btn-cancel"
             >
               Cancelar
@@ -451,104 +379,22 @@ const AdministrationPage = () => {
               />
             </div>
             <div className="form-group">
-              <label>Torneos Relacionados</label>
-              <div ref={relationInputRef} style={{ position: 'relative', zIndex: showRelationsDropdown ? 2000 : 'auto' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowRelationsDropdown(prev => !prev)}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem',
-                    border: '2px solid #e0e0e0',
-                    borderRadius: '6px',
-                    fontSize: '1rem',
-                    textAlign: 'left',
-                    background: 'white',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {relationOptions.filter(o => !o.related).length > 0
-                    ? 'Seleccionar torneos...'
-                    : 'No hay torneos disponibles'}
-                </button>
-
-                {showRelationsDropdown && createPortal(
-                  <div
-                    style={{
-                      ...relationsDropdownStyle,
-                      background: 'white',
-                      border: '1px solid #e0e0e0',
-                      borderRadius: '6px',
-                      overflowY: 'auto',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-                    }}
-                  >
-                    {relationOptions.filter(o => !o.related).length === 0 ? (
-                      <div style={{ padding: '0.75rem', color: '#666' }}>
-                        No hay torneos disponibles
-                      </div>
-                    ) : (
-                      relationOptions
-                        .filter(o => !o.related)
-                        .map(option => (
-                          <button
-                            key={option.id}
-                            type="button"
-                            onClick={() => handleSelectRelatedTournament(option.id)}
-                            style={{
-                              width: '100%',
-                              textAlign: 'left',
-                              padding: '0.65rem 0.75rem',
-                              border: 'none',
-                              background: 'white',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {option.nombre}
-                          </button>
-                        ))
-                    )}
-                  </div>,
-                  document.body
-                )}
-              </div>
-
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '0.6rem' }}>
-                {relationOptions
-                  .filter(o => o.related)
-                  .map(option => (
-                    <span
-                      key={option.id}
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        background: '#eef4ff',
-                        color: '#1f4b99',
-                        border: '1px solid #d8e6ff',
-                        borderRadius: '999px',
-                        padding: '0.2rem 0.6rem',
-                        fontSize: '0.85rem',
-                      }}
-                    >
-                      {option.nombre}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveRelatedTournament(option.id)}
-                        style={{
-                          border: 'none',
-                          background: 'transparent',
-                          cursor: 'pointer',
-                          color: '#1f4b99',
-                          fontWeight: 700,
-                          lineHeight: 1,
-                        }}
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-              </div>
+              <label>Tipo de Torneo *</label>
+              <select
+                value={formData.tipo}
+                onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                required
+                disabled={!!editingAdmin}
+                style={{ opacity: editingAdmin ? 0.6 : 1 }}
+              >
+                <option value="FRUTALES">Frutales</option>
+                <option value="CLASICO">Clásico</option>
+              </select>
+              {editingAdmin && (
+                <small style={{ color: '#7f8c8d', marginTop: '0.25rem', display: 'block' }}>
+                  El tipo no puede modificarse una vez creado el torneo.
+                </small>
+              )}
             </div>
           </div>
 

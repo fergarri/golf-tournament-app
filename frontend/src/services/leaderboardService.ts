@@ -1,5 +1,5 @@
 import api from './api';
-import { LeaderboardEntry, FrutalesScore } from '../types';
+import { LeaderboardEntry, TournamentScore } from '../types';
 
 interface PaymentUpdate {
   inscriptionId: number;
@@ -23,24 +23,43 @@ export const leaderboardService = {
     const response = await api.get<LeaderboardEntry[]>(`/leaderboard/public/${codigo}`);
     return response.data;
   },
-  
+
   updatePayments: async (tournamentId: number, payments: PaymentUpdate[]): Promise<void> => {
     const request: UpdatePaymentRequest = { payments };
     await api.put(`/leaderboard/tournaments/${tournamentId}/payments`, request);
   },
 
-  getFrutalesScores: async (tournamentId: number): Promise<FrutalesScore[]> => {
-    const response = await api.get<FrutalesScore[]>(`/leaderboard/tournaments/${tournamentId}/frutales`);
+  // ── Frutales (GLOBAL) ──────────────────────────────────────────────────────
+
+  getFrutalesScores: async (tournamentId: number): Promise<TournamentScore[]> => {
+    const response = await api.get<TournamentScore[]>(`/leaderboard/tournaments/${tournamentId}/frutales`);
     return response.data;
   },
 
-  calculateFrutalesScores: async (tournamentId: number): Promise<FrutalesScore[]> => {
-    const response = await api.post<FrutalesScore[]>(`/leaderboard/tournaments/${tournamentId}/frutales/calculate`);
+  calculateFrutalesScores: async (tournamentId: number): Promise<TournamentScore[]> => {
+    const response = await api.post<TournamentScore[]>(`/leaderboard/tournaments/${tournamentId}/frutales/calculate`);
     return response.data;
   },
 
-  getPublicFrutalesScores: async (codigo: string): Promise<FrutalesScore[]> => {
-    const response = await api.get<FrutalesScore[]>(`/leaderboard/public/${codigo}/frutales`);
+  getPublicFrutalesScores: async (codigo: string): Promise<TournamentScore[]> => {
+    const response = await api.get<TournamentScore[]>(`/leaderboard/public/${codigo}/frutales`);
+    return response.data;
+  },
+
+  // ── Clásico (CATEGORY + SCRATCH) ───────────────────────────────────────────
+
+  getClasicScores: async (tournamentId: number): Promise<TournamentScore[]> => {
+    const response = await api.get<TournamentScore[]>(`/leaderboard/tournaments/${tournamentId}/clasic`);
+    return response.data;
+  },
+
+  calculateClasicScores: async (tournamentId: number): Promise<TournamentScore[]> => {
+    const response = await api.post<TournamentScore[]>(`/leaderboard/tournaments/${tournamentId}/clasic/calculate`);
+    return response.data;
+  },
+
+  getPublicClasicScores: async (codigo: string): Promise<TournamentScore[]> => {
+    const response = await api.get<TournamentScore[]>(`/leaderboard/public/${codigo}/clasic`);
     return response.data;
   },
 };
