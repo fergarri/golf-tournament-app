@@ -137,8 +137,9 @@ const PublicLeaderboardPage = () => {
       });
     });
 
+    // Scratch tab: para CLASICO mostrar total de inscriptos (con o sin scores calculados)
     const scratchCount = isClasic
-      ? scratchScoreMap.size
+      ? leaderboard.length
       : leaderboard.filter(e => e.status === 'DELIVERED').length;
     tabsList.push({ id: 'scratch', label: 'Scratch', count: scratchCount });
 
@@ -150,12 +151,22 @@ const PublicLeaderboardPage = () => {
     const isClasic = tournament?.tipo === 'CLASICO' && tournament?.scoringConfig != null;
 
     if (activeTab === 'scratch') {
-      if (isClasic && scratchScoreMap.size > 0) {
-        return leaderboard
-          .filter(e => scratchScoreMap.has(e.playerId))
-          .sort((a, b) => (scratchScoreMap.get(a.playerId)?.position ?? 9999) - (scratchScoreMap.get(b.playerId)?.position ?? 9999))
-          .map((e, i) => ({ ...e, position: i + 1 }));
+      if (isClasic) {
+        if (scratchScoreMap.size > 0) {
+          // CLASICO con scores calculados: ordenar por posición scratch
+          return leaderboard
+            .filter(e => scratchScoreMap.has(e.playerId))
+            .sort((a, b) => (scratchScoreMap.get(a.playerId)?.position ?? 9999) - (scratchScoreMap.get(b.playerId)?.position ?? 9999))
+            .map((e, i) => ({ ...e, position: i + 1 }));
+        }
+        // CLASICO sin scores calculados: mostrar todos los inscriptos, entregados primero ordenados por gross
+        const delivered = leaderboard
+          .filter(e => e.status === 'DELIVERED')
+          .sort((a, b) => (a.scoreGross ?? 0) - (b.scoreGross ?? 0));
+        const others = leaderboard.filter(e => e.status !== 'DELIVERED');
+        return [...delivered.map((e, i) => ({ ...e, position: i + 1 })), ...others];
       }
+      // FRUTALES: solo entregados, ordenados por Gross
       const delivered = leaderboard
         .filter(entry => entry.status === 'DELIVERED')
         .sort((a, b) => (a.scoreGross ?? 0) - (b.scoreGross ?? 0));
