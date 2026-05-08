@@ -16,6 +16,7 @@ public class TournamentAdminInscriptionDTO {
     private Long inscriptionId;
     private Long playerId;
     private String playerName;
+    private String matricula;
     private String telefono;
     private String email;
     private List<PaymentDetailDTO> payments;

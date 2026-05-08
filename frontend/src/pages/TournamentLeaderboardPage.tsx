@@ -5,6 +5,7 @@ import { leaderboardService } from '../services/leaderboardService';
 import { scorecardService } from '../services/scorecardService';
 import { inscriptionService } from '../services/inscriptionService';
 import { tournamentAdminService } from '../services/tournamentAdminService';
+import { excelExportService } from '../services/excelExportService';
 import { Tournament, LeaderboardEntry, Scorecard, TournamentScore, ExportTournamentInscriptionsResult } from '../types';
 import Table, { TableAction } from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
@@ -37,6 +38,8 @@ const TournamentLeaderboardPage = () => {
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
   const [exportingInscriptions, setExportingInscriptions] = useState(false);
   const [exportResult, setExportResult] = useState<ExportTournamentInscriptionsResult | null>(null);
+  const [exportingExcelInscriptions, setExportingExcelInscriptions] = useState(false);
+  const [exportingExcelResults, setExportingExcelResults] = useState(false);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [showInscriptionModal, setShowInscriptionModal] = useState(false);
   const [prizeConfirmation, setPrizeConfirmation] = useState<{
@@ -124,6 +127,30 @@ const TournamentLeaderboardPage = () => {
       setError(err.response?.data?.message || 'Error al exportar inscriptos');
     } finally {
       setExportingInscriptions(false);
+    }
+  };
+
+  const handleExcelExportInscriptions = async () => {
+    if (!id || !tournament) return;
+    try {
+      setExportingExcelInscriptions(true);
+      await excelExportService.exportTournamentInscriptions(parseInt(id), tournament.nombre);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al descargar Excel de inscriptos');
+    } finally {
+      setExportingExcelInscriptions(false);
+    }
+  };
+
+  const handleExcelExportResults = async () => {
+    if (!id || !tournament) return;
+    try {
+      setExportingExcelResults(true);
+      await excelExportService.exportTournamentResults(parseInt(id), tournament.nombre);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al descargar Excel de resultados');
+    } finally {
+      setExportingExcelResults(false);
     }
   };
 
@@ -714,7 +741,7 @@ const TournamentLeaderboardPage = () => {
               disabled={exportingInscriptions}
               className="btn-export"
             >
-              {exportingInscriptions ? 'Exportando...' : 'Exportar a Torneo Administrativo'}
+              {exportingInscriptions ? 'Exportando...' : 'Mover Inscriptos a TA'}
             </button>
           )}
           {hasScoringConfig && (
@@ -741,6 +768,20 @@ const TournamentLeaderboardPage = () => {
             disabled={savingPayments || paymentChanges.size === 0}
           >
             {savingPayments ? 'Guardando...' : `Guardar Pagos ${paymentChanges.size > 0 ? `(${paymentChanges.size})` : ''}`}
+          </button>
+          <button
+            onClick={handleExcelExportInscriptions}
+            disabled={exportingExcelInscriptions}
+            className="btn-export"
+          >
+            {exportingExcelInscriptions ? 'Descargando...' : '⬇ Inscriptos Excel'}
+          </button>
+          <button
+            onClick={handleExcelExportResults}
+            disabled={exportingExcelResults}
+            className="btn-export"
+          >
+            {exportingExcelResults ? 'Descargando...' : '⬇ Resultados Excel'}
           </button>
         </div>
         

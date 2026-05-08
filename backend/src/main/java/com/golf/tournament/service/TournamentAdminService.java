@@ -286,8 +286,8 @@ public class TournamentAdminService {
         }
 
         if (!toSave.isEmpty()) {
-            inscriptionRepository.saveAll(toSave);
-            recreatePaymentsForAllInscriptions(admin);
+            List<TournamentAdminInscription> saved = inscriptionRepository.saveAllAndFlush(toSave);
+            createPaymentsForNewInscriptions(admin, saved);
         }
 
         log.info("Exportación de inscriptos del torneo {} al admin {}. Importados: {}, ya existían: {}",
@@ -299,6 +299,22 @@ public class TournamentAdminService {
                 .importedCount(imported)
                 .skippedAlreadyInscribed(skipped)
                 .build();
+    }
+
+    private void createPaymentsForNewInscriptions(TournamentAdmin admin, List<TournamentAdminInscription> newInscriptions) {
+        List<TournamentAdminPayment> newPayments = new ArrayList<>();
+        for (TournamentAdminInscription inscription : newInscriptions) {
+            for (int i = 1; i <= admin.getCantidadCuotas(); i++) {
+                newPayments.add(TournamentAdminPayment.builder()
+                        .inscription(inscription)
+                        .cuotaNumber(i)
+                        .pagado(false)
+                        .build());
+            }
+        }
+        if (!newPayments.isEmpty()) {
+            paymentRepository.saveAll(newPayments);
+        }
     }
 
     private void recreatePaymentsForAllInscriptions(TournamentAdmin admin) {
@@ -356,6 +372,7 @@ public class TournamentAdminService {
                 .inscriptionId(inscription.getId())
                 .playerId(player.getId())
                 .playerName(player.getApellido() + " " + player.getNombre())
+                .matricula(player.getMatricula())
                 .telefono(player.getTelefono())
                 .email(player.getEmail())
                 .payments(paymentDTOs)

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { tournamentAdminStageService } from '../services/tournamentAdminStageService';
+import { excelExportService } from '../services/excelExportService';
 import { TournamentAdminStageBoard, TournamentAdminStageBoardRow } from '../types';
 import { formatDateSafe } from '../utils/dateUtils';
 import Modal from '../components/Modal';
@@ -20,6 +21,7 @@ const TournamentAdminStageBoardPage = () => {
   const [calculating, setCalculating] = useState(false);
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('scratch');
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   useEffect(() => {
     if (!Number.isFinite(tournamentAdminId) || !Number.isFinite(stageIdNumber)) {
@@ -60,6 +62,18 @@ const TournamentAdminStageBoardPage = () => {
       setError(err.response?.data?.message || 'Error calculando puntos de etapa');
     } finally {
       setCalculating(false);
+    }
+  };
+
+  const handleExcelExport = async () => {
+    if (!board) return;
+    try {
+      setExportingExcel(true);
+      await excelExportService.exportStageBoard(tournamentAdminId, stageIdNumber, board.stageName);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al descargar Excel de etapa');
+    } finally {
+      setExportingExcel(false);
     }
   };
 
@@ -174,6 +188,13 @@ const TournamentAdminStageBoardPage = () => {
             disabled={calculating}
           >
             {calculating ? 'Calculando...' : 'Calcular Puntos'}
+          </button>
+          <button
+            onClick={handleExcelExport}
+            disabled={exportingExcel}
+            className="btn-export"
+          >
+            {exportingExcel ? 'Descargando...' : '⬇ Excel'}
           </button>
         </div>
 

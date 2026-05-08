@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { tournamentAdminPlayoffResultService } from '../services/tournamentAdminPlayoffResultService';
+import { excelExportService } from '../services/excelExportService';
 import { TournamentAdminPlayoffResults, TournamentAdminPlayoffResultRow } from '../types';
 import Modal from '../components/Modal';
 import '../components/Form.css';
@@ -20,6 +21,7 @@ const TournamentAdminPlayoffResultsPage = () => {
   const [calculating, setCalculating] = useState(false);
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
   const [activeTab, setActiveTab] = useState<PlayoffTab>('hcp');
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   useEffect(() => {
     if (!Number.isFinite(tournamentAdminId)) {
@@ -40,6 +42,17 @@ const TournamentAdminPlayoffResultsPage = () => {
       setError(err.response?.data?.message || 'Error cargando resultados de Play Off');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleExcelExport = async () => {
+    try {
+      setExportingExcel(true);
+      await excelExportService.exportPlayoffResults(tournamentAdminId);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al descargar Excel de Play Off');
+    } finally {
+      setExportingExcel(false);
     }
   };
 
@@ -147,6 +160,13 @@ const TournamentAdminPlayoffResultsPage = () => {
             title={!hasStages ? 'No hay etapas para calcular' : undefined}
           >
             {calculating ? 'Calculando...' : 'Calcular Resultados'}
+          </button>
+          <button
+            onClick={handleExcelExport}
+            disabled={exportingExcel}
+            className="btn-export"
+          >
+            {exportingExcel ? 'Descargando...' : '⬇ Excel'}
           </button>
         </div>
 

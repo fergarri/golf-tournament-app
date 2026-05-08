@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tournamentAdminService } from '../services/tournamentAdminService';
+import { excelExportService } from '../services/excelExportService';
 import { playerService } from '../services/playerService';
 import { TournamentAdminDetail, TournamentAdminInscriptionDetail, Player } from '../types';
 import ActionMenu from '../components/ActionMenu';
@@ -29,6 +30,7 @@ const TournamentAdminDetailPage = () => {
   const [savingInscription, setSavingInscription] = useState(false);
   const [importingInscriptions, setImportingInscriptions] = useState(false);
   const [showScoringConfigModal, setShowScoringConfigModal] = useState(false);
+  const [exportingExcel, setExportingExcel] = useState(false);
 
   // Track local payment changes: Map<paymentId, pagado>
   const [paymentChanges, setPaymentChanges] = useState<Map<number, boolean>>(new Map());
@@ -203,6 +205,18 @@ const TournamentAdminDetailPage = () => {
     }
   };
 
+  const handleExcelExport = async () => {
+    if (!id || !detail) return;
+    try {
+      setExportingExcel(true);
+      await excelExportService.exportAdminInscriptions(parseInt(id), detail.nombre);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error al descargar Excel de inscriptos');
+    } finally {
+      setExportingExcel(false);
+    }
+  };
+
   const filteredInscriptions = useMemo(() => {
     if (!detail) return [];
     if (!searchQuery) return detail.inscriptions;
@@ -253,6 +267,13 @@ const TournamentAdminDetailPage = () => {
             className="btn-admin-stages"
           >
             Configurar puntaje
+          </button>
+          <button
+            onClick={handleExcelExport}
+            disabled={exportingExcel}
+            className="btn-export"
+          >
+            {exportingExcel ? 'Descargando...' : '⬇ Inscriptos Excel'}
           </button>
           <button
             onClick={handleSavePayments}
