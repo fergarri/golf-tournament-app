@@ -166,8 +166,10 @@ public class ExcelExportService {
                     Map<Long, TournamentScoreDTO> catScoreMap = categoryScoreMap.getOrDefault(cat.getId(), Map.of());
                     List<LeaderboardEntryDTO> catRows = leaderboard.stream()
                             .filter(e -> cat.getId() != null && cat.getId().equals(e.getCategoryId()) && "DELIVERED".equals(e.getStatus()))
-                            .sorted(Comparator.comparingInt(e -> catScoreMap.containsKey(e.getPlayerId())
-                                    ? catScoreMap.get(e.getPlayerId()).getPosition() : 9999))
+                            .sorted(Comparator.comparingInt(e -> {
+                                TournamentScoreDTO s = catScoreMap.get(e.getPlayerId());
+                                return (s != null && s.getPosition() != null) ? s.getPosition() : 9999;
+                            }))
                             .collect(Collectors.toList());
                     writeClasicRows(sheet, catRows, catScoreMap, tournament.getScoringConfig(), false, rowIdx, styles);
                 }
@@ -178,7 +180,10 @@ public class ExcelExportService {
                 if (!scratchScoreMap.isEmpty()) {
                     scratchRows = leaderboard.stream()
                             .filter(e -> scratchScoreMap.containsKey(e.getPlayerId()))
-                            .sorted(Comparator.comparingInt(e -> scratchScoreMap.get(e.getPlayerId()).getPosition()))
+                            .sorted(Comparator.comparingInt(e -> {
+                                TournamentScoreDTO s = scratchScoreMap.get(e.getPlayerId());
+                                return (s != null && s.getPosition() != null) ? s.getPosition() : 9999;
+                            }))
                             .collect(Collectors.toList());
                 } else {
                     scratchRows = leaderboard.stream()
@@ -546,7 +551,8 @@ public class ExcelExportService {
 
     private String formatToPar(LeaderboardEntryDTO entry, boolean isScratch) {
         Integer toParVal = null;
-        if (isScratch && entry.getScoreGross() != null && entry.getTotalPar() > 0) {
+        if (isScratch && entry.getScoreGross() != null
+                && entry.getTotalPar() != null && entry.getTotalPar() > 0) {
             toParVal = entry.getScoreGross() - entry.getTotalPar();
         } else if (entry.getScoreToPar() != null) {
             toParVal = entry.getScoreToPar().intValue();
