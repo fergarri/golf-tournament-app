@@ -141,9 +141,17 @@ public class ExcelExportService {
                         .filter(s -> "GLOBAL".equals(s.getScoreType()) || s.getScoreType() == null)
                         .collect(Collectors.toMap(TournamentScoreDTO::getPlayerId, s -> s, (a, b) -> a));
 
+                // Jugadores con score ordenados por posición; sin score al final
+                List<LeaderboardEntryDTO> sortedLeaderboard = leaderboard.stream()
+                        .sorted(Comparator.comparingInt(e -> {
+                            TournamentScoreDTO s = globalScoreMap.get(e.getPlayerId());
+                            return (s != null && s.getPosition() != null) ? s.getPosition() : 9999;
+                        }))
+                        .collect(Collectors.toList());
+
                 Sheet sheet = workbook.createSheet("Resultados");
                 int rowIdx = writeResultHeader(sheet, titleText, infoLine, prizeLine, styles);
-                writeFrutalesRows(sheet, leaderboard, globalScoreMap, tournament.getScoringConfig(), rowIdx, styles);
+                writeFrutalesRows(sheet, sortedLeaderboard, globalScoreMap, tournament.getScoringConfig(), rowIdx, styles);
 
             } else if (isClasic) {
                 Map<Long, Map<Long, TournamentScoreDTO>> categoryScoreMap = new HashMap<>();
@@ -164,8 +172,9 @@ public class ExcelExportService {
                     int rowIdx = writeResultHeader(sheet, titleText, infoLine, prizeLine, styles);
 
                     Map<Long, TournamentScoreDTO> catScoreMap = categoryScoreMap.getOrDefault(cat.getId(), Map.of());
+                    // Todos los jugadores de la categoría: con score primero (por posición), sin score al final
                     List<LeaderboardEntryDTO> catRows = leaderboard.stream()
-                            .filter(e -> cat.getId() != null && cat.getId().equals(e.getCategoryId()) && "DELIVERED".equals(e.getStatus()))
+                            .filter(e -> cat.getId() != null && cat.getId().equals(e.getCategoryId()))
                             .sorted(Comparator.comparingInt(e -> {
                                 TournamentScoreDTO s = catScoreMap.get(e.getPlayerId());
                                 return (s != null && s.getPosition() != null) ? s.getPosition() : 9999;
@@ -178,16 +187,16 @@ public class ExcelExportService {
                 int rowIdx = writeResultHeader(scratchSheet, titleText, infoLine, prizeLine, styles);
                 List<LeaderboardEntryDTO> scratchRows;
                 if (!scratchScoreMap.isEmpty()) {
+                    // Con score por posición, sin score al final
                     scratchRows = leaderboard.stream()
-                            .filter(e -> scratchScoreMap.containsKey(e.getPlayerId()))
                             .sorted(Comparator.comparingInt(e -> {
                                 TournamentScoreDTO s = scratchScoreMap.get(e.getPlayerId());
                                 return (s != null && s.getPosition() != null) ? s.getPosition() : 9999;
                             }))
                             .collect(Collectors.toList());
                 } else {
+                    // Sin scoring: con gross primero, sin gross al final
                     scratchRows = leaderboard.stream()
-                            .filter(e -> "DELIVERED".equals(e.getStatus()))
                             .sorted(Comparator.comparingInt(e -> e.getScoreGross() != null ? e.getScoreGross() : 9999))
                             .collect(Collectors.toList());
                 }
@@ -196,17 +205,15 @@ public class ExcelExportService {
             } else if (hasCategories) {
                 Sheet generalSheet = workbook.createSheet("General");
                 int rowIdx = writeResultHeader(generalSheet, titleText, infoLine, prizeLine, styles);
-                List<LeaderboardEntryDTO> generalRows = leaderboard.stream()
-                        .filter(e -> "DELIVERED".equals(e.getStatus()))
-                        .collect(Collectors.toList());
-                writeBasicRows(generalSheet, generalRows, rowIdx, true, styles);
+                // getLeaderboard() ya devuelve: con score (por scoreNeto) + sin score al final
+                writeBasicRows(generalSheet, leaderboard, rowIdx, true, styles);
 
                 for (TournamentCategoryDTO cat : categories) {
                     String sheetName = sanitizeSheetName(cat.getNombre() + " (" + cat.getHandicapMin().intValue() + "-" + cat.getHandicapMax().intValue() + ")");
                     Sheet catSheet = workbook.createSheet(sheetName);
                     rowIdx = writeResultHeader(catSheet, titleText, infoLine, prizeLine, styles);
                     List<LeaderboardEntryDTO> catRows = leaderboard.stream()
-                            .filter(e -> cat.getId() != null && cat.getId().equals(e.getCategoryId()) && "DELIVERED".equals(e.getStatus()))
+                            .filter(e -> cat.getId() != null && cat.getId().equals(e.getCategoryId()))
                             .collect(Collectors.toList());
                     writeBasicRows(catSheet, catRows, rowIdx, false, styles);
                 }
@@ -214,7 +221,6 @@ public class ExcelExportService {
                 Sheet scratchSheet = workbook.createSheet("Scratch");
                 rowIdx = writeResultHeader(scratchSheet, titleText, infoLine, prizeLine, styles);
                 List<LeaderboardEntryDTO> scratchRows = leaderboard.stream()
-                        .filter(e -> "DELIVERED".equals(e.getStatus()))
                         .sorted(Comparator.comparingInt(e -> e.getScoreGross() != null ? e.getScoreGross() : 9999))
                         .collect(Collectors.toList());
                 writeBasicRows(scratchSheet, scratchRows, rowIdx, false, styles);
@@ -222,10 +228,8 @@ public class ExcelExportService {
             } else {
                 Sheet sheet = workbook.createSheet("Resultados");
                 int rowIdx = writeResultHeader(sheet, titleText, infoLine, prizeLine, styles);
-                List<LeaderboardEntryDTO> rows = leaderboard.stream()
-                        .filter(e -> "DELIVERED".equals(e.getStatus()))
-                        .collect(Collectors.toList());
-                writeBasicRows(sheet, rows, rowIdx, false, styles);
+                // getLeaderboard() incluye todos: con score primero, sin score al final
+                writeBasicRows(sheet, leaderboard, rowIdx, false, styles);
             }
 
             return workbookToBytes(workbook);
@@ -318,18 +322,19 @@ public class ExcelExportService {
             TournamentScoreDTO score = scoreMap.get(entry.getPlayerId());
             Row row = sheet.createRow(startRow++);
             int col = 0;
-            String statusLabel = getStatusLabel(entry.getStatus());
-            setCell(row, col++, statusLabel != null ? statusLabel : (entry.getPosition() != null ? String.valueOf(entry.getPosition()) : "-"), styles.data);
+            // Posición real del scoring de FRUTALES; sin score → "-"
+            String pos = score != null && score.getPosition() != null ? String.valueOf(score.getPosition()) : "-";
+            setCell(row, col++, pos, styles.data);
             setCell(row, col++, entry.getPlayerName(), styles.data);
             setCell(row, col++, entry.getMatricula(), styles.data);
             setCell(row, col++, formatDecimal(entry.getHandicapIndex()), styles.data);
             setCell(row, col++, formatDecimal(entry.getHandicapCourse()), styles.data);
-            setCell(row, col++, statusLabel != null ? statusLabel : (entry.getScoreGross() != null ? String.valueOf(entry.getScoreGross()) : "-"), styles.data);
-            setCell(row, col++, statusLabel != null ? statusLabel : (entry.getScoreNeto() != null ? entry.getScoreNeto().toPlainString() : "-"), styles.data);
-            if (hasBirdie) setCell(row, col++, score != null ? String.valueOf(score.getBirdieCount()) : "-", styles.data);
-            if (hasEagle)  setCell(row, col++, score != null ? String.valueOf(score.getEagleCount())  : "-", styles.data);
-            if (hasAce)    setCell(row, col++, score != null ? String.valueOf(score.getAceCount())    : "-", styles.data);
-            setCell(row, col, score != null ? String.valueOf(score.getTotalPoints()) : "-", styles.data);
+            setCell(row, col++, entry.getScoreGross() != null ? String.valueOf(entry.getScoreGross()) : "-", styles.data);
+            setCell(row, col++, entry.getScoreNeto() != null ? entry.getScoreNeto().toPlainString() : "-", styles.data);
+            if (hasBirdie) setCell(row, col++, score != null && score.getBirdieCount() != null ? String.valueOf(score.getBirdieCount()) : "-", styles.data);
+            if (hasEagle)  setCell(row, col++, score != null && score.getEagleCount()  != null ? String.valueOf(score.getEagleCount())  : "-", styles.data);
+            if (hasAce)    setCell(row, col++, score != null && score.getAceCount()    != null ? String.valueOf(score.getAceCount())    : "-", styles.data);
+            setCell(row, col, score != null && score.getTotalPoints() != null ? String.valueOf(score.getTotalPoints()) : "-", styles.data);
         }
 
         autoSizeColumns(sheet, headers.size());
@@ -355,13 +360,14 @@ public class ExcelExportService {
 
         createHeaderRow(sheet, headers.toArray(new String[0]), startRow++, styles.header);
 
-        for (int i = 0; i < rows.size(); i++) {
-            LeaderboardEntryDTO entry = rows.get(i);
+        for (LeaderboardEntryDTO entry : rows) {
             TournamentScoreDTO score = scoreMap.get(entry.getPlayerId());
             Row row = sheet.createRow(startRow++);
             int col = 0;
 
-            setCell(row, col++, String.valueOf(i + 1), styles.data);
+            // Posición real del scoring de CLÁSICO; sin score → "-"
+            String pos = score != null && score.getPosition() != null ? String.valueOf(score.getPosition()) : "-";
+            setCell(row, col++, pos, styles.data);
             setCell(row, col++, entry.getPlayerName(), styles.data);
             setCell(row, col++, entry.getMatricula(), styles.data);
             setCell(row, col++, formatDecimal(entry.getHandicapIndex()), styles.data);
@@ -386,11 +392,12 @@ public class ExcelExportService {
 
         createHeaderRow(sheet, headers.toArray(new String[0]), startRow++, styles.header);
 
-        for (int i = 0; i < rows.size(); i++) {
-            LeaderboardEntryDTO entry = rows.get(i);
+        int posCounter = 1;
+        for (LeaderboardEntryDTO entry : rows) {
+            boolean hasScore = "DELIVERED".equals(entry.getStatus());
             Row row = sheet.createRow(startRow++);
             int col = 0;
-            setCell(row, col++, String.valueOf(i + 1), styles.data);
+            setCell(row, col++, hasScore ? String.valueOf(posCounter++) : "-", styles.data);
             setCell(row, col++, entry.getPlayerName(), styles.data);
             setCell(row, col++, entry.getMatricula(), styles.data);
             setCell(row, col++, formatDecimal(entry.getHandicapIndex()), styles.data);
@@ -560,12 +567,6 @@ public class ExcelExportService {
         if (toParVal == null) return "-";
         if (toParVal == 0) return "E";
         return toParVal > 0 ? "+" + toParVal : String.valueOf(toParVal);
-    }
-
-    private String getStatusLabel(String status) {
-        if ("DISQUALIFIED".equals(status)) return "DS";
-        if (!"DELIVERED".equals(status)) return "NM";
-        return null;
     }
 
     private String orDash(String value) {
