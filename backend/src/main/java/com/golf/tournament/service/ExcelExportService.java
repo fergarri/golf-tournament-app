@@ -141,12 +141,9 @@ public class ExcelExportService {
                         .filter(s -> "GLOBAL".equals(s.getScoreType()) || s.getScoreType() == null)
                         .collect(Collectors.toMap(TournamentScoreDTO::getPlayerId, s -> s, (a, b) -> a));
 
-                // Jugadores con score ordenados por posición; sin score al final
+                // Orden: 1) con posición (por pos), 2) puntos participación sin posición, 3) sin score
                 List<LeaderboardEntryDTO> sortedLeaderboard = leaderboard.stream()
-                        .sorted(Comparator.comparingInt(e -> {
-                            TournamentScoreDTO s = globalScoreMap.get(e.getPlayerId());
-                            return (s != null && s.getPosition() != null) ? s.getPosition() : 9999;
-                        }))
+                        .sorted(Comparator.comparingInt(e -> scoreOrder(globalScoreMap.get(e.getPlayerId()))))
                         .collect(Collectors.toList());
 
                 Sheet sheet = workbook.createSheet("Resultados");
@@ -172,13 +169,10 @@ public class ExcelExportService {
                     int rowIdx = writeResultHeader(sheet, titleText, infoLine, prizeLine, styles);
 
                     Map<Long, TournamentScoreDTO> catScoreMap = categoryScoreMap.getOrDefault(cat.getId(), Map.of());
-                    // Todos los jugadores de la categoría: con score primero (por posición), sin score al final
+                    // Todos los jugadores de la categoría: con posición primero, participación en el medio, sin score al final
                     List<LeaderboardEntryDTO> catRows = leaderboard.stream()
                             .filter(e -> cat.getId() != null && cat.getId().equals(e.getCategoryId()))
-                            .sorted(Comparator.comparingInt(e -> {
-                                TournamentScoreDTO s = catScoreMap.get(e.getPlayerId());
-                                return (s != null && s.getPosition() != null) ? s.getPosition() : 9999;
-                            }))
+                            .sorted(Comparator.comparingInt(e -> scoreOrder(catScoreMap.get(e.getPlayerId()))))
                             .collect(Collectors.toList());
                     writeClasicRows(sheet, catRows, catScoreMap, tournament.getScoringConfig(), false, rowIdx, styles);
                 }
@@ -187,12 +181,9 @@ public class ExcelExportService {
                 int rowIdx = writeResultHeader(scratchSheet, titleText, infoLine, prizeLine, styles);
                 List<LeaderboardEntryDTO> scratchRows;
                 if (!scratchScoreMap.isEmpty()) {
-                    // Con score por posición, sin score al final
+                    // Con posición primero, participación en el medio, sin score al final
                     scratchRows = leaderboard.stream()
-                            .sorted(Comparator.comparingInt(e -> {
-                                TournamentScoreDTO s = scratchScoreMap.get(e.getPlayerId());
-                                return (s != null && s.getPosition() != null) ? s.getPosition() : 9999;
-                            }))
+                            .sorted(Comparator.comparingInt(e -> scoreOrder(scratchScoreMap.get(e.getPlayerId()))))
                             .collect(Collectors.toList());
                 } else {
                     // Sin scoring: con gross primero, sin gross al final
@@ -567,6 +558,18 @@ public class ExcelExportService {
         if (toParVal == null) return "-";
         if (toParVal == 0) return "E";
         return toParVal > 0 ? "+" + toParVal : String.valueOf(toParVal);
+    }
+
+    /**
+     * Orden de aparición en el Excel según el score de un jugador:
+     *  - Con posición calculada → usa la posición (1, 2, 3…)
+     *  - Con score/puntos pero sin posición (ej. participación) → 9000 (antes del último grupo)
+     *  - Sin score en absoluto (null) → 99999 (al final de todo)
+     */
+    private int scoreOrder(TournamentScoreDTO score) {
+        if (score == null) return 99999;
+        if (score.getPosition() != null) return score.getPosition();
+        return 9000;
     }
 
     private String orDash(String value) {

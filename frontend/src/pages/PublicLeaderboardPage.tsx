@@ -146,51 +146,91 @@ const PublicLeaderboardPage = () => {
     return tabsList;
   }, [tournament, leaderboard, categoryScoreMap, scratchScoreMap]);
 
-  // Filter leaderboard based on active tab and recalculate positions per category
+  // Índice rápido: playerId → LeaderboardEntry
+  const leaderboardByPlayerId = useMemo(() => {
+    const map = new Map<number, LeaderboardEntry>();
+    leaderboard.forEach(e => map.set(e.playerId, e));
+    return map;
+  }, [leaderboard]);
+
+  // Filter leaderboard based on active tab. Includes ALL players:
+  // con posición primero → con participación sin posición → sin score al final (position 0 → muestra "-").
   const filteredByCategory = useMemo(() => {
     const isClasic = tournament?.tipo === 'CLASICO' && tournament?.scoringConfig != null;
+
+    const assignPositions = (ranked: LeaderboardEntry[], participation: LeaderboardEntry[], noScore: LeaderboardEntry[]): LeaderboardEntry[] => [
+      ...ranked.map((e, i) => ({ ...e, position: i + 1 })),
+      ...participation.map(e => ({ ...e, position: 0 })),
+      ...noScore.map(e => ({ ...e, position: 0 })),
+    ];
 
     if (activeTab === 'scratch') {
       if (isClasic) {
         if (scratchScoreMap.size > 0) {
-          // CLASICO con scores calculados: ordenar por posición scratch
-          return leaderboard
-            .filter(e => scratchScoreMap.has(e.playerId))
-            .sort((a, b) => (scratchScoreMap.get(a.playerId)?.position ?? 9999) - (scratchScoreMap.get(b.playerId)?.position ?? 9999))
-            .map((e, i) => ({ ...e, position: i + 1 }));
+          // CLÁSICO con scores: en scratchScoreMap ordenados por posición primero, luego sin posición, luego sin score
+          const ranked = leaderboard
+            .filter(e => scratchScoreMap.has(e.playerId) && scratchScoreMap.get(e.playerId)!.position != null)
+            .sort((a, b) => (scratchScoreMap.get(a.playerId)!.position!) - (scratchScoreMap.get(b.playerId)!.position!));
+          const participation = leaderboard
+            .filter(e => scratchScoreMap.has(e.playerId) && scratchScoreMap.get(e.playerId)!.position == null);
+          const noScore = leaderboard.filter(e => !scratchScoreMap.has(e.playerId));
+          return assignPositions(ranked, participation, noScore);
         }
-        // CLASICO sin scores calculados: mostrar todos los inscriptos, entregados primero ordenados por gross
-        const delivered = leaderboard
+        // CLÁSICO sin scores: entregados primero por gross, el resto al final
+        const ranked = leaderboard
           .filter(e => e.status === 'DELIVERED')
-          .sort((a, b) => (a.scoreGross ?? 0) - (b.scoreGross ?? 0));
-        const others = leaderboard.filter(e => e.status !== 'DELIVERED');
-        return [...delivered.map((e, i) => ({ ...e, position: i + 1 })), ...others];
+          .sort((a, b) => (a.scoreGross ?? 9999) - (b.scoreGross ?? 9999));
+        return assignPositions(ranked, [], leaderboard.filter(e => e.status !== 'DELIVERED'));
       }
-      // FRUTALES: solo entregados, ordenados por Gross
-      const delivered = leaderboard
-        .filter(entry => entry.status === 'DELIVERED')
-        .sort((a, b) => (a.scoreGross ?? 0) - (b.scoreGross ?? 0));
-      return delivered.map((entry, index) => ({ ...entry, position: index + 1 }));
+      // FRUTALES/básico scratch: entregados por gross, el resto al final
+      const ranked = leaderboard
+        .filter(e => e.status === 'DELIVERED')
+        .sort((a, b) => (a.scoreGross ?? 9999) - (b.scoreGross ?? 9999));
+      return assignPositions(ranked, [], leaderboard.filter(e => e.status !== 'DELIVERED'));
     }
 
-    let filtered: LeaderboardEntry[];
     if (activeTab === 'general') {
-      filtered = leaderboard.filter(entry => entry.status === 'DELIVERED');
-    } else {
-      const categoryId = parseInt(activeTab);
-      filtered = leaderboard.filter(entry => entry.categoryId === categoryId && entry.status === 'DELIVERED');
+      // Sin categorías específicas: entregados primero (ordenados por activeScoreMap o scoreNeto), resto al final
+      let delivered = leaderboard.filter(e => e.status === 'DELIVERED');
+      if (activeScoreMap.size > 0) {
+        delivered = [...delivered].sort((a, b) =>
+          (activeScoreMap.get(a.playerId)?.position ?? 9999) - (activeScoreMap.get(b.playerId)?.position ?? 9999));
+      }
+      return assignPositions(delivered, [], leaderboard.filter(e => e.status !== 'DELIVERED'));
     }
 
-    if (activeScoreMap.size > 0) {
-      filtered = [...filtered].sort((a, b) => {
-        const posA = activeScoreMap.get(a.playerId)?.position ?? 9999;
-        const posB = activeScoreMap.get(b.playerId)?.position ?? 9999;
-        return posA - posB;
-      });
+    // Tab de categoría
+    const catId = parseInt(activeTab);
+    const catScoreMap = categoryScoreMap.get(catId) ?? new Map<number, TournamentScore>();
+
+    if (isClasic && catScoreMap.size > 0) {
+      // CLÁSICO con scores: usar categoryScoreMap como fuente primaria de jugadores de esta categoría.
+      // Esto incluye tanto los DELIVERED (con posición) como los CANCELLED (sin posición, solo participación).
+      const ranked = Array.from(catScoreMap.entries())
+        .filter(([, s]) => s.position != null)
+        .sort(([, a], [, b]) => a.position! - b.position!)
+        .map(([pid]) => leaderboardByPlayerId.get(pid))
+        .filter(Boolean) as LeaderboardEntry[];
+
+      const participation = Array.from(catScoreMap.entries())
+        .filter(([, s]) => s.position == null)
+        .map(([pid]) => leaderboardByPlayerId.get(pid))
+        .filter(Boolean) as LeaderboardEntry[];
+
+      // Jugadores inscriptos en esta categoría en el leaderboard sin ningún score calculado
+      const scoredPlayerIds = new Set(catScoreMap.keys());
+      const noScore = leaderboard.filter(e => e.categoryId === catId && !scoredPlayerIds.has(e.playerId));
+
+      return assignPositions(ranked, participation, noScore);
     }
 
-    return filtered.map((entry, index) => ({ ...entry, position: index + 1 }));
-  }, [leaderboard, activeTab, activeScoreMap, scratchScoreMap, tournament?.tipo]);
+    // Caso básico (sin scoring CLÁSICO): filtrar por categoryId del leaderboard
+    const withDelivered = leaderboard
+      .filter(e => e.categoryId === catId && e.status === 'DELIVERED')
+      .sort((a, b) => (activeScoreMap.get(a.playerId)?.position ?? 9999) - (activeScoreMap.get(b.playerId)?.position ?? 9999));
+    const withoutDelivered = leaderboard.filter(e => e.categoryId === catId && e.status !== 'DELIVERED');
+    return assignPositions(withDelivered, [], withoutDelivered);
+  }, [leaderboard, leaderboardByPlayerId, activeTab, activeScoreMap, categoryScoreMap, scratchScoreMap, tournament?.tipo]);
 
   const getScoreToPar = (scoreToPar: number) => {
     if (scoreToPar === 0) return 'E';
@@ -251,10 +291,12 @@ const PublicLeaderboardPage = () => {
     {
       header: 'To Par',
       accessor: (row: LeaderboardEntry) => {
+        if (row.scoreGross == null) return <span>-</span>;
         // Scratch de CLASICO: To Par sobre Gross. Resto de tabs: To Par sobre Neto.
         const toPar = (tournament?.tipo === 'CLASICO' && tournament.scoringConfig != null && activeTab === 'scratch')
-          ? row.scoreGross - row.totalPar
+          ? row.scoreGross - (row.totalPar ?? 0)
           : row.scoreToPar;
+        if (toPar == null) return <span>-</span>;
         return (
           <span className={`score-to-par ${toPar < 0 ? 'under-par' : toPar > 0 ? 'over-par' : 'even-par'}`}>
             {getScoreToPar(toPar)}
@@ -390,8 +432,8 @@ const PublicLeaderboardPage = () => {
 
       {filteredByCategory.length === 0 ? (
         <div className="empty-state">
-          <h2>No hay Tarjetas Entregadas</h2>
-          <p>No hay tarjetas entregadas en este torneo aún</p>
+          <h2>Sin inscriptos</h2>
+          <p>No hay jugadores inscriptos en esta categoría</p>
         </div>
       ) : (
         <>
@@ -404,7 +446,12 @@ const PublicLeaderboardPage = () => {
             />
           </div>
           <div className="update-info">
-            <span>Tarjetas entregadas: {filteredByCategory.length}</span>
+            <span>Tarjetas entregadas: {filteredByCategory.filter(e => e.status === 'DELIVERED').length}</span>
+            {filteredByCategory.some(e => e.status !== 'DELIVERED') && (
+              <span style={{ marginLeft: '1rem', color: '#7f8c8d' }}>
+                Total inscriptos: {filteredByCategory.length}
+              </span>
+            )}
           </div>
         </>
       )}
