@@ -223,6 +223,16 @@ const FrutalesLeaderboardPage = () => {
     });
   };
 
+  const handleHcpChange = (value: string) => {
+    if (!editingScorecard) return;
+    const parsed = value === '' ? undefined : parseFloat(value);
+    const newHcp = parsed === undefined || Number.isNaN(parsed) ? undefined : parsed;
+    setEditingScorecard({
+      ...editingScorecard,
+      handicapCourse: newHcp as any,
+    });
+  };
+
   const handleSaveScorecard = async () => {
     if (!editingScorecard) return;
     try {
@@ -233,7 +243,10 @@ const FrutalesLeaderboardPage = () => {
         golpesMarcador: hs.golpesMarcador || undefined
       }));
 
-      await scorecardService.updateScorecard(editingScorecard.id, { holeScores });
+      await scorecardService.updateScorecard(editingScorecard.id, {
+        handicapCourse: editingScorecard.handicapCourse != null ? Number(editingScorecard.handicapCourse) : undefined,
+        holeScores
+      });
 
       if (markAsDelivered && editingScorecard.status !== 'DELIVERED') {
         await scorecardService.deliverScorecard(editingScorecard.id);
@@ -556,8 +569,27 @@ const FrutalesLeaderboardPage = () => {
               <div>
                 <h2>Editar Tarjeta - {editingScorecard.playerName}</h2>
                 <p className="scorecard-info">
-                  HCP: {editingScorecard.handicapCourse?.toFixed(1)} |
-                  Score: {editingScorecard.holeScores.reduce((sum, hs) => sum + (hs.golpesPropio || 0), 0) || '-'}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                    HCP:
+                    <input
+                      type="number"
+                      min="0"
+                      max="54"
+                      step="0.1"
+                      value={editingScorecard.handicapCourse != null ? Number(editingScorecard.handicapCourse) : ''}
+                      onChange={(e) => handleHcpChange(e.target.value)}
+                      style={{
+                        width: '60px',
+                        padding: '1px 4px',
+                        fontSize: 'inherit',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '4px',
+                        textAlign: 'center',
+                      }}
+                    />
+                  </span>
+                  {' | '}Score:{' '}
+                  {editingScorecard.holeScores.reduce((sum, hs) => sum + (hs.golpesPropio || 0), 0) || '-'}
                 </p>
               </div>
               <button className="modal-close" onClick={handleCloseModal}>×</button>

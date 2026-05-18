@@ -28,6 +28,8 @@ const ActionMenu = ({ items }: ActionMenuProps) => {
   const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (
         menuRef.current &&
@@ -36,32 +38,39 @@ const ActionMenu = ({ items }: ActionMenuProps) => {
         !triggerRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
+        setPosition(null);
       }
     };
 
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      if (triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        const menuHeight = 250;
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const openUpward = spaceBelow < menuHeight && rect.top > menuHeight;
-        setPosition({
-          top: openUpward ? rect.top - menuHeight : rect.bottom + 4,
-          left: rect.right - 160,
-          openUpward,
-        });
-      }
-    } else {
-      setPosition(null);
-    }
-
+    document.addEventListener('mousedown', handleClickOutside);
     return () => { document.removeEventListener('mousedown', handleClickOutside); };
   }, [isOpen]);
+
+  const handleToggle = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (isOpen) {
+      setIsOpen(false);
+      setPosition(null);
+      return;
+    }
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const menuHeight = items.length * 44 + 8;
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const openUpward = spaceBelow < menuHeight && rect.top > menuHeight;
+      setPosition({
+        top: openUpward ? rect.top - menuHeight : rect.bottom + 4,
+        left: rect.right - 160,
+        openUpward,
+      });
+    }
+    setIsOpen(true);
+  };
 
   const handleItemClick = (item: ActionMenuItem) => {
     item.onClick();
     setIsOpen(false);
+    setPosition(null);
   };
 
   const dropdownContent = isOpen && position && (
@@ -91,7 +100,7 @@ const ActionMenu = ({ items }: ActionMenuProps) => {
       <button
         ref={triggerRef}
         className="w-8 h-8 flex items-center justify-center rounded-full text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+        onClick={handleToggle}
         aria-label="Más acciones"
       >
         <MoreVertical className="h-4 w-4" />

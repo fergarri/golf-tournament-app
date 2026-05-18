@@ -346,6 +346,12 @@ public class ScorecardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
         ensureScorecardConfigured(scorecard);
 
+        if (request.getHandicapCourse() != null) {
+            scorecard.setHandicapCourse(request.getHandicapCourse());
+            scorecardRepository.save(scorecard);
+            log.info("HandicapCourse updated for scorecard {}: {}", scorecardId, request.getHandicapCourse());
+        }
+
         for (HoleScoreUpdate holeScoreUpdate : request.getHoleScores()) {
             Hole hole = holeRepository.findById(holeScoreUpdate.getHoleId())
                     .orElseThrow(() -> new ResourceNotFoundException("Hole", "id", holeScoreUpdate.getHoleId()));

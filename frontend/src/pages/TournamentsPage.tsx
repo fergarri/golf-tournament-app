@@ -745,20 +745,12 @@ const TournamentsPage = () => {
 
           <div className="form-row">
             <div className="form-group">
-              <label>Fecha de Inicio *</label>
+              <label>Fecha de Torneo *</label>
               <input
                 type="date"
                 value={formData.fechaInicio}
                 onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
                 required
-              />
-            </div>
-            <div className="form-group">
-              <label>Fecha de Fin</label>
-              <input
-                type="date"
-                value={formData.fechaFin}
-                onChange={(e) => setFormData({ ...formData, fechaFin: e.target.value })}
               />
             </div>
           </div>
