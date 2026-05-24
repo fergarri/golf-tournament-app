@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.LinkedHashMap;
 
 /**
  * Servicio de cálculo de puntos para torneos de tipo CLÁSICO (bajo un Torneo Administrativo).
@@ -35,7 +36,6 @@ public class ClasicScoreService {
     private final HoleScoreRepository holeScoreRepository;
     private final TournamentScoreRepository tournamentScoreRepository;
     private final TournamentCategoryRepository categoryRepository;
-    private final TournamentInscriptionRepository inscriptionRepository;
     private final TournamentAdminScoringConfigService scoringConfigService;
 
     // ── Cálculo ────────────────────────────────────────────────────────────────
@@ -57,29 +57,38 @@ public class ClasicScoreService {
         List<TournamentScore> allScores = new ArrayList<>();
 
         // ── Puntajes por CATEGORÍA ─────────────────────────────────────────────
+        // La categoría se determina por handicapIndex del jugador, no por inscription.category_id
         List<TournamentCategory> categories = categoryRepository.findByTournamentId(tournamentId);
+
+        List<Scorecard> allCategoryCards = scorecardRepository.findByTournamentIdAndStatusIn(
+                tournamentId, List.of(ScorecardStatus.DELIVERED, ScorecardStatus.CANCELLED));
+
+        // Agrupar tarjetas por categoría según handicapIndex del jugador
+        Map<Long, List<Scorecard>> deliveredByCategory = new LinkedHashMap<>();
+        Map<Long, List<Scorecard>> cancelledByCategory = new LinkedHashMap<>();
+        for (TournamentCategory cat : categories) {
+            deliveredByCategory.put(cat.getId(), new ArrayList<>());
+            cancelledByCategory.put(cat.getId(), new ArrayList<>());
+        }
+
+        for (Scorecard sc : allCategoryCards) {
+            TournamentCategory cat = findCategoryByHandicapIndex(
+                    sc.getPlayer().getHandicapIndex(),
+                    sc.getPlayer().getSexo(),
+                    categories);
+            if (cat == null) continue;
+            if (sc.getStatus() == ScorecardStatus.DELIVERED) {
+                deliveredByCategory.get(cat.getId()).add(sc);
+            } else {
+                cancelledByCategory.get(cat.getId()).add(sc);
+            }
+        }
+
         for (TournamentCategory category : categories) {
-            List<TournamentInscription> inscriptions = inscriptionRepository
-                    .findByTournamentIdAndCategoryId(tournamentId, category.getId());
-            List<Long> playerIds = inscriptions.stream()
-                    .map(i -> i.getPlayer().getId())
-                    .collect(Collectors.toList());
-
-            List<Scorecard> delivered = scorecardRepository.findByTournamentIdAndStatusIn(
-                    tournamentId, List.of(ScorecardStatus.DELIVERED, ScorecardStatus.CANCELLED))
-                    .stream()
-                    .filter(sc -> playerIds.contains(sc.getPlayer().getId()))
-                    .collect(Collectors.toList());
-
-            List<FrutalesScoreService.PlayerScoreData> deliveredData = delivered.stream()
-                    .filter(s -> s.getStatus() == ScorecardStatus.DELIVERED)
-                    .map(this::buildPlayerScoreData)
-                    .collect(Collectors.toList());
-
-            List<FrutalesScoreService.PlayerScoreData> cancelledData = delivered.stream()
-                    .filter(s -> s.getStatus() == ScorecardStatus.CANCELLED)
-                    .map(this::buildPlayerScoreData)
-                    .collect(Collectors.toList());
+            List<FrutalesScoreService.PlayerScoreData> deliveredData = deliveredByCategory.get(category.getId())
+                    .stream().map(this::buildPlayerScoreData).collect(Collectors.toList());
+            List<FrutalesScoreService.PlayerScoreData> cancelledData = cancelledByCategory.get(category.getId())
+                    .stream().map(this::buildPlayerScoreData).collect(Collectors.toList());
 
             // Ordenar por neto ascendente → HCP → hoyo por hoyo
             deliveredData.sort(buildNetoComparator());
@@ -403,6 +412,25 @@ public class ClasicScoreService {
         return new FrutalesScoreService.PlayerScoreData(
                 scorecard, neto, scorecard.getPlayer().getHandicapIndex(),
                 birdieCount, eagleCount, aceCount, scoresByHole, maxHole);
+    }
+
+    /** Determina la categoría de un jugador según su handicapIndex y sexo. */
+    private TournamentCategory findCategoryByHandicapIndex(BigDecimal handicapIndex,
+                                                           String playerSex,
+                                                           List<TournamentCategory> categories) {
+        if (handicapIndex == null || categories == null || categories.isEmpty()) return null;
+        String sex = (playerSex == null || playerSex.isBlank()) ? "X" : playerSex.trim().toUpperCase();
+        if (!"M".equals(sex) && !"F".equals(sex)) sex = "X";
+        for (TournamentCategory cat : categories) {
+            String catSex = (cat.getSexoCategoria() == null || cat.getSexoCategoria().isBlank())
+                    ? "X" : cat.getSexoCategoria().trim().toUpperCase();
+            if (!"X".equals(catSex) && !catSex.equals(sex)) continue;
+            if (handicapIndex.compareTo(cat.getHandicapMin()) >= 0
+                    && handicapIndex.compareTo(cat.getHandicapMax()) <= 0) {
+                return cat;
+            }
+        }
+        return null;
     }
 
     private TournamentScoreDTO convertToDTO(TournamentScore score) {

@@ -27,6 +27,7 @@ public class TournamentAdminStageService {
     private final TournamentRepository tournamentRepository;
     private final TournamentInscriptionRepository inscriptionRepository;
     private final TournamentScoreRepository tournamentScoreRepository;
+    private final TournamentCategoryRepository categoryRepository;
     private final LeaderboardService leaderboardService;
 
     @Transactional(readOnly = true)
@@ -138,19 +139,19 @@ public class TournamentAdminStageService {
                     .collect(Collectors.toMap(s -> s.getPlayer().getId(), Function.identity()));
             scratchRows = buildBoardRows(playersById, stageTournaments, scratchPoints, scratchScores);
 
-            // Filas por categoría: el jugador aparece en la categoría de su última inscripción en la etapa
-            // Sus puntos totales = suma de TODOS los puntos CATEGORY acumulados (arrastra puntos aunque haya cambiado de categoría)
-            Map<Long, TournamentCategory> playerLatestCategory = buildPlayerLatestCategoryMap(stageTournaments);
-            List<TournamentCategory> uniqueCategories = playerLatestCategory.values().stream()
-                    .collect(Collectors.toMap(TournamentCategory::getId, c -> c, (a, b) -> a))
-                    .values().stream()
+            // Categorías del torneo más reciente de la etapa como referencia canónica
+            Tournament latestTournament = stageTournaments.get(stageTournaments.size() - 1);
+            List<TournamentCategory> latestCategories = categoryRepository
+                    .findByTournamentId(latestTournament.getId()).stream()
                     .sorted(Comparator.comparing(TournamentCategory::getHandicapMin))
                     .collect(Collectors.toList());
-            categoryRows = uniqueCategories.stream()
+
+            // Agrupar cada jugador en la categoría del torneo más reciente según su handicapIndex actual
+            categoryRows = latestCategories.stream()
                     .map(category -> {
-                        Set<Long> playerIds = playerLatestCategory.entrySet().stream()
-                                .filter(e -> e.getValue().getId().equals(category.getId()))
-                                .map(Map.Entry::getKey)
+                        Set<Long> playerIds = playersById.values().stream()
+                                .filter(p -> playerMatchesCategory(p.getHandicapIndex(), p.getSexo(), category))
+                                .map(Player::getId)
                                 .collect(Collectors.toSet());
                         List<TournamentAdminStageBoardDTO.PlayerStageRowDTO> catRows =
                                 buildCategoryBoardRows(playerIds, playersById, stageTournaments, hcpPoints);
@@ -377,20 +378,18 @@ public class TournamentAdminStageService {
     }
 
     /**
-     * Para cada jugador inscripto en los torneos de la etapa, retorna la categoría de su ÚLTIMA inscripción.
-     * Si un jugador cambió de categoría durante la etapa, arrastra todos los puntos acumulados y aparece en la última categoría.
+     * Determina si un jugador cae dentro del rango de una categoría según su handicapIndex.
+     * Respeta el filtro de sexo de la categoría (M, F o X).
      */
-    private Map<Long, TournamentCategory> buildPlayerLatestCategoryMap(List<Tournament> sortedTournaments) {
-        Map<Long, TournamentCategory> playerLatestCategory = new LinkedHashMap<>();
-        for (Tournament tournament : sortedTournaments) {
-            List<TournamentInscription> inscriptions = inscriptionRepository.findByTournamentId(tournament.getId());
-            for (TournamentInscription inscription : inscriptions) {
-                if (inscription.getCategory() != null) {
-                    playerLatestCategory.put(inscription.getPlayer().getId(), inscription.getCategory());
-                }
-            }
-        }
-        return playerLatestCategory;
+    private boolean playerMatchesCategory(BigDecimal handicapIndex, String playerSex, TournamentCategory category) {
+        if (handicapIndex == null) return false;
+        String sex = (playerSex == null || playerSex.isBlank()) ? "X" : playerSex.trim().toUpperCase();
+        if (!"M".equals(sex) && !"F".equals(sex)) sex = "X";
+        String catSex = (category.getSexoCategoria() == null || category.getSexoCategoria().isBlank())
+                ? "X" : category.getSexoCategoria().trim().toUpperCase();
+        if (!"X".equals(catSex) && !catSex.equals(sex)) return false;
+        return handicapIndex.compareTo(category.getHandicapMin()) >= 0
+                && handicapIndex.compareTo(category.getHandicapMax()) <= 0;
     }
 
     /**

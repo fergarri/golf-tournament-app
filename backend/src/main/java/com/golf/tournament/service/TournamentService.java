@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -290,21 +291,16 @@ public class TournamentService {
         int withoutCategoryCount = 0;
         
         for (TournamentInscription inscription : inscriptions) {
-            // Try to find scorecard for this player
-            Scorecard scorecard = scorecardRepository
-                    .findByTournamentIdAndPlayerId(tournamentId, inscription.getPlayer().getId())
-                    .orElse(null);
-            
             TournamentCategory newCategory = null;
-            
-            // Only assign category if scorecard exists AND has handicapCourse
-            if (scorecard != null && scorecard.getHandicapCourse() != null) {
+
+            BigDecimal handicapIndex = inscription.getPlayer().getHandicapIndex();
+            if (handicapIndex != null) {
                 newCategory = findCategoryForHandicap(
-                        scorecard.getHandicapCourse(),
+                        handicapIndex,
                         inscription.getPlayer().getSexo(),
                         categories
                 );
-                
+
                 if (newCategory != null) {
                     reassignedCount++;
                 } else {
@@ -313,7 +309,7 @@ public class TournamentService {
             } else {
                 withoutCategoryCount++;
             }
-            
+
             // Update inscription category (may be null)
             inscription.setCategory(newCategory);
         }
