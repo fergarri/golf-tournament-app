@@ -27,7 +27,7 @@ spring:
   security:
     jwt:
       secret: ${JWT_SECRET:mySecretKeyForJWTTokenGenerationPleaseChangeInProduction}
-      expiration: ${JWT_EXPIRATION:86400000}
+      expiration: ${JWT_EXPIRATION:3600000}
 
 server:
   port: ${SERVER_PORT:8080}
