@@ -62,6 +62,9 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
+      // Retornar una promesa que nunca resuelve para que el catch/finally
+      // de la página no se ejecute y no muestre mensajes de error
+      return new Promise(() => {});
     }
 
     // 403 = sin permisos, no hacer logout; dejar que el componente lo maneje

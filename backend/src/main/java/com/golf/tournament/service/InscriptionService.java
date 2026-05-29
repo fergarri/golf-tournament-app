@@ -84,10 +84,6 @@ public class InscriptionService {
             throw new BadRequestException("Jugador ya inscripto en el torneo");
         }
 
-        // Validar que el torneo esté en estado PENDING
-        if ("FINALIZED".equals(tournament.getEstado())) {
-            throw new BadRequestException("Imposible inscribir jugadores. Inscripcion cerrada.");
-        }
         
         if (tournament.getLimiteInscriptos() != null) {
             Long currentInscriptos = inscriptionRepository.countByTournamentId(tournamentId);

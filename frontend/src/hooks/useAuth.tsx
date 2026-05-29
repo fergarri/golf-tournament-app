@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
+import { isTokenExpired } from '../utils/jwtUtils';
 import { User } from '../types';
 
 interface AuthContextType {
@@ -19,7 +20,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
     const currentUser = authService.getCurrentUser();
+
+    // Si no hay token o está expirado, limpiar sesión y redirigir al login
+    if (!token || isTokenExpired(token)) {
+      authService.logout();
+      setIsLoading(false);
+      if (window.location.pathname !== '/login') {
+        navigate('/login');
+      }
+      return;
+    }
+
     if (currentUser) {
       if (!currentUser.permissions) {
         authService.logout();
