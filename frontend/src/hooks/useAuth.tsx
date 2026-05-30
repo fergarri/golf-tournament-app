@@ -19,15 +19,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
+  const PUBLIC_PATHS = [
+    /^\/inscribe\//,
+    /^\/play\//,
+    /^\/results\//,
+    /^\/frutales-results\//,
+    /^\/stage-results\//,
+    /^\/playoff-results\//,
+    /^\/tournaments\/[^/]+\/scorecard/,
+  ];
+
+  const isPublicPage = () =>
+    PUBLIC_PATHS.some((regex) => regex.test(window.location.pathname));
+
   useEffect(() => {
     const token = localStorage.getItem('token');
     const currentUser = authService.getCurrentUser();
 
-    // Si no hay token o está expirado, limpiar sesión y redirigir al login
+    // Si no hay token o está expirado, limpiar sesión
+    // Solo redirigir al login si NO es una página pública
     if (!token || isTokenExpired(token)) {
       authService.logout();
       setIsLoading(false);
-      if (window.location.pathname !== '/login') {
+      if (!isPublicPage() && window.location.pathname !== '/login') {
         navigate('/login');
       }
       return;
