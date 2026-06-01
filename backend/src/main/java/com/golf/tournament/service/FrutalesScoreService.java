@@ -90,6 +90,32 @@ public class FrutalesScoreService {
             persistedScores.add(score);
         }
 
+        // Re-ordenar por totalPoints DESC → handicapIndex ASC → hoyo por hoyo,
+        // y reasignar las posiciones finales en base a ese ranking de puntos.
+        Map<Long, PlayerScoreData> playerDataByScorecard = new HashMap<>();
+        for (PlayerScoreData data : deliveredData) {
+            playerDataByScorecard.put(data.scorecard.getId(), data);
+        }
+
+        persistedScores.sort((a, b) -> {
+            int pointsCompare = Integer.compare(b.getTotalPoints(), a.getTotalPoints());
+            if (pointsCompare != 0) return pointsCompare;
+
+            PlayerScoreData dataA = playerDataByScorecard.get(a.getScorecard().getId());
+            PlayerScoreData dataB = playerDataByScorecard.get(b.getScorecard().getId());
+
+            BigDecimal hcpA = dataA != null && dataA.handicapIndex != null ? dataA.handicapIndex : BigDecimal.valueOf(999);
+            BigDecimal hcpB = dataB != null && dataB.handicapIndex != null ? dataB.handicapIndex : BigDecimal.valueOf(999);
+            int hcpCompare = hcpA.compareTo(hcpB);
+            if (hcpCompare != 0) return hcpCompare;
+
+            return dataA != null && dataB != null ? compareHoleByHoleFromLast(dataA, dataB) : 0;
+        });
+
+        for (int i = 0; i < persistedScores.size(); i++) {
+            persistedScores.get(i).setPosition(i + 1);
+        }
+
         List<CalculatedScoreData> cancelledCalculated = new ArrayList<>();
         for (PlayerScoreData data : cancelledData) {
             int participationPoints = config.getParticipationPoints() * multiplier;
