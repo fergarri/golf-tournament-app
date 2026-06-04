@@ -382,7 +382,9 @@ const PlayersPage = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {bulkUpdateResult.cambiosHandicapIndex!.map((c, idx) => (
+                      {[...bulkUpdateResult.cambiosHandicapIndex!]
+                        .sort((a, b) => a.apellido.localeCompare(b.apellido) || a.nombre.localeCompare(b.nombre))
+                        .map((c, idx) => (
                         <tr key={idx} className="border-t border-slate-100 hover:bg-slate-50">
                           <td className="px-3 py-2 font-mono">{c.matricula}</td>
                           <td className="px-3 py-2">{c.apellido}, {c.nombre}</td>

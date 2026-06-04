@@ -318,7 +318,10 @@ const TournamentScorecardPage = () => {
   const getScoreNeto = () => {
     const totalPropio = getTotalScore('propio');
     if (!totalPropio || !scorecard?.handicapCourse) return null;
-    return totalPropio - scorecard.handicapCourse;
+
+    const neto = totalPropio - scorecard.handicapCourse;
+    if (neto < 0) return 0;
+    return neto;
   };
 
   const showModal = (
@@ -653,6 +656,9 @@ const TournamentScorecardPage = () => {
         </p>
         <p className="player-matricula">
           <span style={{ fontWeight: 'bold', color: '#000000' }}>Matrícula:</span> {matricula}
+        </p>
+        <p className="player-matricula">
+          <strong><span style={{ fontWeight: 'bold', color: '#000000' }}>Handicap Index:</span> {player?.handicapIndex ?? '-'}</strong>
         </p>
         <p className="player-matricula">
           <strong><span style={{ fontWeight: 'bold', color: '#000000' }}>Handicap Course:</span> {scorecard?.handicapCourse ?? '-'}</strong>

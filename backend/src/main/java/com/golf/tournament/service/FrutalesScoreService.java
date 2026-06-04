@@ -92,7 +92,7 @@ public class FrutalesScoreService {
 
         List<CalculatedScoreData> cancelledCalculated = new ArrayList<>();
         for (PlayerScoreData data : cancelledData) {
-            int participationPoints = config.getParticipationPoints() * multiplier;
+            int participationPoints = data.scoresByHole.isEmpty() ? 0 : config.getParticipationPoints() * multiplier;
 
             TournamentScore score = TournamentScore.builder()
                     .tournament(tournament)
