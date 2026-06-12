@@ -21,6 +21,10 @@ public class ScoringConfigDTO {
     private Integer participationPoints;
     private Integer remainingPositionsPoints;
     private Integer qualifiedPlayoffPositions;
+    /** Clasificados Sin HCP (Scratch). 0 = sin clasificación. Solo CLASICO. */
+    private Integer qualifiedPlayoffPositionsScratch;
+    /** GLOBAL o PER_CATEGORY. Solo relevante para torneos CLASICO. */
+    private String hcpQualifiedMode;
     private String tieBreakMode;
     private List<PositionPointsDTO> positionPoints;
 

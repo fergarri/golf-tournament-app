@@ -162,6 +162,7 @@ public class TournamentAdminService {
         return TournamentAdminDetailDTO.builder()
                 .id(admin.getId())
                 .nombre(admin.getNombre())
+                .tipo(admin.getTipo())
                 .fecha(admin.getFecha())
                 .cantidadCuotas(admin.getCantidadCuotas())
                 .valorInscripcion(admin.getValorInscripcion())

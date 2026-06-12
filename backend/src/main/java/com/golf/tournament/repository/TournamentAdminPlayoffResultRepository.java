@@ -12,9 +12,11 @@ import java.util.List;
 @Repository
 public interface TournamentAdminPlayoffResultRepository extends JpaRepository<TournamentAdminPlayoffResult, Long> {
 
-    List<TournamentAdminPlayoffResult> findByTournamentAdminIdOrderByPositionAsc(Long tournamentAdminId);
+    @Query("SELECT r FROM TournamentAdminPlayoffResult r JOIN FETCH r.player WHERE r.tournamentAdmin.id = :tournamentAdminId ORDER BY r.position ASC")
+    List<TournamentAdminPlayoffResult> findByTournamentAdminIdOrderByPositionAsc(@Param("tournamentAdminId") Long tournamentAdminId);
 
-    List<TournamentAdminPlayoffResult> findByTournamentAdminIdAndScoreTypeOrderByPositionAsc(Long tournamentAdminId, String scoreType);
+    @Query("SELECT r FROM TournamentAdminPlayoffResult r JOIN FETCH r.player WHERE r.tournamentAdmin.id = :tournamentAdminId AND r.scoreType = :scoreType ORDER BY r.position ASC")
+    List<TournamentAdminPlayoffResult> findByTournamentAdminIdAndScoreTypeOrderByPositionAsc(@Param("tournamentAdminId") Long tournamentAdminId, @Param("scoreType") String scoreType);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM TournamentAdminPlayoffResult r WHERE r.tournamentAdmin.id = :tournamentAdminId")

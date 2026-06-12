@@ -23,6 +23,8 @@ public class TournamentAdminPlayoffResultsDTO {
     private List<RowDTO> rows;
     /** Filas Sin HCP (scratch). Solo poblado para tipo CLASICO. */
     private List<RowDTO> scratchRows;
+    /** Leyenda de categorías con colores. Solo para CLASICO con hcpQualifiedMode=PER_CATEGORY. */
+    private List<CategoryLegendDTO> categoryLegend;
 
     @Data
     @Builder
@@ -46,5 +48,18 @@ public class TournamentAdminPlayoffResultsDTO {
         private Integer totalPoints;
         private Integer position;
         private Boolean qualified;
+        /** Solo para CLASICO con hcpQualifiedMode=PER_CATEGORY: id de la categoría. */
+        private Long categoryId;
+    }
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class CategoryLegendDTO {
+        private Long categoryId;
+        private String categoryName;
+        /** Índice 0-based para asignación de color en el frontend. */
+        private Integer categoryIndex;
     }
 }

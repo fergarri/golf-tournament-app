@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import Modal from '../components/Modal';
 import Table, { TableAction } from '../components/Table';
 import { tournamentAdminService } from '../services/tournamentAdminService';
 import { tournamentAdminStageService } from '../services/tournamentAdminStageService';
+import { tournamentAdminPlayoffResultService } from '../services/tournamentAdminPlayoffResultService';
 import { TournamentAdminDetail, TournamentAdminStage, TournamentRelationOption } from '../types';
 import { formatDateSafe } from '../utils/dateUtils';
 import '../components/Form.css';
@@ -19,6 +20,8 @@ const TournamentAdminStagesPage = () => {
   const [stages, setStages] = useState<TournamentAdminStage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [calculating, setCalculating] = useState(false);
+  const [calcSuccess, setCalcSuccess] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [editingStage, setEditingStage] = useState<TournamentAdminStage | null>(null);
@@ -124,6 +127,20 @@ const TournamentAdminStagesPage = () => {
     }
   };
 
+  const handleCalculateAll = async () => {
+    try {
+      setCalculating(true);
+      setCalcSuccess(false);
+      setError('');
+      await tournamentAdminPlayoffResultService.calculate(tournamentAdminId);
+      setCalcSuccess(true);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error calculando puntos');
+    } finally {
+      setCalculating(false);
+    }
+  };
+
   const handleViewDates = (stage: TournamentAdminStage) => {
     navigate(`/administration/${tournamentAdminId}/stages/${stage.id}`);
   };
@@ -172,7 +189,15 @@ const TournamentAdminStagesPage = () => {
   ];
 
   const columns = [
-    { header: 'Nombre de Etapa', accessor: (row: TournamentAdminStage) => row.nombre },
+    {
+      header: 'Nombre de Etapa',
+      accessor: (row: TournamentAdminStage) => (
+        <Link to={`/administration/${tournamentAdminId}/stages/${row.id}`} className="tournament-name-link">
+          {row.nombre}
+        </Link>
+      ),
+      sortValue: (row: TournamentAdminStage) => row.nombre,
+    },
     { header: 'Cant. de Fechas', accessor: (row: TournamentAdminStage) => row.fechasCount },
     { header: 'Fecha Creación', accessor: (row: TournamentAdminStage) => formatDateSafe(row.createdAt) },
   ];
@@ -190,7 +215,7 @@ const TournamentAdminStagesPage = () => {
       <div className="page-header">
         <h1>Etapas - {adminDetail.nombre}</h1>
         <div className="header-actions">
-          <button onClick={() => navigate(`/administration/${tournamentAdminId}`)} className="btn-back">
+          <button onClick={() => navigate(`/administration`)} className="btn-back">
             ← Volver
           </button>
           <button onClick={loadData} className="btn-refresh">
@@ -205,15 +230,28 @@ const TournamentAdminStagesPage = () => {
             Tabla Play Off
           </button>
           <button
+            onClick={handleCalculateAll}
+            className="btn-compact btn-compact-primary"
+            disabled={calculating || stages.length === 0}
+            title={stages.length === 0 ? 'No hay etapas creadas' : undefined}
+          >
+            {calculating ? 'Calculando...' : 'Calcular Puntos'}
+          </button>
+          <button
             onClick={handleCreate}
             className="btn-compact btn-compact-primary"
-            >
+          >
             + Crear Etapa
           </button>
         </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
+      {calcSuccess && (
+        <div className="success-message" style={{ marginBottom: '1rem' }}>
+          Puntos calculados correctamente para todas las etapas y el Play Off.
+        </div>
+      )}
 
       <Table
         data={stages}

@@ -527,6 +527,7 @@ const TournamentAdminDetailPage = () => {
       >
         <ScoringConfigSection
           tournamentAdminId={detail.id}
+          tipo={detail.tipo}
           onSaved={() => setShowScoringConfigModal(false)}
         />
       </Modal>

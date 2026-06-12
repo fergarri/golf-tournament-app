@@ -40,6 +40,15 @@ public class SaveScoringConfigRequest {
     @Min(1)
     private Integer qualifiedPlayoffPositions;
 
+    /** Clasificados Sin HCP (Scratch). 0 = sin clasificación. Solo CLASICO. */
+    @NotNull
+    @Min(0)
+    private Integer qualifiedPlayoffPositionsScratch;
+
+    /** GLOBAL o PER_CATEGORY. */
+    @NotBlank
+    private String hcpQualifiedMode;
+
     @NotBlank
     private String tieBreakMode;
 

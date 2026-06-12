@@ -261,6 +261,8 @@ export interface TournamentRelationOption {
 export interface TournamentAdminDetail {
   id: number;
   nombre: string;
+  /** CLASICO o FRUTALES */
+  tipo?: string;
   fecha: string;
   cantidadCuotas: number;
   valorInscripcion: number;
@@ -313,6 +315,10 @@ export interface ScoringConfig {
   participationPoints: number;
   remainingPositionsPoints: number;
   qualifiedPlayoffPositions: number;
+  /** Clasificados Sin HCP (Scratch). 0 = sin clasificación, tab Scratch oculto. Solo CLASICO. */
+  qualifiedPlayoffPositionsScratch: number;
+  /** GLOBAL o PER_CATEGORY. Solo relevante para torneos CLASICO. */
+  hcpQualifiedMode: string;
   tieBreakMode: string;
   positionPoints: ScoringPositionPoints[];
 }
@@ -324,6 +330,10 @@ export interface SaveScoringConfigRequest {
   participationPoints: number;
   remainingPositionsPoints: number;
   qualifiedPlayoffPositions: number;
+  /** Clasificados Sin HCP (Scratch). 0 = sin clasificación. */
+  qualifiedPlayoffPositionsScratch: number;
+  /** GLOBAL o PER_CATEGORY. */
+  hcpQualifiedMode: string;
   tieBreakMode: string;
   positionPoints: ScoringPositionPoints[];
 }
@@ -394,6 +404,8 @@ export interface TournamentAdminPlayoffResults {
   rows: TournamentAdminPlayoffResultRow[];
   /** Filas Sin HCP / Scratch — solo para tipo CLASICO */
   scratchRows?: TournamentAdminPlayoffResultRow[] | null;
+  /** Leyenda de categorías. Solo para CLASICO con hcpQualifiedMode=PER_CATEGORY. */
+  categoryLegend?: TournamentAdminPlayoffCategoryLegend[] | null;
 }
 
 export interface TournamentAdminPlayoffStageColumn {
@@ -410,4 +422,13 @@ export interface TournamentAdminPlayoffResultRow {
   totalPoints: number;
   position: number;
   qualified: boolean;
+  /** Solo para CLASICO con hcpQualifiedMode=PER_CATEGORY. */
+  categoryId?: number | null;
+}
+
+export interface TournamentAdminPlayoffCategoryLegend {
+  categoryId: number;
+  categoryName: string;
+  /** Índice 0-based para asignación de color. */
+  categoryIndex: number;
 }

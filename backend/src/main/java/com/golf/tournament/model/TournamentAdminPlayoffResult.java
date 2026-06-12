@@ -49,6 +49,10 @@ public class TournamentAdminPlayoffResult {
     @Builder.Default
     private Boolean qualified = false;
 
+    /** Solo para modo PER_CATEGORY en torneos CLASICO: id de la categoría del jugador. */
+    @Column(name = "category_id")
+    private Long categoryId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

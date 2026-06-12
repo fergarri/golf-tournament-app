@@ -5,6 +5,8 @@ import Modal from './Modal';
 
 interface ScoringConfigSectionProps {
   tournamentAdminId: number;
+  /** CLASICO o FRUTALES */
+  tipo?: string;
   onSaved?: () => void;
 }
 
@@ -23,7 +25,7 @@ const TIE_BREAK_OPTIONS = [
   },
 ];
 
-const ScoringConfigSection = ({ tournamentAdminId, onSaved }: ScoringConfigSectionProps) => {
+const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved }: ScoringConfigSectionProps) => {
   const [config, setConfig] = useState<ScoringConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -96,6 +98,8 @@ const ScoringConfigSection = ({ tournamentAdminId, onSaved }: ScoringConfigSecti
         participationPoints: config.participationPoints,
         remainingPositionsPoints: config.remainingPositionsPoints,
         qualifiedPlayoffPositions: config.qualifiedPlayoffPositions,
+        qualifiedPlayoffPositionsScratch: config.qualifiedPlayoffPositionsScratch ?? 0,
+        hcpQualifiedMode: config.hcpQualifiedMode ?? 'GLOBAL',
         tieBreakMode: config.tieBreakMode,
         positionPoints: config.positionPoints,
       });
@@ -146,6 +150,96 @@ const ScoringConfigSection = ({ tournamentAdminId, onSaved }: ScoringConfigSecti
               ))}
             </div>
 
+            {/* Clasificación Sin HCP — solo CLASICO */}
+            {tipo === 'CLASICO' && (
+              <div style={{ marginTop: '1.5rem' }}>
+                <h3 style={{ margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 600, color: '#34495e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Clasificación Sin HCP
+                </h3>
+                <div style={{ display: 'grid', gap: '0.75rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <label style={{ flex: 1, fontSize: '0.9rem', color: '#555' }}>Clasificados al playoff</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={config.qualifiedPlayoffPositionsScratch ?? 0}
+                      onChange={(e) => handleFieldChange('qualifiedPlayoffPositionsScratch', parseInt(e.target.value) || 0)}
+                      style={inputStyle}
+                    />
+                    <span style={{ fontSize: '0.85rem', color: '#7f8c8d', minWidth: '30px' }}>pos.</span>
+                  </div>
+                  {(config.qualifiedPlayoffPositionsScratch ?? 0) === 0 && (
+                    <div style={{ fontSize: '0.78rem', color: '#7f8c8d', fontStyle: 'italic', paddingLeft: '0.1rem' }}>
+                      Con valor 0, la clasificación y la tabla Sin HCP no se calculan ni se muestran.
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Clasificación Con HCP */}
+            <div style={{ marginTop: '1.5rem' }}>
+              <h3 style={{ margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 600, color: '#34495e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Clasificación Con HCP
+              </h3>
+              <div style={{ display: 'grid', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <label style={{ flex: 1, fontSize: '0.9rem', color: '#555' }}>Clasificados al playoff</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={config.qualifiedPlayoffPositions}
+                    onChange={(e) => handleFieldChange('qualifiedPlayoffPositions', parseInt(e.target.value) || 1)}
+                    style={inputStyle}
+                  />
+                  <span style={{ fontSize: '0.85rem', color: '#7f8c8d', minWidth: '30px' }}>pos.</span>
+                </div>
+
+                {/* Modo de clasificación: solo para torneos CLASICO */}
+                {tipo === 'CLASICO' && (
+                  <div style={{ paddingTop: '0.1rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {[
+                        { value: 'GLOBAL', label: 'Global', description: `Clasifican los primeros ${config.qualifiedPlayoffPositions} del total Con HCP.` },
+                        { value: 'PER_CATEGORY', label: 'Por Categoría', description: `Clasifican los primeros ${config.qualifiedPlayoffPositions} de cada categoría Con HCP.` },
+                      ].map((opt) => (
+                        <label
+                          key={opt.value}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '0.5rem',
+                            cursor: 'pointer',
+                            padding: '0.4rem 0.6rem',
+                            borderRadius: '4px',
+                            background: config.hcpQualifiedMode === opt.value ? '#f0f7ff' : 'transparent',
+                            border: `1px solid ${config.hcpQualifiedMode === opt.value ? '#3498db' : 'transparent'}`,
+                            transition: 'background 0.15s',
+                          }}
+                        >
+                          <input
+                            type="radio"
+                            name="hcpQualifiedMode"
+                            value={opt.value}
+                            checked={config.hcpQualifiedMode === opt.value}
+                            onChange={() => handleFieldChange('hcpQualifiedMode', opt.value)}
+                            style={{ marginTop: '2px', flexShrink: 0 }}
+                          />
+                          <div>
+                            <span style={{ fontSize: '0.88rem', fontWeight: 600, color: '#34495e' }}>{opt.label}</span>
+                            <span style={{ display: 'block', fontSize: '0.78rem', color: '#7f8c8d', marginTop: '1px' }}>
+                              {opt.description}
+                            </span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Otros */}
             <div style={{ marginTop: '1.5rem' }}>
               <h3 style={{ margin: '0 0 1rem', fontSize: '0.95rem', fontWeight: 600, color: '#34495e', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Otros
@@ -161,17 +255,6 @@ const ScoringConfigSection = ({ tournamentAdminId, onSaved }: ScoringConfigSecti
                     style={inputStyle}
                   />
                   <span style={{ fontSize: '0.85rem', color: '#7f8c8d', minWidth: '30px' }}>pts</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <label style={{ flex: 1, fontSize: '0.9rem', color: '#555' }}>Clasificados al playoff</label>
-                  <input
-                    type="number"
-                    min={1}
-                    value={config.qualifiedPlayoffPositions}
-                    onChange={(e) => handleFieldChange('qualifiedPlayoffPositions', parseInt(e.target.value) || 1)}
-                    style={inputStyle}
-                  />
-                  <span style={{ fontSize: '0.85rem', color: '#7f8c8d', minWidth: '30px' }}>pos.</span>
                 </div>
               </div>
             </div>

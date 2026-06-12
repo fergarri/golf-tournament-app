@@ -18,7 +18,6 @@ const TournamentAdminStageBoardPage = () => {
   const [board, setBoard] = useState<TournamentAdminStageBoard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [calculating, setCalculating] = useState(false);
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('scratch');
   const [exportingExcel, setExportingExcel] = useState(false);
@@ -46,22 +45,6 @@ const TournamentAdminStageBoardPage = () => {
       setError(err.response?.data?.message || 'Error cargando fechas de la etapa');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleCalculate = async () => {
-    try {
-      setCalculating(true);
-      const data = await tournamentAdminStageService.calculate(tournamentAdminId, stageIdNumber);
-      setBoard(data);
-      if (data.tipo === 'CLASICO' && data.categoryRows && data.categoryRows.length > 0) {
-        setActiveTab(prev => prev === 'scratch' ? prev : prev);
-      }
-      setError('');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error calculando puntos de etapa');
-    } finally {
-      setCalculating(false);
     }
   };
 
@@ -181,13 +164,6 @@ const TournamentAdminStageBoardPage = () => {
             className="btn-compact btn-compact-primary"
           >
             Link Resultados
-          </button>
-          <button
-            onClick={handleCalculate}
-            className="btn-compact btn-compact-primary"
-            disabled={calculating}
-          >
-            {calculating ? 'Calculando...' : 'Calcular Puntos'}
           </button>
           <button
             onClick={handleExcelExport}

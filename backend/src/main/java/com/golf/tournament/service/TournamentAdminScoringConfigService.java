@@ -29,6 +29,8 @@ public class TournamentAdminScoringConfigService {
     private static final int DEFAULT_PARTICIPATION_POINTS = 1;
     private static final int DEFAULT_REMAINING_POSITIONS_POINTS = 0;
     private static final int DEFAULT_QUALIFIED_PLAYOFF_POSITIONS = 8;
+    private static final int DEFAULT_QUALIFIED_PLAYOFF_POSITIONS_SCRATCH = 0;
+    private static final String DEFAULT_HCP_QUALIFIED_MODE = "GLOBAL";
     private static final String DEFAULT_TIE_BREAK_MODE = "NETO_HCP_HOLE";
 
     private final TournamentAdminRepository tournamentAdminRepository;
@@ -64,6 +66,8 @@ public class TournamentAdminScoringConfigService {
         config.setParticipationPoints(request.getParticipationPoints());
         config.setRemainingPositionsPoints(request.getRemainingPositionsPoints());
         config.setQualifiedPlayoffPositions(request.getQualifiedPlayoffPositions());
+        config.setQualifiedPlayoffPositionsScratch(request.getQualifiedPlayoffPositionsScratch() != null ? request.getQualifiedPlayoffPositionsScratch() : DEFAULT_QUALIFIED_PLAYOFF_POSITIONS_SCRATCH);
+        config.setHcpQualifiedMode(request.getHcpQualifiedMode() != null ? request.getHcpQualifiedMode() : DEFAULT_HCP_QUALIFIED_MODE);
         config.setTieBreakMode(request.getTieBreakMode());
 
         // Forzar el flush de los DELETEs antes de insertar las nuevas posiciones
@@ -105,6 +109,8 @@ public class TournamentAdminScoringConfigService {
                 .participationPoints(config.getParticipationPoints())
                 .remainingPositionsPoints(config.getRemainingPositionsPoints())
                 .qualifiedPlayoffPositions(config.getQualifiedPlayoffPositions())
+                .qualifiedPlayoffPositionsScratch(config.getQualifiedPlayoffPositionsScratch() != null ? config.getQualifiedPlayoffPositionsScratch() : DEFAULT_QUALIFIED_PLAYOFF_POSITIONS_SCRATCH)
+                .hcpQualifiedMode(config.getHcpQualifiedMode() != null ? config.getHcpQualifiedMode() : DEFAULT_HCP_QUALIFIED_MODE)
                 .tieBreakMode(config.getTieBreakMode())
                 .positionPoints(positions)
                 .build();
@@ -119,6 +125,8 @@ public class TournamentAdminScoringConfigService {
                 .participationPoints(DEFAULT_PARTICIPATION_POINTS)
                 .remainingPositionsPoints(DEFAULT_REMAINING_POSITIONS_POINTS)
                 .qualifiedPlayoffPositions(DEFAULT_QUALIFIED_PLAYOFF_POSITIONS)
+                .qualifiedPlayoffPositionsScratch(DEFAULT_QUALIFIED_PLAYOFF_POSITIONS_SCRATCH)
+                .hcpQualifiedMode(DEFAULT_HCP_QUALIFIED_MODE)
                 .tieBreakMode(DEFAULT_TIE_BREAK_MODE)
                 .positionPoints(List.of(
                         new ScoringConfigDTO.PositionPointsDTO(1, 12),

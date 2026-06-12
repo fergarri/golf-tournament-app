@@ -17,6 +17,8 @@ public class TournamentAdminDetailDTO {
 
     private Long id;
     private String nombre;
+    /** CLASICO o FRUTALES */
+    private String tipo;
     private LocalDate fecha;
     private Integer cantidadCuotas;
     private BigDecimal valorInscripcion;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { tournamentAdminService } from '../services/tournamentAdminService';
 import { playerService } from '../services/playerService';
 import { TournamentAdmin, Player } from '../types';
@@ -247,7 +247,15 @@ const AdministrationPage = () => {
   };
 
   const columns = [
-    { header: 'Nombre', accessor: 'nombre' as keyof TournamentAdmin },
+    {
+      header: 'Nombre',
+      accessor: (row: TournamentAdmin) => (
+        <Link to={`/administration/${row.id}/stages`} className="tournament-name-link">
+          {row.nombre}
+        </Link>
+      ),
+      sortValue: (row: TournamentAdmin) => row.nombre,
+    },
     { header: 'Tipo', accessor: (row: TournamentAdmin) => (
       <span style={{
         display: 'inline-block',

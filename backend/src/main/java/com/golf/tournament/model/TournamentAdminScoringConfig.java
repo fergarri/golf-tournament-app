@@ -52,6 +52,15 @@ public class TournamentAdminScoringConfig {
     @Builder.Default
     private Integer qualifiedPlayoffPositions = 8;
 
+    /** Clasificados Sin HCP (Scratch). 0 = no se clasifica, no se calcula. Solo CLASICO. */
+    @Column(name = "qualified_playoff_positions_scratch", nullable = false)
+    @Builder.Default
+    private Integer qualifiedPlayoffPositionsScratch = 0;
+
+    @Column(name = "hcp_qualified_mode", nullable = false, length = 20)
+    @Builder.Default
+    private String hcpQualifiedMode = "GLOBAL";
+
     @Column(name = "tie_break_mode", nullable = false, length = 50)
     @Builder.Default
     private String tieBreakMode = "NETO_HCP_HOLE";
