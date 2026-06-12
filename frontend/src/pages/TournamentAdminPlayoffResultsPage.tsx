@@ -191,7 +191,7 @@ const TournamentAdminPlayoffResultsPage = () => {
           {/* Leyenda de categorías: solo para HCP en modo PER_CATEGORY */}
           {activeTab === 'hcp' && results.categoryLegend && results.categoryLegend.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', marginTop: '0.5rem' }}>
-              <span style={{ fontSize: '0.82rem', color: '#555', fontWeight: 600, marginRight: '0.25rem' }}>Referencias:</span>
+              <span style={{ fontSize: '0.82rem', color: '#555', fontWeight: 600, marginRight: '0.25rem' }}>Referencias Color/Categoria:</span>
               {results.categoryLegend.map((cat) => {
                 const bg = CATEGORY_COLORS[cat.categoryIndex];
                 const text = CATEGORY_TEXT_COLORS[cat.categoryIndex];
