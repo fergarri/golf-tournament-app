@@ -7,6 +7,7 @@ import { inscriptionService } from '../services/inscriptionService';
 import { tournamentAdminService } from '../services/tournamentAdminService';
 import { excelExportService } from '../services/excelExportService';
 import { Tournament, LeaderboardEntry, Scorecard, TournamentScore, ExportTournamentInscriptionsResult } from '../types';
+import { standardRank } from '../utils/ranking';
 import Table, { TableAction } from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
@@ -298,6 +299,8 @@ const TournamentLeaderboardPage = () => {
   // Filter leaderboard based on active tab and recalculate positions per category
   const filteredByCategory = useMemo(() => {
     const isClasic = tournament?.tipo === 'CLASICO' && tournament?.scoringConfig != null;
+    // Cuando el torneo calcula puntos (tiene scoringConfig), se usa posición secuencial clásica
+    const hasScoring = tournament?.scoringConfig != null;
 
     if (activeTab === 'scratch') {
       if (isClasic) {
@@ -310,20 +313,34 @@ const TournamentLeaderboardPage = () => {
               const posB = scratchScoreMap.get(b.playerId)?.position ?? 9999;
               return posA - posB;
             });
-          return playersWithScores.map((e, i) => ({ ...e, position: i + 1 }));
+          return playersWithScores.map((e, i) => ({
+            ...e,
+            position: hasScoring
+              ? i + 1
+              : standardRank(playersWithScores, i, x => scratchScoreMap.get(x.playerId)?.scoreGross ?? 9999),
+          }));
         }
         // CLASICO sin scores calculados: mostrar todos los inscriptos, entregados primero ordenados por gross
         const delivered = leaderboard
           .filter(e => e.status === 'DELIVERED')
           .sort((a, b) => (a.scoreGross ?? 0) - (b.scoreGross ?? 0));
         const others = leaderboard.filter(e => e.status !== 'DELIVERED');
-        return [...delivered.map((e, i) => ({ ...e, position: i + 1 })), ...others];
+        return [
+          ...delivered.map((e, i) => ({
+            ...e,
+            position: hasScoring ? i + 1 : standardRank(delivered, i, x => x.scoreGross ?? 9999),
+          })),
+          ...others,
+        ];
       }
       // FRUTALES: solo entregados, ordenados por Gross
       const delivered = leaderboard
         .filter(entry => entry.status === 'DELIVERED')
         .sort((a, b) => (a.scoreGross ?? 0) - (b.scoreGross ?? 0));
-      return delivered.map((entry, index) => ({ ...entry, position: index + 1 }));
+      return delivered.map((entry, i) => ({
+        ...entry,
+        position: hasScoring ? i + 1 : standardRank(delivered, i, x => x.scoreGross ?? 9999),
+      }));
     }
 
     let filtered: LeaderboardEntry[] = [];
@@ -348,7 +365,13 @@ const TournamentLeaderboardPage = () => {
 
     const withDeliveredAndPositions = withDeliveredScores.map((entry, index) => ({
       ...entry,
-      position: index + 1,
+      position: hasScoring
+        ? index + 1
+        : standardRank(
+            withDeliveredScores,
+            index,
+            x => activeScoreMap.size > 0 ? (activeScoreMap.get(x.playerId)?.scoreNeto ?? 9999) : (x.scoreNeto ?? 9999)
+          ),
     }));
 
     return [...withDeliveredAndPositions, ...withoutDeliveredScores];

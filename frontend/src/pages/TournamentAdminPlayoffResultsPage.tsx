@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { tournamentAdminPlayoffResultService } from '../services/tournamentAdminPlayoffResultService';
 import { excelExportService } from '../services/excelExportService';
 import { TournamentAdminPlayoffResults, TournamentAdminPlayoffResultRow } from '../types';
+import { standardRank, computeRowspans } from '../utils/ranking';
 import Modal from '../components/Modal';
 import '../components/Form.css';
 import '../components/Table.css';
@@ -83,7 +84,7 @@ const TournamentAdminPlayoffResultsPage = () => {
   ];
 
   const qualifiedCount = displayRows.filter((r) => r.qualified).length;
-  const colCount = 4 + results.stages.length;
+  const colCount = 3 + results.stages.length;
 
   // Mapa categoryId → color para el modo PER_CATEGORY
   const categoryColorMap = new Map<number, string>();
@@ -113,50 +114,65 @@ const TournamentAdminPlayoffResultsPage = () => {
     return {};
   };
 
-  const renderPlayoffTable = (rows: TournamentAdminPlayoffResultRow[], isHcpTab = true) => (
-    <div style={{ overflowX: 'auto' }}>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th style={{ width: '60px', textAlign: 'center' }}>#</th>
-            <th>Jugador</th>
-            {results.stages.map(stage => (
-              <th key={stage.stageId} style={{ minWidth: '90px', textAlign: 'center' }} title={stage.stageName}>
-                {stage.code}
-              </th>
-            ))}
-            <th style={{ textAlign: 'center' }}>Ptos</th>
-            <th style={{ textAlign: 'center' }}>Pos</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
+  const renderPlayoffTable = (rows: TournamentAdminPlayoffResultRow[], isHcpTab = true) => {
+    const rowspans = computeRowspans(rows, r => r.totalPoints);
+    return (
+      <div style={{ overflowX: 'auto' }}>
+        <table className="data-table">
+          <thead>
             <tr>
-              <td colSpan={colCount} className="empty-row">
-                Aún no hay resultados calculados
-              </td>
+              <th>Jugador</th>
+              {results.stages.map(stage => (
+                <th key={stage.stageId} style={{ minWidth: '90px', textAlign: 'center' }} title={stage.stageName}>
+                  {stage.code}
+                </th>
+              ))}
+              <th style={{ textAlign: 'center' }}>Ptos</th>
+              <th style={{ textAlign: 'center' }}>Pos</th>
             </tr>
-          ) : (
-            rows.map((row, index) => (
-              <tr key={row.playerId}>
-                <td style={{ textAlign: 'center', fontWeight: 600 }}>{index + 1}</td>
-                <td>{row.playerName}</td>
-                {results.stages.map(stage => (
-                  <td key={`${row.playerId}-${stage.stageId}`} style={{ textAlign: 'center' }}>
-                    {row.pointsByStage[stage.stageId] ?? 0}
-                  </td>
-                ))}
-                <td style={{ textAlign: 'center', fontWeight: 700 }}>{row.totalPoints}</td>
-                <td style={{ textAlign: 'center', fontWeight: 700, ...getRowQualifiedStyle(row, isHcpTab) }}>
-                  {index + 1}
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={colCount} className="empty-row">
+                  Aún no hay resultados calculados
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
+            ) : (
+              rows.map((row, index) => {
+                const span = rowspans[index];
+                const pos = standardRank(rows, index, r => r.totalPoints);
+                return (
+                  <tr key={row.playerId}>
+                    <td>{row.playerName}</td>
+                    {results.stages.map(stage => (
+                      <td key={`${row.playerId}-${stage.stageId}`} style={{ textAlign: 'center' }}>
+                        {row.pointsByStage[stage.stageId] ?? 0}
+                      </td>
+                    ))}
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{row.totalPoints}</td>
+                    {span > 0 && (
+                      <td
+                        rowSpan={span}
+                        style={{
+                          textAlign: 'center',
+                          verticalAlign: 'middle',
+                          fontWeight: 700,
+                          ...getRowQualifiedStyle(rows[index], isHcpTab),
+                        }}
+                      >
+                        {pos}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
 
   return (

@@ -4,6 +4,7 @@ import { tournamentAdminStageService } from '../services/tournamentAdminStageSer
 import { excelExportService } from '../services/excelExportService';
 import { TournamentAdminStageBoard, TournamentAdminStageBoardRow } from '../types';
 import { formatDateSafe } from '../utils/dateUtils';
+import { standardRank, computeRowspans } from '../utils/ranking';
 import Modal from '../components/Modal';
 import '../components/Form.css';
 import '../components/Table.css';
@@ -88,63 +89,75 @@ const TournamentAdminStageBoardPage = () => {
     ? (board.categoryRows?.reduce((acc, c) => acc + c.rows.length, 0) ?? board.rows.length)
     : board.rows.length;
 
-  const renderTable = (rows: TournamentAdminStageBoardRow[]) => (
-    <div style={{ overflowX: 'auto' }}>
-      <table className="data-table">
-        <thead>
-          <tr>
-            <th style={{ width: '60px', textAlign: 'center' }}>#</th>
-            <th>Jugador</th>
-            {board.tournaments.map(tournament => (
-              <th
-                key={tournament.tournamentId}
-                style={{
-                  minWidth: '150px',
-                  textAlign: 'center',
-                  background: tournament.doublePoints ? '#fff2cc' : undefined,
-                }}
-                title={tournament.tournamentName}
-              >
-                Fecha: {formatDateSafe(tournament.fechaInicio)}
-              </th>
-            ))}
-            <th style={{ textAlign: 'center' }}>Puntos</th>
-            <th style={{ textAlign: 'center' }}>Posición</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.length === 0 ? (
+  const renderTable = (rows: TournamentAdminStageBoardRow[]) => {
+    const rowspans = computeRowspans(rows, r => r.totalPoints);
+    return (
+      <div style={{ overflowX: 'auto' }}>
+        <table className="data-table">
+          <thead>
             <tr>
-              <td colSpan={5 + board.tournaments.length} className="empty-row">
-                No hay jugadores para mostrar en esta etapa
-              </td>
+              <th>Jugador</th>
+              {board.tournaments.map(tournament => (
+                <th
+                  key={tournament.tournamentId}
+                  style={{
+                    minWidth: '150px',
+                    textAlign: 'center',
+                    background: tournament.doublePoints ? '#fff2cc' : undefined,
+                  }}
+                  title={tournament.tournamentName}
+                >
+                  Fecha: {formatDateSafe(tournament.fechaInicio)}
+                </th>
+              ))}
+              <th style={{ textAlign: 'center' }}>Puntos</th>
+              <th style={{ textAlign: 'center' }}>Posición</th>
             </tr>
-          ) : (
-            rows.map((row, index) => (
-              <tr key={row.playerId}>
-                <td style={{ textAlign: 'center', fontWeight: 600 }}>{index + 1}</td>
-                <td>{row.playerName}</td>
-                {board.tournaments.map(tournament => (
-                  <td
-                    key={`${row.playerId}-${tournament.tournamentId}`}
-                    style={{
-                      textAlign: 'center',
-                      background: tournament.doublePoints ? '#fff2cc' : undefined,
-                      fontWeight: tournament.doublePoints ? 700 : 500,
-                    }}
-                  >
-                    {row.pointsByTournament[tournament.tournamentId] ?? 0}
-                  </td>
-                ))}
-                <td style={{ textAlign: 'center', fontWeight: 700 }}>{row.totalPoints}</td>
-                <td style={{ textAlign: 'center' }}>{row.position ?? '-'}</td>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={4 + board.tournaments.length} className="empty-row">
+                  No hay jugadores para mostrar en esta etapa
+                </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
+            ) : (
+              rows.map((row, index) => {
+                const span = rowspans[index];
+                const pos = standardRank(rows, index, r => r.totalPoints);
+                return (
+                  <tr key={row.playerId}>
+                    <td>{row.playerName}</td>
+                    {board.tournaments.map(tournament => (
+                      <td
+                        key={`${row.playerId}-${tournament.tournamentId}`}
+                        style={{
+                          textAlign: 'center',
+                          background: tournament.doublePoints ? '#fff2cc' : undefined,
+                          fontWeight: tournament.doublePoints ? 700 : 500,
+                        }}
+                      >
+                        {row.pointsByTournament[tournament.tournamentId] ?? 0}
+                      </td>
+                    ))}
+                    <td style={{ textAlign: 'center', fontWeight: 700 }}>{row.totalPoints}</td>
+                    {span > 0 && (
+                      <td
+                        rowSpan={span}
+                        style={{ textAlign: 'center', verticalAlign: 'middle', fontWeight: 600 }}
+                      >
+                        {pos}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   return (
     <div className="leaderboard-page">

@@ -6,6 +6,7 @@ import { Tournament, LeaderboardEntry, TournamentScore } from '../types';
 import Table from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import { formatDateSafe } from '../utils/dateUtils';
+import { standardRank } from '../utils/ranking';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 
@@ -157,9 +158,19 @@ const PublicLeaderboardPage = () => {
   // con posición primero → con participación sin posición → sin score al final (position 0 → muestra "-").
   const filteredByCategory = useMemo(() => {
     const isClasic = tournament?.tipo === 'CLASICO' && tournament?.scoringConfig != null;
+    // Cuando el torneo calcula puntos (tiene scoringConfig), se usa posición secuencial clásica
+    const hasScoring = tournament?.scoringConfig != null;
 
-    const assignPositions = (ranked: LeaderboardEntry[], participation: LeaderboardEntry[], noScore: LeaderboardEntry[]): LeaderboardEntry[] => [
-      ...ranked.map((e, i) => ({ ...e, position: i + 1 })),
+    const assignPositions = (
+      ranked: LeaderboardEntry[],
+      participation: LeaderboardEntry[],
+      noScore: LeaderboardEntry[],
+      getScore: (e: LeaderboardEntry) => number = (e) => e.scoreNeto ?? 9999
+    ): LeaderboardEntry[] => [
+      ...ranked.map((e, i) => ({
+        ...e,
+        position: hasScoring ? i + 1 : standardRank(ranked, i, getScore),
+      })),
       ...participation.map(e => ({ ...e, position: 0 })),
       ...noScore.map(e => ({ ...e, position: 0 })),
     ];
@@ -174,19 +185,19 @@ const PublicLeaderboardPage = () => {
           const participation = leaderboard
             .filter(e => scratchScoreMap.has(e.playerId) && scratchScoreMap.get(e.playerId)!.position == null);
           const noScore = leaderboard.filter(e => !scratchScoreMap.has(e.playerId));
-          return assignPositions(ranked, participation, noScore);
+          return assignPositions(ranked, participation, noScore, e => scratchScoreMap.get(e.playerId)?.scoreGross ?? 9999);
         }
         // CLÁSICO sin scores: entregados primero por gross, el resto al final
         const ranked = leaderboard
           .filter(e => e.status === 'DELIVERED')
           .sort((a, b) => (a.scoreGross ?? 9999) - (b.scoreGross ?? 9999));
-        return assignPositions(ranked, [], leaderboard.filter(e => e.status !== 'DELIVERED'));
+        return assignPositions(ranked, [], leaderboard.filter(e => e.status !== 'DELIVERED'), e => e.scoreGross ?? 9999);
       }
       // FRUTALES/básico scratch: entregados por gross, el resto al final
       const ranked = leaderboard
         .filter(e => e.status === 'DELIVERED')
         .sort((a, b) => (a.scoreGross ?? 9999) - (b.scoreGross ?? 9999));
-      return assignPositions(ranked, [], leaderboard.filter(e => e.status !== 'DELIVERED'));
+      return assignPositions(ranked, [], leaderboard.filter(e => e.status !== 'DELIVERED'), e => e.scoreGross ?? 9999);
     }
 
     if (activeTab === 'general') {
@@ -196,7 +207,10 @@ const PublicLeaderboardPage = () => {
         delivered = [...delivered].sort((a, b) =>
           (activeScoreMap.get(a.playerId)?.position ?? 9999) - (activeScoreMap.get(b.playerId)?.position ?? 9999));
       }
-      return assignPositions(delivered, [], leaderboard.filter(e => e.status !== 'DELIVERED'));
+      return assignPositions(
+        delivered, [], leaderboard.filter(e => e.status !== 'DELIVERED'),
+        e => activeScoreMap.size > 0 ? (activeScoreMap.get(e.playerId)?.scoreNeto ?? 9999) : (e.scoreNeto ?? 9999)
+      );
     }
 
     // Tab de categoría
@@ -221,7 +235,7 @@ const PublicLeaderboardPage = () => {
       const scoredPlayerIds = new Set(catScoreMap.keys());
       const noScore = leaderboard.filter(e => e.categoryId === catId && !scoredPlayerIds.has(e.playerId));
 
-      return assignPositions(ranked, participation, noScore);
+      return assignPositions(ranked, participation, noScore, e => catScoreMap.get(e.playerId)?.scoreNeto ?? 9999);
     }
 
     // Caso básico (sin scoring CLÁSICO): filtrar por categoryId del leaderboard
@@ -229,7 +243,10 @@ const PublicLeaderboardPage = () => {
       .filter(e => e.categoryId === catId && e.status === 'DELIVERED')
       .sort((a, b) => (activeScoreMap.get(a.playerId)?.position ?? 9999) - (activeScoreMap.get(b.playerId)?.position ?? 9999));
     const withoutDelivered = leaderboard.filter(e => e.categoryId === catId && e.status !== 'DELIVERED');
-    return assignPositions(withDelivered, [], withoutDelivered);
+    return assignPositions(
+      withDelivered, [], withoutDelivered,
+      e => activeScoreMap.size > 0 ? (activeScoreMap.get(e.playerId)?.scoreNeto ?? 9999) : (e.scoreNeto ?? 9999)
+    );
   }, [leaderboard, leaderboardByPlayerId, activeTab, activeScoreMap, categoryScoreMap, scratchScoreMap, tournament?.tipo]);
 
   const getScoreToPar = (scoreToPar: number) => {

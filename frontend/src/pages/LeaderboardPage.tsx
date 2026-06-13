@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { leaderboardService } from '../services/leaderboardService';
 import { tournamentService } from '../services/tournamentService';
 import { LeaderboardEntry, Tournament } from '../types';
+import { standardRank, computeRowspans } from '../utils/ranking';
 import './LeaderboardPage.css';
 
 const LeaderboardPage: React.FC = () => {
@@ -127,30 +128,43 @@ const LeaderboardPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {leaderboard.map((entry) => (
-                  <tr key={entry.playerId} className={getPositionClass(entry.position)}>
-                    <td className="position">
-                      <span className="position-badge">{entry.position}</span>
-                    </td>
-                    <td className="player-name">{entry.playerName}</td>
-                    <td className="matricula">{entry.matricula}</td>
-                    <td className="handicap">
-                      {entry.handicapCourse !== undefined && entry.handicapCourse !== null
-                        ? entry.handicapCourse
-                        : '-'}
-                    </td>
-                    <td className="score-gross">{entry.scoreGross}</td>
-                    <td className="score-neto">
-                      <strong>{entry.scoreNeto}</strong>
-                    </td>
-                    <td className="score-to-par">
-                      <span className={`score-badge ${entry.scoreToPar === 0 ? 'even' : entry.scoreToPar < 0 ? 'under' : 'over'}`}>
-                        {formatScore(entry.scoreGross, entry.totalPar)}
-                      </span>
-                    </td>
-                    <td className="club">{entry.clubOrigen || '-'}</td>
-                  </tr>
-                ))}
+                {(() => {
+                  const rowspans = computeRowspans(leaderboard, e => e.scoreNeto ?? 9999);
+                  return leaderboard.map((entry, index) => {
+                    const span = rowspans[index];
+                    const pos = standardRank(leaderboard, index, e => e.scoreNeto ?? 9999);
+                    return (
+                      <tr key={entry.playerId} className={getPositionClass(pos)}>
+                        {span > 0 && (
+                          <td
+                            className="position"
+                            rowSpan={span}
+                            style={{ verticalAlign: 'middle' }}
+                          >
+                            <span className="position-badge">{pos}</span>
+                          </td>
+                        )}
+                        <td className="player-name">{entry.playerName}</td>
+                        <td className="matricula">{entry.matricula}</td>
+                        <td className="handicap">
+                          {entry.handicapCourse !== undefined && entry.handicapCourse !== null
+                            ? entry.handicapCourse
+                            : '-'}
+                        </td>
+                        <td className="score-gross">{entry.scoreGross}</td>
+                        <td className="score-neto">
+                          <strong>{entry.scoreNeto}</strong>
+                        </td>
+                        <td className="score-to-par">
+                          <span className={`score-badge ${entry.scoreToPar === 0 ? 'even' : entry.scoreToPar < 0 ? 'under' : 'over'}`}>
+                            {formatScore(entry.scoreGross, entry.totalPar)}
+                          </span>
+                        </td>
+                        <td className="club">{entry.clubOrigen || '-'}</td>
+                      </tr>
+                    );
+                  });
+                })()}
               </tbody>
             </table>
           </div>
