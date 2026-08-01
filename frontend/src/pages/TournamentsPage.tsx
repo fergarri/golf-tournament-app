@@ -40,6 +40,7 @@ const TournamentsPage = () => {
     teeFemeninoId: '',
     fechaInicio: '',
     fechaFin: '',
+    horarioCierre: '',
     limiteInscriptos: '',
     valorInscripcion: '',
     doublePoints: false,
@@ -114,6 +115,7 @@ const TournamentsPage = () => {
       teeFemeninoId: '',
       fechaInicio: '',
       fechaFin: '',
+      horarioCierre: '',
       limiteInscriptos: '',
       doublePoints: false,
       controlCruzado: false,
@@ -135,6 +137,7 @@ const TournamentsPage = () => {
       teeFemeninoId: tournament.teeFemeninoId || '',
       fechaInicio: tournament.fechaInicio,
       fechaFin: tournament.fechaFin || '',
+      horarioCierre: tournament.horarioCierre || '',
       limiteInscriptos: tournament.limiteInscriptos || '',
       valorInscripcion: tournament.valorInscripcion ? formatCurrency(tournament.valorInscripcion) : '',
       doublePoints: tournament.doublePoints || false,
@@ -158,6 +161,7 @@ const TournamentsPage = () => {
         teeMasculinoId: formData.teeMasculinoId ? parseInt(formData.teeMasculinoId) : null,
         teeFemeninoId: formData.teeFemeninoId ? parseInt(formData.teeFemeninoId) : null,
         limiteInscriptos: formData.limiteInscriptos ? parseInt(formData.limiteInscriptos) : null,
+        horarioCierre: formData.horarioCierre || null,
         valorInscripcion: parseCurrency(formData.valorInscripcion),
         doublePoints: formData.tipo === 'FRUTALES' ? (formData.doublePoints || false) : false,
         controlCruzado: formData.controlCruzado || false,
@@ -752,6 +756,18 @@ const TournamentsPage = () => {
                 onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
                 required
               />
+            </div>
+            <div className="form-group">
+              <label>Horario de Cierre</label>
+              <input
+                type="time"
+                value={formData.horarioCierre || ''}
+                onChange={(e) => setFormData({ ...formData, horarioCierre: e.target.value })}
+                placeholder="Ej: 19:00"
+              />
+              <small style={{ color: '#666', fontSize: '0.75rem' }}>
+                Opcional. Al llegar este horario el torneo se finaliza y los puntos se calculan automáticamente.
+              </small>
             </div>
           </div>
 

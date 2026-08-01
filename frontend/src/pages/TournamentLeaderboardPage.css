@@ -646,7 +646,7 @@
   border-top: 1px solid #e0e0e0;
 }
 
-.btn-cancel {
+.btn-modal-cancel {
   background-color: #95a5a6;
   color: white;
   border: none;
@@ -654,10 +654,11 @@
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
+  font-size: 1rem;
   transition: background-color 0.2s;
 }
 
-.btn-cancel:hover {
+.btn-modal-cancel:hover {
   background-color: #7f8c8d;
 }
 
@@ -669,6 +670,7 @@
   border-radius: 6px;
   cursor: pointer;
   font-weight: 500;
+  font-size: 1rem;
   transition: background-color 0.2s;
 }
 
@@ -680,6 +682,38 @@
   background-color: #cccccc;
   cursor: not-allowed;
   opacity: 0.7;
+}
+
+.btn-disqualify {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.btn-disqualify:hover {
+  background-color: #c0392b;
+}
+
+.btn-undo-disqualify {
+  background-color: #95a5a6;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.5rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 1rem;
+  transition: background-color 0.2s;
+}
+
+.btn-undo-disqualify:hover {
+  background-color: #7f8c8d;
 }
 
 @media (max-width: 768px) {

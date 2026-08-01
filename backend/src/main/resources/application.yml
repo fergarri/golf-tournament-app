@@ -16,6 +16,8 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        jdbc:
+          time_zone: America/Argentina/Buenos_Aires
     open-in-view: false
 
   flyway:

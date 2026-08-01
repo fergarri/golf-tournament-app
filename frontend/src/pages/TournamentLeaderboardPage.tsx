@@ -43,6 +43,7 @@ const TournamentLeaderboardPage = () => {
   const [exportingExcelInscriptions, setExportingExcelInscriptions] = useState(false);
   const [exportingExcelResults, setExportingExcelResults] = useState(false);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
+  const [showDisqualifiedConfirm, setShowDisqualifiedConfirm] = useState(false);
   const [showInscriptionModal, setShowInscriptionModal] = useState(false);
   const [prizeConfirmation, setPrizeConfirmation] = useState<{
     prizeType: string;
@@ -1293,7 +1294,7 @@ const TournamentLeaderboardPage = () => {
             </div>
             
             <div className="modal-footer" style={{ justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', gap: '1.5rem' }}>
+              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: editingScorecard.holeScores.every(hs => hs.golpesPropio != null && hs.golpesPropio > 0) ? 'pointer' : 'not-allowed', color: editingScorecard.holeScores.every(hs => hs.golpesPropio != null && hs.golpesPropio > 0) ? '#2c3e50' : '#bdc3c7' }}>
                   <input
                     type="checkbox"
@@ -1304,33 +1305,47 @@ const TournamentLeaderboardPage = () => {
                   />
                   Entregada
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: '#e74c3c' }}>
-                  <input
-                    type="checkbox"
-                    checked={editingScorecard.status === 'DISQUALIFIED'}
-                    onChange={async (e) => {
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button onClick={handleCloseModal} className="btn-modal-cancel">
+                  Cancelar
+                </button>
+                {editingScorecard.status !== 'DISQUALIFIED' ? (
+                  <button
+                    className="btn-disqualify"
+                    onClick={async () => {
                       try {
-                        if (e.target.checked) {
-                          await scorecardService.disqualifyScorecard(editingScorecard.id);
-                        } else {
-                          await scorecardService.undoDisqualifyScorecard(editingScorecard.id);
-                        }
+                        await scorecardService.disqualifyScorecard(editingScorecard.id);
+                        setShowDisqualifiedConfirm(true);
+                        setTimeout(async () => {
+                          setShowDisqualifiedConfirm(false);
+                          handleCloseModal();
+                          await loadData();
+                        }, 2000);
+                      } catch (err: any) {
+                        setError(err.response?.data?.message || 'Error al descalificar');
+                      }
+                    }}
+                  >
+                    Descalificar
+                  </button>
+                ) : (
+                  <button
+                    className="btn-undo-disqualify"
+                    onClick={async () => {
+                      try {
+                        await scorecardService.undoDisqualifyScorecard(editingScorecard.id);
                         const updated = await scorecardService.getById(editingScorecard.id);
                         setEditingScorecard(updated);
                         await loadData();
                       } catch (err: any) {
-                        setError(err.response?.data?.message || 'Error al cambiar estado');
+                        setError(err.response?.data?.message || 'Error al revertir descalificación');
                       }
                     }}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  Descalificado
-                </label>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button onClick={handleCloseModal} className="btn-cancel">
-                  Cancelar
-                </button>
+                  >
+                    Quitar Descalificación
+                  </button>
+                )}
                 <button 
                   onClick={handleSaveScorecard} 
                   className="btn-save"
@@ -1339,6 +1354,24 @@ const TournamentLeaderboardPage = () => {
                   {savingScorecard ? 'Guardando...' : 'Guardar Cambios'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de confirmación de descalificación — se cierra solo tras 2 segundos */}
+      {showDisqualifiedConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
+        }}>
+          <div style={{
+            backgroundColor: 'white', borderRadius: '0.75rem', padding: '2.5rem 3rem',
+            textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.25)',
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🚫</div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#e74c3c' }}>
+              Descalificado
             </div>
           </div>
         </div>

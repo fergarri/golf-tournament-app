@@ -574,16 +574,6 @@ const TournamentScorecardPage = () => {
       return;
     }
 
-    // Validar que el torneo NO esté finalizado
-    if (tournament?.estado === "FINALIZED") {
-      showModal(
-        'Error',
-        'Imposible entregar la tarjeta. El torneo ha finalizado.',
-        'error'
-      );
-      return;
-    }
-
     const hasAllScores = holes.every(
       (hole) => scores[hole.numeroHoyo]?.propio
     );
@@ -868,9 +858,9 @@ const TournamentScorecardPage = () => {
           <button 
             onClick={handleDeliverScorecard} 
             className="btn btn-deliver"
-            disabled={scorecard?.status === 'DELIVERED' || scorecard?.status === 'CANCELLED' || tournament?.estado === "FINALIZED" || false}
+            disabled={scorecard?.status === 'DELIVERED' || scorecard?.status === 'CANCELLED' || false}
           >
-            {scorecard?.status === 'DELIVERED' ? 'Ya entregada' : scorecard?.status === 'CANCELLED' ? 'Cancelada' : tournament?.estado === "FINALIZED" ? 'Torneo finalizado' : 'Entregar tarjeta'}
+            {scorecard?.status === 'DELIVERED' ? 'Ya entregada' : scorecard?.status === 'CANCELLED' ? 'Cancelada' : 'Entregar tarjeta'}
           </button>
         </div>
       </div>

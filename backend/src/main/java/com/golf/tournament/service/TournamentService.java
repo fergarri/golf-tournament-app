@@ -91,6 +91,7 @@ public class TournamentService {
                 .teeFemenino(teeFemenino)
                 .fechaInicio(request.getFechaInicio())
                 .fechaFin(request.getFechaFin())
+                .horarioCierre(request.getHorarioCierre())
                 .limiteInscriptos(request.getLimiteInscriptos())
                 .valorInscripcion(request.getValorInscripcion())
                 .doublePoints(doublePoints)
@@ -137,6 +138,7 @@ public class TournamentService {
         tournament.setTeeFemenino(teeFemenino);
         tournament.setFechaInicio(request.getFechaInicio());
         tournament.setFechaFin(request.getFechaFin());
+        tournament.setHorarioCierre(request.getHorarioCierre());
         tournament.setLimiteInscriptos(request.getLimiteInscriptos());
         tournament.setValorInscripcion(request.getValorInscripcion());
         tournament.setDoublePoints("FRUTALES".equals(request.getTipo()) && Boolean.TRUE.equals(request.getDoublePoints()));
@@ -361,6 +363,7 @@ public class TournamentService {
                 .teeFemeninoId(tournament.getTeeFemenino() != null ? tournament.getTeeFemenino().getId() : null)
                 .fechaInicio(tournament.getFechaInicio())
                 .fechaFin(tournament.getFechaFin())
+                .horarioCierre(tournament.getHorarioCierre())
                 .limiteInscriptos(tournament.getLimiteInscriptos())
                 .valorInscripcion(tournament.getValorInscripcion())
                 .doublePoints(tournament.getDoublePoints())

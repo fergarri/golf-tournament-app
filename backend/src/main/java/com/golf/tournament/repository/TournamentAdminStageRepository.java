@@ -25,4 +25,7 @@ public interface TournamentAdminStageRepository extends JpaRepository<Tournament
             @Param("tournamentAdminId") Long tournamentAdminId,
             @Param("stageId") Long stageId
     );
+
+    @Query("SELECT s FROM TournamentAdminStage s JOIN s.tournaments t WHERE t.id = :tournamentId")
+    List<TournamentAdminStage> findByTournamentId(@Param("tournamentId") Long tournamentId);
 }

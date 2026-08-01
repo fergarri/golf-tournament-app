@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 @Data
@@ -29,6 +30,7 @@ public class TournamentDTO {
     private Long teeFemeninoId;
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
+    private LocalTime horarioCierre;
     private Integer limiteInscriptos;
     private BigDecimal valorInscripcion;
     private Boolean doublePoints;

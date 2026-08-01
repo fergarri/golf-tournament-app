@@ -11,6 +11,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -64,6 +65,9 @@ public class Tournament {
 
     @Column(name = "fecha_fin")
     private LocalDate fechaFin;
+
+    @Column(name = "horario_cierre")
+    private LocalTime horarioCierre;
 
     @Column(name = "limite_inscriptos")
     private Integer limiteInscriptos;

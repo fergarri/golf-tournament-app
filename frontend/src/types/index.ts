@@ -124,6 +124,7 @@ export interface Tournament {
   teeFemeninoId?: number | null;
   fechaInicio: string;
   fechaFin?: string;
+  horarioCierre?: string | null;
   limiteInscriptos?: number;
   valorInscripcion?: number;
   doublePoints?: boolean;

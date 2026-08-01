@@ -55,15 +55,20 @@ public class ScorecardService {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
 
-        if ("FINALIZED".equals(tournament.getEstado())) {
-            throw new BadRequestException("El torneo ha finalizado. No se puede acceder a la tarjeta.");
-        }
+        boolean isFinalizado = "FINALIZED".equals(tournament.getEstado());
 
         Player player = playerRepository.findById(playerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Player", "id", playerId));
 
         if (!inscriptionRepository.existsByTournamentIdAndPlayerId(tournamentId, playerId)) {
             throw new BadRequestException("Jugador no inscripto en el torneo");
+        }
+
+        // Para torneos finalizados solo se permite acceder a tarjetas existentes, no crear nuevas
+        if (isFinalizado) {
+            return scorecardRepository.findByTournamentIdAndPlayerId(tournamentId, playerId)
+                    .map(this::convertToDTO)
+                    .orElseThrow(() -> new BadRequestException("No hay tarjeta registrada para este jugador en el torneo."));
         }
 
         if (player.getSexo() == null || player.getSexo().trim().isBlank()) {
@@ -394,10 +399,6 @@ public class ScorecardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
         ensureScorecardConfigured(scorecard);
 
-        if ("FINALIZED".equals(scorecard.getTournament().getEstado())) {
-            throw new BadRequestException("Imposible entregar la tarjeta. Torneo cerrado.");
-        }
-
         List<HoleScore> allScores = holeScoreRepository.findByScorecardId(scorecardId);
         if (allScores.isEmpty()) {
             throw new BadRequestException("No se puede entregar la tarjeta sin ninguna puntuación");
@@ -410,7 +411,9 @@ public class ScorecardService {
             throw new BadRequestException("No se puede entregar la tarjeta con hoyos incompletos");
         }
 
-        if (Boolean.TRUE.equals(scorecard.getTournament().getControlCruzado())) {
+        // El control cruzado no aplica cuando el torneo ya está finalizado (ej: cierre automático)
+        boolean torneoFinalizado = "FINALIZED".equals(scorecard.getTournament().getEstado());
+        if (!torneoFinalizado && Boolean.TRUE.equals(scorecard.getTournament().getControlCruzado())) {
             validateScorecardCrossed(scorecard);
         }
 

@@ -3,9 +3,13 @@ package com.golf.tournament.controller;
 import com.golf.tournament.dto.leaderboard.LeaderboardEntryDTO;
 import com.golf.tournament.dto.leaderboard.TournamentScoreDTO;
 import com.golf.tournament.dto.leaderboard.UpdatePaymentRequest;
+import com.golf.tournament.model.TournamentAdminStage;
+import com.golf.tournament.repository.TournamentAdminRepository;
+import com.golf.tournament.repository.TournamentAdminStageRepository;
 import com.golf.tournament.service.ClasicScoreService;
 import com.golf.tournament.service.FrutalesScoreService;
 import com.golf.tournament.service.LeaderboardService;
+import com.golf.tournament.service.TournamentAdminStageService;
 import com.golf.tournament.service.TournamentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +28,9 @@ public class LeaderboardController {
     private final FrutalesScoreService frutalesScoreService;
     private final ClasicScoreService clasicScoreService;
     private final TournamentService tournamentService;
+    private final TournamentAdminRepository tournamentAdminRepository;
+    private final TournamentAdminStageRepository stageRepository;
+    private final TournamentAdminStageService stageService;
 
     @GetMapping("/tournaments/{tournamentId}")
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
@@ -74,7 +81,9 @@ public class LeaderboardController {
     @PostMapping("/tournaments/{tournamentId}/frutales/calculate")
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<List<TournamentScoreDTO>> calculateFrutalesScores(@PathVariable Long tournamentId) {
-        return ResponseEntity.ok(frutalesScoreService.calculateScores(tournamentId));
+        List<TournamentScoreDTO> result = frutalesScoreService.calculateScores(tournamentId);
+        recalculateStagesIfNeeded(tournamentId);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/public/{codigo}/frutales")
@@ -94,7 +103,23 @@ public class LeaderboardController {
     @PostMapping("/tournaments/{tournamentId}/clasic/calculate")
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<List<TournamentScoreDTO>> calculateClasicScores(@PathVariable Long tournamentId) {
-        return ResponseEntity.ok(clasicScoreService.calculateScores(tournamentId));
+        List<TournamentScoreDTO> result = clasicScoreService.calculateScores(tournamentId);
+        recalculateStagesIfNeeded(tournamentId);
+        return ResponseEntity.ok(result);
+    }
+
+    /** Recalcula las etapas administrativas que contienen este torneo, si las hay. */
+    private void recalculateStagesIfNeeded(Long tournamentId) {
+        tournamentAdminRepository.findByTournamentInAnyStage(tournamentId).ifPresent(admin -> {
+            List<TournamentAdminStage> stages = stageRepository.findByTournamentId(tournamentId);
+            for (TournamentAdminStage stage : stages) {
+                try {
+                    stageService.calculateStageScores(admin.getId(), stage.getId());
+                } catch (Exception e) {
+                    // No interrumpir la respuesta si falla el recálculo de etapa
+                }
+            }
+        });
     }
 
     @GetMapping("/public/{codigo}/clasic")

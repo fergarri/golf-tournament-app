@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.math.BigDecimal;
 
@@ -38,6 +39,7 @@ public class CreateTournamentRequest {
     private LocalDate fechaInicio;
     
     private LocalDate fechaFin;
+    private LocalTime horarioCierre;
     private Integer limiteInscriptos;
     private BigDecimal valorInscripcion;
     private Boolean doublePoints;

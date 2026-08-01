@@ -66,11 +66,6 @@ const TournamentAccessPage = () => {
       return;
     }
 
-    if (tournament?.estado === "FINALIZED") {
-      setError('Imposible acceder a la tarjeta. El torneo ha finalizado.');
-      return;
-    }
-
     try {
       setSubmitting(true);
       setError('');
