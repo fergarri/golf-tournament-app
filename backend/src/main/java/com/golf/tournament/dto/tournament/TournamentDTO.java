@@ -39,4 +39,8 @@ public class TournamentDTO {
     private List<TournamentCategoryDTO> categories;
     private List<TournamentPrizeDTO> prizes;
     private ScoringConfigDTO scoringConfig;
+    /** Presente si el torneo está asociado a una etapa de un Torneo Administrativo */
+    private Long tournamentAdminId;
+    private Long stageId;
+    private String stageName;
 }

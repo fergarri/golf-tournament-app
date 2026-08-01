@@ -134,6 +134,10 @@ export interface Tournament {
   teeConfig?: TournamentTeeConfig;
   prizes?: TournamentPrize[];
   scoringConfig?: ScoringConfig | null;
+  /** Presente si el torneo está asociado a una etapa de un Torneo Administrativo */
+  tournamentAdminId?: number | null;
+  stageId?: number | null;
+  stageName?: string | null;
 }
 
 export interface TournamentCategory {

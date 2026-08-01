@@ -5,8 +5,10 @@ import { courseService } from '../services/courseService';
 import { Tournament, Course, TournamentCategory } from '../types';
 import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
+import ResultsMessageModal from '../components/ResultsMessageModal';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
 import { formatDateSafe } from '../utils/dateUtils';
+import { buildResultsShareMessage } from '../utils/resultsMessage';
 import '../components/Form.css';
 
 const TournamentsPage = () => {
@@ -18,6 +20,7 @@ const TournamentsPage = () => {
   const [showModal, setShowModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
+  const [resultsMessageModal, setResultsMessageModal] = useState<string | null>(null);
   const [showStartBlockedModal, setShowStartBlockedModal] = useState(false);
   const [startBlockedMessage, setStartBlockedMessage] = useState('');
   const [showInscriptionModal, setShowInscriptionModal] = useState(false);
@@ -283,12 +286,14 @@ const TournamentsPage = () => {
     setShowCopyLinkModal(true);
   };
 
-  const getPlayLink = (codigo: string) => {
-    return `${window.location.origin}/play/${codigo}`;
+  const copyResultsMessage = (tournament: Tournament) => {
+    const message = buildResultsShareMessage(tournament);
+    navigator.clipboard.writeText(message);
+    setResultsMessageModal(message);
   };
 
-  const getResultsLink = (codigo: string) => {
-    return `${window.location.origin}/results/${codigo}`;
+  const getPlayLink = (codigo: string) => {
+    return `${window.location.origin}/play/${codigo}`;
   };
 
   const addCategory = () => {
@@ -408,7 +413,7 @@ const TournamentsPage = () => {
     },
     {
       label: 'Link Resultados',
-      onClick: (tournament) => copyLink(getResultsLink(tournament.codigo)),
+      onClick: (tournament) => copyResultsMessage(tournament),
       variant: 'secondary',
       show: (tournament) => tournament.estado === 'FINALIZED',
     },
@@ -546,6 +551,11 @@ const TournamentsPage = () => {
           </div>
         </div>
       </Modal>
+
+      <ResultsMessageModal
+        message={resultsMessageModal}
+        onClose={() => setResultsMessageModal(null)}
+      />
 
       <Modal
         isOpen={showStartBlockedModal}

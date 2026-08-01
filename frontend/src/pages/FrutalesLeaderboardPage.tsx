@@ -8,6 +8,8 @@ import { Tournament, FrutalesScore, Scorecard, LeaderboardEntry, InscriptionResp
 import Table, { TableAction } from '../components/Table';
 import { formatDateSafe } from '../utils/dateUtils';
 import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
+import { buildResultsShareMessage } from '../utils/resultsMessage';
+import ResultsMessageModal from '../components/ResultsMessageModal';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 
@@ -27,7 +29,7 @@ const FrutalesLeaderboardPage = () => {
   const [editingScorecard, setEditingScorecard] = useState<Scorecard | null>(null);
   const [savingScorecard, setSavingScorecard] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
+  const [resultsMessageModal, setResultsMessageModal] = useState<string | null>(null);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
 
@@ -263,14 +265,11 @@ const FrutalesLeaderboardPage = () => {
     }
   };
 
-  const getResultsLink = (codigo: string) => {
-    return `${window.location.origin}/frutales-results/${codigo}`;
-  };
-
-  const copyResultsLink = () => {
-    if (!tournament?.codigo) return;
-    navigator.clipboard.writeText(getResultsLink(tournament.codigo));
-    setShowCopyLinkModal(true);
+  const copyResultsMessage = () => {
+    if (!tournament) return;
+    const message = buildResultsShareMessage(tournament);
+    navigator.clipboard.writeText(message);
+    setResultsMessageModal(message);
   };
 
   const filteredScores = searchQuery
@@ -395,9 +394,6 @@ const FrutalesLeaderboardPage = () => {
           <button onClick={() => navigate('/tournaments')} className="btn-back">
             ← Volver a Torneos
           </button>
-          <button onClick={loadData} className="btn-refresh" disabled={loading}>
-            {loading ? '⟳ Actualizando...' : '⟳ Actualizar'}
-          </button>
           {tournament?.estado === 'IN_PROGRESS' && (
             <button
               onClick={handleFinalizeTournament}
@@ -434,7 +430,7 @@ const FrutalesLeaderboardPage = () => {
           </button>
           {tournament?.estado === 'FINALIZED' && (
             <button
-              onClick={copyResultsLink}
+              onClick={copyResultsMessage}
               className="btn-copy-link"
               style={{
                 backgroundColor: '#3498db',
@@ -530,25 +526,10 @@ const FrutalesLeaderboardPage = () => {
         </>
       )}
 
-      {/* Copy Link Modal */}
-      {showCopyLinkModal && (
-        <div className="modal-overlay" onClick={() => setShowCopyLinkModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', color: '#27ae60', marginBottom: '1rem' }}>✓</div>
-            <h3 style={{ marginBottom: '0.5rem' }}>Link Copiado</h3>
-            <p style={{ color: '#7f8c8d', marginBottom: '1.5rem' }}>
-              El link de resultados ha sido copiado al portapapeles
-            </p>
-            <button
-              onClick={() => setShowCopyLinkModal(false)}
-              className="btn-primary"
-              style={{ backgroundColor: '#3498db', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
+      <ResultsMessageModal
+        message={resultsMessageModal}
+        onClose={() => setResultsMessageModal(null)}
+      />
 
       {/* Edit Scorecard Modal */}
       {editingScorecardId && editingScorecard && (

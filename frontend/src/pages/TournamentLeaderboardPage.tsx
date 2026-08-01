@@ -13,7 +13,9 @@ import Table, { TableAction } from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
 import Modal from '../components/Modal';
+import ResultsMessageModal from '../components/ResultsMessageModal';
 import { formatDateSafe } from '../utils/dateUtils';
+import { buildResultsShareMessage } from '../utils/resultsMessage';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 import './TournamentScorecardPage.css';
@@ -37,7 +39,7 @@ const TournamentLeaderboardPage = () => {
   const [paymentChanges, setPaymentChanges] = useState<Map<number, boolean>>(new Map());
   const [savingPayments, setSavingPayments] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
+  const [resultsMessageModal, setResultsMessageModal] = useState<string | null>(null);
   const [exportingInscriptions, setExportingInscriptions] = useState(false);
   const [exportResult, setExportResult] = useState<ExportTournamentInscriptionsResult | null>(null);
   const [exportingExcelInscriptions, setExportingExcelInscriptions] = useState(false);
@@ -568,14 +570,11 @@ const TournamentLeaderboardPage = () => {
     setConfirmDialog({ kind: 'removeInscription', entry });
   };
 
-  const getResultsLink = (codigo: string) => {
-    return `${window.location.origin}/results/${codigo}`;
-  };
-
-  const copyResultsLink = () => {
-    if (!tournament?.codigo) return;
-    navigator.clipboard.writeText(getResultsLink(tournament.codigo));
-    setShowCopyLinkModal(true);
+  const copyResultsMessage = () => {
+    if (!tournament) return;
+    const message = buildResultsShareMessage(tournament);
+    navigator.clipboard.writeText(message);
+    setResultsMessageModal(message);
   };
 
   // Apply search filter to the category-filtered leaderboard
@@ -737,9 +736,6 @@ const TournamentLeaderboardPage = () => {
           <button onClick={() => navigate('/tournaments')} className="btn-back">
             ← Volver a Torneos
           </button>
-          <button onClick={() => loadData()} className="btn-refresh" disabled={loading}>
-            {loading ? '⟳ Actualizando...' : '⟳ Actualizar'}
-          </button>
           {tournament && (tournament.estado === 'PENDING' || tournament.estado === 'IN_PROGRESS') && (
             <button onClick={() => setShowInscriptionModal(true)} className="btn-refresh">
               Inscribir
@@ -747,7 +743,7 @@ const TournamentLeaderboardPage = () => {
           )}
           {tournament?.estado === 'FINALIZED' && (
             <button 
-              onClick={copyResultsLink} 
+              onClick={copyResultsMessage} 
               className="btn-copy-link"
             >
               📋 Link Resultados
@@ -964,34 +960,10 @@ const TournamentLeaderboardPage = () => {
         )}
       </Modal>
 
-      {/* Copy Link Modal */}
-      {showCopyLinkModal && (
-        <div className="modal-overlay" onClick={() => setShowCopyLinkModal(false)}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
-            <div style={{ fontSize: '3rem', color: '#27ae60', marginBottom: '1rem' }}>✓</div>
-            <h3 style={{ marginBottom: '0.5rem' }}>Link Copiado</h3>
-            <p style={{ color: '#7f8c8d', marginBottom: '1.5rem' }}>
-              El link de resultados ha sido copiado al portapapeles
-            </p>
-            <button 
-              onClick={() => setShowCopyLinkModal(false)} 
-              className="btn-primary"
-              style={{
-                backgroundColor: '#3498db',
-                color: 'white',
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
-            >
-              Cerrar
-            </button>
-          </div>
-        </div>
-      )}
-
+      <ResultsMessageModal
+        message={resultsMessageModal}
+        onClose={() => setResultsMessageModal(null)}
+      />
       {tournament && (
         <ManualInscriptionModal
           isOpen={showInscriptionModal}

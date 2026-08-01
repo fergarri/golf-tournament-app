@@ -28,7 +28,7 @@ public class TournamentService {
     private final TournamentInscriptionRepository tournamentInscriptionRepository;
     private final ScorecardRepository scorecardRepository;
     private final TournamentPrizeService tournamentPrizeService;
-    private final TournamentAdminRepository tournamentAdminRepository;
+    private final TournamentAdminStageRepository tournamentAdminStageRepository;
     private final TournamentAdminScoringConfigService tournamentAdminScoringConfigService;
 
     private static final String CODIGO_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -41,7 +41,11 @@ public class TournamentService {
     @Transactional(readOnly = true)
     public List<TournamentDTO> getAllTournaments() {
         return tournamentRepository.findAllOrderByFechaInicioDesc().stream()
-                .map(this::convertToDTO)
+                .map(tournament -> {
+                    TournamentDTO dto = convertToDTO(tournament);
+                    enrichWithAdminStage(dto, false);
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -50,9 +54,7 @@ public class TournamentService {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
         TournamentDTO dto = convertToDTO(tournament);
-        tournamentAdminRepository.findByTournamentInAnyStage(id)
-                .ifPresent(admin -> dto.setScoringConfig(
-                        tournamentAdminScoringConfigService.getOrDefaultByTournamentAdminId(admin.getId())));
+        enrichWithAdminStage(dto, true);
         return dto;
     }
 
@@ -61,9 +63,7 @@ public class TournamentService {
         Tournament tournament = tournamentRepository.findByCodigo(codigo)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "codigo", codigo));
         TournamentDTO dto = convertToDTO(tournament);
-        tournamentAdminRepository.findByTournamentInAnyStage(tournament.getId())
-                .ifPresent(admin -> dto.setScoringConfig(
-                        tournamentAdminScoringConfigService.getOrDefaultByTournamentAdminId(admin.getId())));
+        enrichWithAdminStage(dto, true);
         return dto;
     }
 
@@ -372,6 +372,26 @@ public class TournamentService {
                 .categories(categories)
                 .prizes(prizes)
                 .build();
+    }
+
+    /**
+     * Si el torneo pertenece a una etapa de Torneo Administrativo, completa stage/admin
+     * y opcionalmente la scoring config.
+     */
+    private void enrichWithAdminStage(TournamentDTO dto, boolean includeScoringConfig) {
+        List<TournamentAdminStage> stages = tournamentAdminStageRepository.findByTournamentId(dto.getId());
+        if (stages.isEmpty()) {
+            return;
+        }
+        TournamentAdminStage stage = stages.get(0);
+        Long adminId = stage.getTournamentAdmin().getId();
+        dto.setStageId(stage.getId());
+        dto.setStageName(stage.getNombre());
+        dto.setTournamentAdminId(adminId);
+        if (includeScoringConfig) {
+            dto.setScoringConfig(
+                    tournamentAdminScoringConfigService.getOrDefaultByTournamentAdminId(adminId));
+        }
     }
 
     @Transactional
