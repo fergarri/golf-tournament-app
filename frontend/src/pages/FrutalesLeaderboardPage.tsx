@@ -398,16 +398,8 @@ const FrutalesLeaderboardPage = () => {
             <button
               onClick={handleFinalizeTournament}
               disabled={finalizing}
-              style={{
-                backgroundColor: '#e67e22',
-                color: 'white',
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: finalizing ? 'not-allowed' : 'pointer',
-                fontWeight: 'bold',
-                opacity: finalizing ? 0.7 : 1,
-              }}
+              className="btn-finalize-tournament"
+              style={finalizing ? { opacity: 0.7 } : undefined}
             >
               {finalizing ? 'Finalizando...' : 'Finalizar Torneo'}
             </button>
@@ -415,16 +407,7 @@ const FrutalesLeaderboardPage = () => {
           <button
             onClick={handleCalculateScores}
             disabled={calculating}
-            style={{
-              backgroundColor: '#8e44ad',
-              color: 'white',
-              padding: '10px 20px',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: calculating ? 'not-allowed' : 'pointer',
-              fontWeight: 'bold',
-              opacity: calculating ? 0.7 : 1,
-            }}
+            className="btn-calculate"
           >
             {calculating ? 'Calculando...' : 'Calcular Puntos'}
           </button>
@@ -432,15 +415,6 @@ const FrutalesLeaderboardPage = () => {
             <button
               onClick={copyResultsMessage}
               className="btn-copy-link"
-              style={{
-                backgroundColor: '#3498db',
-                color: 'white',
-                padding: '10px 20px',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontWeight: 'bold'
-              }}
             >
               Link de Resultados
             </button>
