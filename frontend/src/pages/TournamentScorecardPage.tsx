@@ -597,7 +597,11 @@ const TournamentScorecardPage = () => {
       return;
     }
 
-    if (tournament?.controlCruzado && !scorecard?.marcadorValidado) {
+    const markedPlayerExempt =
+      scorecard?.markedPlayerScorecardStatus === 'CANCELLED' ||
+      scorecard?.markedPlayerScorecardStatus === 'DISQUALIFIED';
+
+    if (tournament?.controlCruzado && !scorecard?.marcadorValidado && !markedPlayerExempt) {
       showModal(
         'Tarjeta incompleta',
         'Hay hoyos del jugador que estás marcando que aún no están validados. Todos deben coincidir antes de poder entregar.',

@@ -7,6 +7,7 @@ import { inscriptionService } from '../services/inscriptionService';
 import { Tournament, FrutalesScore, Scorecard, LeaderboardEntry, InscriptionResponse } from '../types';
 import Table, { TableAction } from '../components/Table';
 import { formatDateSafe } from '../utils/dateUtils';
+import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 
@@ -272,13 +273,6 @@ const FrutalesLeaderboardPage = () => {
     setShowCopyLinkModal(true);
   };
 
-  const getStatusLabel = (status: string, hasScorecard: boolean) => {
-    if (status === 'DISQUALIFIED') return 'DS';
-    if (!hasScorecard) return null;
-    if (status !== 'DELIVERED') return 'NM';
-    return null;
-  };
-
   const filteredScores = searchQuery
     ? frutalesScores.filter((entry: FrutalesScore) =>
         `${entry.playerName} ${entry.matricula}`.toLowerCase().includes(searchQuery.toLowerCase())
@@ -313,7 +307,8 @@ const FrutalesLeaderboardPage = () => {
     {
       header: 'Pos',
       accessor: (row: FrutalesScore) => {
-        if (row.status === 'DISQUALIFIED') return <span style={{ color: '#e74c3c', fontWeight: 'bold' }}>DS</span>;
+        const label = getScorecardStatusLabel(row.status, Boolean(row.scorecardId));
+        if (label) return <span style={{ color: label.color, fontWeight: 'bold' }}>{label.code}</span>;
         if (row.position) return <span className={`position ${getPositionClass(row.position)}`}>{row.position}</span>;
         return <span>-</span>;
       },
@@ -333,18 +328,12 @@ const FrutalesLeaderboardPage = () => {
     },
     {
       header: 'Gross',
-      accessor: (row: FrutalesScore) => {
-        const label = getStatusLabel(row.status, Boolean(row.scorecardId));
-        if (label) return <span style={{ color: label === 'DS' ? '#e74c3c' : '#f39c12', fontWeight: 'bold' }}>{label}</span>;
-        return row.scoreGross || '-';
-      },
+      accessor: (row: FrutalesScore) => row.scoreGross || '-',
       width: '6%',
     },
     {
       header: 'Neto',
       accessor: (row: FrutalesScore) => {
-        const label = getStatusLabel(row.status, Boolean(row.scorecardId));
-        if (label) return <span style={{ color: label === 'DS' ? '#e74c3c' : '#f39c12', fontWeight: 'bold' }}>{label}</span>;
         return row.scoreNeto != null ? <strong>{row.scoreNeto}</strong> : '-';
       },
       width: '6%',

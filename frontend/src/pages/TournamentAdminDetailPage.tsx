@@ -28,7 +28,6 @@ const TournamentAdminDetailPage = () => {
   const [selectedPlayers, setSelectedPlayers] = useState<Set<number>>(new Set());
   const [loadingPlayers, setLoadingPlayers] = useState(false);
   const [savingInscription, setSavingInscription] = useState(false);
-  const [importingInscriptions, setImportingInscriptions] = useState(false);
   const [showScoringConfigModal, setShowScoringConfigModal] = useState(false);
   const [exportingExcel, setExportingExcel] = useState(false);
 
@@ -185,26 +184,6 @@ const TournamentAdminDetailPage = () => {
     }
   };
 
-  const handleImportInscriptions = async () => {
-    if (!id) return;
-    try {
-      setImportingInscriptions(true);
-      const result = await tournamentAdminService.importInscriptions(parseInt(id));
-      alert(
-        `Importación completada.\n` +
-        `Torneos pendientes relacionados: ${result.relatedPendingTournaments}\n` +
-        `Inscriptos importados: ${result.importedCount}\n` +
-        `Saltados (ya inscriptos): ${result.skippedAlreadyInscribed}\n` +
-        `Saltados (sin cupo): ${result.skippedByCapacity}`
-      );
-      await loadData();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error importando inscriptos');
-    } finally {
-      setImportingInscriptions(false);
-    }
-  };
-
   const handleExcelExport = async () => {
     if (!id || !detail) return;
     try {
@@ -246,13 +225,6 @@ const TournamentAdminDetailPage = () => {
             className="btn-refresh"
           >
             Inscribir
-          </button>
-          <button
-            onClick={handleImportInscriptions}
-            className="btn-refresh"
-            disabled={importingInscriptions}
-          >
-            {importingInscriptions ? 'Importando...' : 'Importar Inscriptos a Torneos'}
           </button>
           {detail.canManageStages && (
             <button

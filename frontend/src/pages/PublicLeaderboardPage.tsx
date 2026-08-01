@@ -7,6 +7,7 @@ import Table from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import { formatDateSafe } from '../utils/dateUtils';
 import { standardRank } from '../utils/ranking';
+import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 
@@ -274,13 +275,15 @@ const PublicLeaderboardPage = () => {
   const columns = [
     {
       header: 'Pos',
-      accessor: (row: LeaderboardEntry) => (
-        row.position && row.position > 0 ? (
+      accessor: (row: LeaderboardEntry) => {
+        const label = getScorecardStatusLabel(row.status, Boolean(row.scorecardId));
+        if (label) return <span style={{ color: label.color, fontWeight: 'bold' }}>{label.code}</span>;
+        return row.position && row.position > 0 ? (
           <span className={`position ${getPositionClass(row.position)}`}>{row.position}</span>
         ) : (
           <span>-</span>
-        )
-      ),
+        );
+      },
       width: '60px',
     },
     { header: 'Jugador', accessor: 'playerName' as keyof LeaderboardEntry, width: '15%' },
@@ -297,12 +300,12 @@ const PublicLeaderboardPage = () => {
     },
     { 
       header: 'Gross', 
-      accessor: 'scoreGross' as keyof LeaderboardEntry,
+      accessor: (row: LeaderboardEntry) => row.status === 'DELIVERED' ? row.scoreGross : '-',
       width: '7%' 
     },
     { 
       header: 'Neto', 
-      accessor: (row: LeaderboardEntry) => <strong>{row.scoreNeto}</strong>, 
+      accessor: (row: LeaderboardEntry) => row.status === 'DELIVERED' ? <strong>{row.scoreNeto}</strong> : '-',
       width: '7%' 
     },
     {

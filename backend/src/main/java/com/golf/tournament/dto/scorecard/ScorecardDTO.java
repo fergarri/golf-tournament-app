@@ -30,4 +30,10 @@ public class ScorecardDTO {
     private Integer totalScore;
     private Integer totalPar;
     private Boolean marcadorValidado;
+    /**
+     * Estado (CANCELLED, DISQUALIFIED, etc.) de la tarjeta propia del jugador que estoy marcando.
+     * Null si no tengo marcador asignado o esa tarjeta no existe. El frontend lo usa para no bloquear
+     * la entrega cuando el jugador marcado canceló o fue descalificado.
+     */
+    private String markedPlayerScorecardStatus;
 }

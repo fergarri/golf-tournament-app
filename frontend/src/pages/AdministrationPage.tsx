@@ -305,7 +305,7 @@ const AdministrationPage = () => {
       show: (admin) => admin.estado === 'ACTIVE',
     },
     {
-      label: 'Importar Inscriptos a Torneos',
+      label: 'Exportar Inscriptos a Torneos',
       onClick: handleOpenImportModal,
       variant: 'secondary',
       show: (admin) => admin.estado === 'ACTIVE',
@@ -545,7 +545,7 @@ const AdministrationPage = () => {
           setShowImportModal(false);
           setImportTargetAdmin(null);
         }}
-        title="Importar Inscriptos a Torneos"
+        title="Exportar Inscriptos a Torneos"
         size="medium"
         footer={
           <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>

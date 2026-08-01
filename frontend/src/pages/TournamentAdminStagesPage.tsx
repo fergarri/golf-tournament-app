@@ -22,6 +22,9 @@ const TournamentAdminStagesPage = () => {
   const [error, setError] = useState('');
   const [calculating, setCalculating] = useState(false);
   const [calcSuccess, setCalcSuccess] = useState(false);
+  const [importingInscriptions, setImportingInscriptions] = useState(false);
+  const [importResultMessage, setImportResultMessage] = useState('');
+  const [showImportResultModal, setShowImportResultModal] = useState(false);
 
   const [showModal, setShowModal] = useState(false);
   const [editingStage, setEditingStage] = useState<TournamentAdminStage | null>(null);
@@ -127,6 +130,26 @@ const TournamentAdminStagesPage = () => {
     }
   };
 
+  const handleImportInscriptions = async () => {
+    try {
+      setImportingInscriptions(true);
+      const result = await tournamentAdminService.importInscriptions(tournamentAdminId);
+      setImportResultMessage(
+        `Exportación completada.\n` +
+        `Torneos pendientes relacionados: ${result.relatedPendingTournaments}\n` +
+        `Inscriptos exportados: ${result.importedCount}\n` +
+        `Saltados (ya inscriptos): ${result.skippedAlreadyInscribed}\n` +
+        `Saltados (sin cupo): ${result.skippedByCapacity}`
+      );
+      setShowImportResultModal(true);
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error exportando inscriptos');
+    } finally {
+      setImportingInscriptions(false);
+    }
+  };
+
   const handleCalculateAll = async () => {
     try {
       setCalculating(true);
@@ -222,6 +245,13 @@ const TournamentAdminStagesPage = () => {
             Actualizar
           </button>
           <button
+            onClick={handleImportInscriptions}
+            className="btn-refresh"
+            disabled={importingInscriptions}
+          >
+            {importingInscriptions ? 'Exportando...' : 'Exportar Inscriptos a Torneos'}
+          </button>
+          <button
             onClick={() => navigate(`/administration/${tournamentAdminId}/stages/playoff-results`)}
             className="btn-admin-stages"
             disabled={stages.length === 0}
@@ -259,6 +289,26 @@ const TournamentAdminStagesPage = () => {
         actions={stageActions}
         emptyMessage="No hay etapas creadas"
       />
+
+      <Modal
+        isOpen={showImportResultModal}
+        onClose={() => setShowImportResultModal(false)}
+        title="Resultado de Exportación"
+        size="medium"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={() => setShowImportResultModal(false)}
+              className="btn-compact btn-compact-primary"
+            >
+              Aceptar
+            </button>
+          </div>
+        }
+      >
+        <p style={{ whiteSpace: 'pre-line' }}>{importResultMessage}</p>
+      </Modal>
 
       <Modal
         isOpen={showModal}

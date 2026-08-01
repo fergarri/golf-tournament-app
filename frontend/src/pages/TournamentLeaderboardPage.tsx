@@ -8,6 +8,7 @@ import { tournamentAdminService } from '../services/tournamentAdminService';
 import { excelExportService } from '../services/excelExportService';
 import { Tournament, LeaderboardEntry, Scorecard, TournamentScore, ExportTournamentInscriptionsResult } from '../types';
 import { standardRank } from '../utils/ranking';
+import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
 import Table, { TableAction } from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
@@ -591,13 +592,15 @@ const TournamentLeaderboardPage = () => {
   const columns = [
     {
       header: 'Pos',
-      accessor: (row: LeaderboardEntry) => (
-        row.status === 'DELIVERED' && row.position && row.position > 0 ? (
+      accessor: (row: LeaderboardEntry) => {
+        const label = getScorecardStatusLabel(row.status, Boolean(row.scorecardId));
+        if (label) return <span style={{ color: label.color, fontWeight: 'bold' }}>{label.code}</span>;
+        return row.status === 'DELIVERED' && row.position && row.position > 0 ? (
           <span className={`position ${getPositionClass(row.position)}`}>{row.position}</span>
         ) : (
           <span>-</span>
-        )
-      ),
+        );
+      },
       width: '60px',
     },
     { header: 'Jugador', accessor: 'playerName' as keyof LeaderboardEntry, width: '15%' },
@@ -619,7 +622,7 @@ const TournamentLeaderboardPage = () => {
     },
     { 
       header: 'Neto', 
-      accessor: (row: LeaderboardEntry) => row.status === 'DELIVERED' ? <strong>{row.scoreNeto}</strong> : '-', 
+      accessor: (row: LeaderboardEntry) => row.status === 'DELIVERED' ? <strong>{row.scoreNeto}</strong> : '-',
       width: '7%' 
     },
     {

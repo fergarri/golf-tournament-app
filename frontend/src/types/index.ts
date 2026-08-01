@@ -165,6 +165,7 @@ export interface Scorecard {
   totalScore?: number;
   totalPar: number;
   marcadorValidado?: boolean;
+  markedPlayerScorecardStatus?: string;
 }
 
 export interface HoleScore {

@@ -422,8 +422,23 @@ public class ScorecardService {
         return convertToDTO(scorecard);
     }
 
+    /**
+     * Tarjetas en estos estados quedan "fuera de juego": si un jugador cancela o es descalificado,
+     * ni quien lo marca ni a quien él marca deben quedar bloqueados por su falta de validación.
+     */
+    private static final java.util.Set<ScorecardStatus> EXEMPT_FROM_CROSS_VALIDATION =
+            java.util.EnumSet.of(ScorecardStatus.CANCELLED, ScorecardStatus.DISQUALIFIED);
+
     private void validateScorecardCrossed(Scorecard scorecard) {
-        if (!Boolean.TRUE.equals(scorecard.getMarcadorValidado())) {
+        boolean markedPlayerExempt = false;
+        if (scorecard.getMarker() != null) {
+            markedPlayerExempt = scorecardRepository
+                    .findByTournamentIdAndPlayerId(scorecard.getTournament().getId(), scorecard.getMarker().getId())
+                    .map(s -> EXEMPT_FROM_CROSS_VALIDATION.contains(s.getStatus()))
+                    .orElse(false);
+        }
+
+        if (!markedPlayerExempt && !Boolean.TRUE.equals(scorecard.getMarcadorValidado())) {
             throw new BadRequestException(
                     "No se puede entregar la tarjeta hasta que todos los hoyos del jugador que estás marcando estén validados"
             );
@@ -440,9 +455,10 @@ public class ScorecardService {
             );          
         }
 
-        boolean alguienNoMeValidoTodo = scorecardsQueMeMarcan.stream()
+        boolean algunMarcadorActivoSinValidar = scorecardsQueMeMarcan.stream()
+                .filter(s -> !EXEMPT_FROM_CROSS_VALIDATION.contains(s.getStatus()))
                 .anyMatch(s -> !Boolean.TRUE.equals(s.getMarcadorValidado()));
-        if (alguienNoMeValidoTodo) {
+        if (algunMarcadorActivoSinValidar) {
             throw new BadRequestException(
                     "No se puede entregar la tarjeta hasta que tu marcador haya validado todos tus hoyos"
             );
@@ -772,6 +788,8 @@ public class ScorecardService {
                 .totalScore(totalScore > 0 ? totalScore : null)
                 .totalPar(totalPar)
                 .marcadorValidado(scorecard.getMarcadorValidado())
+                .markedPlayerScorecardStatus(
+                        finalScorecardDelMarcado != null ? finalScorecardDelMarcado.getStatus().name() : null)
                 .build();
     }
 
