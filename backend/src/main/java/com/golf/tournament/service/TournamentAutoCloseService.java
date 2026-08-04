@@ -3,10 +3,8 @@ package com.golf.tournament.service;
 import com.golf.tournament.model.Scorecard;
 import com.golf.tournament.model.ScorecardStatus;
 import com.golf.tournament.model.Tournament;
-import com.golf.tournament.model.TournamentAdminStage;
 import com.golf.tournament.repository.ScorecardRepository;
 import com.golf.tournament.repository.TournamentAdminRepository;
-import com.golf.tournament.repository.TournamentAdminStageRepository;
 import com.golf.tournament.repository.TournamentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,8 +39,7 @@ public class TournamentAutoCloseService {
 
     private final TournamentRepository tournamentRepository;
     private final TournamentAdminRepository tournamentAdminRepository;
-    private final TournamentAdminStageRepository stageRepository;
-    private final TournamentAdminStageService stageService;
+    private final TournamentAdminPlayoffResultService playoffResultService;
     private final TournamentService tournamentService;
     private final ScorecardRepository scorecardRepository;
     private final FrutalesScoreService frutalesScoreService;
@@ -147,24 +144,16 @@ public class TournamentAutoCloseService {
                     clasicScoreService.calculateScores(tournament.getId());
                     log.info("Puntos CLASICO calculados automáticamente para torneo {}", tournament.getId());
                 }
-                // Recalcular las etapas que contienen este torneo para actualizar los totales persistidos
-                recalculateStagesContaining(tournament.getId(), admin.getId());
+                // Recalcular todas las etapas y el playoff del Torneo Administrativo, igual que el
+                // botón manual "Calcular Puntos" (TournamentAdminPlayoffResultService.calculateResults
+                // ya recalcula todas las etapas antes de recalcular el playoff).
+                playoffResultService.calculateResults(admin.getId());
+                log.info("Etapas y playoff recalculados automáticamente para torneo admin {} tras cierre del torneo {}",
+                        admin.getId(), tournament.getId());
             } catch (Exception e) {
                 log.error("Error calculando puntos automáticamente para torneo {}: {}",
                         tournament.getId(), e.getMessage(), e);
             }
         });
-    }
-
-    private void recalculateStagesContaining(Long tournamentId, Long adminId) {
-        List<TournamentAdminStage> stages = stageRepository.findByTournamentId(tournamentId);
-        for (TournamentAdminStage stage : stages) {
-            try {
-                stageService.calculateStageScores(adminId, stage.getId());
-                log.info("Etapa {} recalculada automáticamente tras cierre del torneo {}", stage.getId(), tournamentId);
-            } catch (Exception e) {
-                log.error("Error recalculando etapa {} para torneo {}: {}", stage.getId(), tournamentId, e.getMessage(), e);
-            }
-        }
     }
 }

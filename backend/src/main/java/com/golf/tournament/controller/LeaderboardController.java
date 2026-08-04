@@ -3,13 +3,11 @@ package com.golf.tournament.controller;
 import com.golf.tournament.dto.leaderboard.LeaderboardEntryDTO;
 import com.golf.tournament.dto.leaderboard.TournamentScoreDTO;
 import com.golf.tournament.dto.leaderboard.UpdatePaymentRequest;
-import com.golf.tournament.model.TournamentAdminStage;
 import com.golf.tournament.repository.TournamentAdminRepository;
-import com.golf.tournament.repository.TournamentAdminStageRepository;
 import com.golf.tournament.service.ClasicScoreService;
 import com.golf.tournament.service.FrutalesScoreService;
 import com.golf.tournament.service.LeaderboardService;
-import com.golf.tournament.service.TournamentAdminStageService;
+import com.golf.tournament.service.TournamentAdminPlayoffResultService;
 import com.golf.tournament.service.TournamentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,8 +27,7 @@ public class LeaderboardController {
     private final ClasicScoreService clasicScoreService;
     private final TournamentService tournamentService;
     private final TournamentAdminRepository tournamentAdminRepository;
-    private final TournamentAdminStageRepository stageRepository;
-    private final TournamentAdminStageService stageService;
+    private final TournamentAdminPlayoffResultService playoffResultService;
 
     @GetMapping("/tournaments/{tournamentId}")
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
@@ -108,16 +105,16 @@ public class LeaderboardController {
         return ResponseEntity.ok(result);
     }
 
-    /** Recalcula las etapas administrativas que contienen este torneo, si las hay. */
+    /**
+     * Si el torneo pertenece a un Torneo Administrativo, recalcula todas sus etapas y el playoff
+     * (mismo comportamiento que el botón manual "Calcular Puntos" de la vista de etapas).
+     */
     private void recalculateStagesIfNeeded(Long tournamentId) {
         tournamentAdminRepository.findByTournamentInAnyStage(tournamentId).ifPresent(admin -> {
-            List<TournamentAdminStage> stages = stageRepository.findByTournamentId(tournamentId);
-            for (TournamentAdminStage stage : stages) {
-                try {
-                    stageService.calculateStageScores(admin.getId(), stage.getId());
-                } catch (Exception e) {
-                    // No interrumpir la respuesta si falla el recálculo de etapa
-                }
+            try {
+                playoffResultService.calculateResults(admin.getId());
+            } catch (Exception e) {
+                // No interrumpir la respuesta si falla el recálculo de etapas/playoff
             }
         });
     }
