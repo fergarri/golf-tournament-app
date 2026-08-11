@@ -840,29 +840,30 @@ const TournamentScorecardPage = () => {
             <span>Score Neto:</span>
             <strong className="neto-score">{getScoreNeto() !== null ? getScoreNeto() : '-'}</strong>
           </div>
-          <div className="summary-item">
+          <div className="summary-item summary-item-para-par">
             <span>Para Par:</span>
             <strong className={scoreNeto !== null && scoreNeto > totalPar ? 'over-par' : scoreNeto !== null && scoreNeto < totalPar ? 'under-par' : ''}>
               {scoreNeto !== null ? (scoreNeto === totalPar ? 'E' : scoreNeto > totalPar ? `+${scoreNeto - totalPar}` : `${scoreNeto - totalPar}`) : '-'}
             </strong>
           </div>
         </div>
-        <div className="scorecard-actions-buttons">
-          <button 
-            onClick={handleCancelScorecard} 
-            className="btn btn-cancel"
-            disabled={scorecard?.status === 'DELIVERED' || scorecard?.status === 'CANCELLED' || false}
-          >
-            {scorecard?.status === 'DELIVERED' ? 'Ya entregada' : scorecard?.status === 'CANCELLED' ? 'Cancelada' : 'Cancelar tarjeta'}
-          </button>
-          <button 
-            onClick={handleDeliverScorecard} 
-            className="btn btn-deliver"
-            disabled={scorecard?.status === 'DELIVERED' || scorecard?.status === 'CANCELLED' || false}
-          >
-            {scorecard?.status === 'DELIVERED' ? 'Ya entregada' : scorecard?.status === 'CANCELLED' ? 'Cancelada' : 'Entregar tarjeta'}
-          </button>
-        </div>
+      </div>
+
+      <div className="scorecard-floating-actions">
+        <button
+          onClick={handleCancelScorecard}
+          className="btn btn-cancel btn-floating"
+          disabled={scorecard?.status === 'DELIVERED' || scorecard?.status === 'CANCELLED' || false}
+        >
+          {scorecard?.status === 'DELIVERED' ? 'Ya entregada' : scorecard?.status === 'CANCELLED' ? 'Cancelada' : 'Levantar Bola'}
+        </button>
+        <button
+          onClick={handleDeliverScorecard}
+          className="btn btn-deliver btn-floating"
+          disabled={scorecard?.status === 'DELIVERED' || scorecard?.status === 'CANCELLED' || false}
+        >
+          {scorecard?.status === 'DELIVERED' ? 'Ya entregada' : scorecard?.status === 'CANCELLED' ? 'Cancelada' : 'Entregar tarjeta'}
+        </button>
       </div>
 
       <Modal

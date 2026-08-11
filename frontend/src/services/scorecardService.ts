@@ -88,4 +88,14 @@ export const scorecardService = {
     const response = await api.post<Scorecard>(`/scorecards/${scorecardId}/undo-disqualify`);
     return response.data;
   },
+
+  adminCancelScorecard: async (scorecardId: number): Promise<Scorecard> => {
+    const response = await api.post<Scorecard>(`/scorecards/${scorecardId}/admin-cancel`);
+    return response.data;
+  },
+
+  undoCancelScorecard: async (scorecardId: number): Promise<Scorecard> => {
+    const response = await api.post<Scorecard>(`/scorecards/${scorecardId}/undo-cancel`);
+    return response.data;
+  },
 };

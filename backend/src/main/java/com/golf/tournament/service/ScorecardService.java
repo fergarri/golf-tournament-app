@@ -539,6 +539,57 @@ public class ScorecardService {
         return convertToDTO(scorecard);
     }
 
+    /**
+     * Cancelación administrativa: a diferencia de {@link #cancelScorecard}, no valida restricciones
+     * de estado (permite cancelar tarjetas ya entregadas o con todos los hoyos completos).
+     */
+    @Transactional
+    public ScorecardDTO adminCancelScorecard(Long scorecardId) {
+        Scorecard scorecard = scorecardRepository.findById(scorecardId)
+                .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+
+        if (scorecard.getStatus() == ScorecardStatus.CANCELLED) {
+            throw new BadRequestException("La tarjeta ya está cancelada");
+        }
+
+        scorecard.setStatus(ScorecardStatus.CANCELLED);
+        if (scorecard.getDeliveredAt() == null) {
+            scorecard.setDeliveredAt(LocalDateTime.now());
+        }
+        scorecard = scorecardRepository.save(scorecard);
+
+        log.info("Tarjeta {} cancelada administrativamente para jugador {}", scorecardId, scorecard.getPlayer().getId());
+        return convertToDTO(scorecard);
+    }
+
+    /**
+     * Revierte una cancelación administrativa ("Habilitar Tarjeta"), restaurando el estado
+     * según la carga de hoyos, igual criterio que {@link #undoDisqualifyScorecard}.
+     */
+    @Transactional
+    public ScorecardDTO undoCancelScorecard(Long scorecardId) {
+        Scorecard scorecard = scorecardRepository.findById(scorecardId)
+                .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+
+        if (scorecard.getStatus() != ScorecardStatus.CANCELLED) {
+            throw new BadRequestException("La tarjeta no está cancelada");
+        }
+
+        List<HoleScore> allScores = holeScoreRepository.findByScorecardId(scorecardId);
+        boolean allFilled = !allScores.isEmpty() && allScores.stream()
+                .allMatch(hs -> hs.getGolpesPropio() != null);
+
+        if (allFilled && scorecard.getDeliveredAt() != null) {
+            scorecard.setStatus(ScorecardStatus.DELIVERED);
+        } else {
+            scorecard.setStatus(ScorecardStatus.IN_PROGRESS);
+        }
+
+        scorecard = scorecardRepository.save(scorecard);
+        log.info("Tarjeta {} habilitada (cancelación revertida) para jugador {}", scorecardId, scorecard.getPlayer().getId());
+        return convertToDTO(scorecard);
+    }
+
     @Transactional(readOnly = true)
     public List<ScorecardDTO> getTournamentScorecards(Long tournamentId) {
         return scorecardRepository.findByTournamentId(tournamentId).stream()

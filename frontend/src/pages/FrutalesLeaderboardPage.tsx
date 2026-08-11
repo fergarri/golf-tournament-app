@@ -10,6 +10,7 @@ import { formatDateSafe } from '../utils/dateUtils';
 import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
 import { buildResultsShareMessage } from '../utils/resultsMessage';
 import ResultsMessageModal from '../components/ResultsMessageModal';
+import Modal from '../components/Modal';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 
@@ -32,6 +33,14 @@ const FrutalesLeaderboardPage = () => {
   const [resultsMessageModal, setResultsMessageModal] = useState<string | null>(null);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<
+    | null
+    | { kind: 'disqualify'; entry: FrutalesScore }
+    | { kind: 'undoDisqualify'; entry: FrutalesScore }
+    | { kind: 'cancelScorecard'; entry: FrutalesScore }
+    | { kind: 'undoCancelScorecard'; entry: FrutalesScore }
+  >(null);
+  const [confirmActionLoading, setConfirmActionLoading] = useState(false);
 
   const mergeScoresWithInscriptions = (
     scores: FrutalesScore[],
@@ -182,6 +191,38 @@ const FrutalesLeaderboardPage = () => {
       setError(err.response?.data?.message || 'Error al finalizar torneo');
     } finally {
       setFinalizing(false);
+    }
+  };
+
+  const executeConfirmDialog = async () => {
+    if (!confirmDialog) return;
+    try {
+      setConfirmActionLoading(true);
+      if (confirmDialog.kind === 'disqualify' && confirmDialog.entry.scorecardId) {
+        await scorecardService.disqualifyScorecard(confirmDialog.entry.scorecardId);
+      } else if (confirmDialog.kind === 'undoDisqualify' && confirmDialog.entry.scorecardId) {
+        await scorecardService.undoDisqualifyScorecard(confirmDialog.entry.scorecardId);
+      } else if (confirmDialog.kind === 'cancelScorecard' && confirmDialog.entry.scorecardId) {
+        await scorecardService.adminCancelScorecard(confirmDialog.entry.scorecardId);
+      } else if (confirmDialog.kind === 'undoCancelScorecard' && confirmDialog.entry.scorecardId) {
+        await scorecardService.undoCancelScorecard(confirmDialog.entry.scorecardId);
+      }
+      await loadData();
+      setError('');
+      setConfirmDialog(null);
+    } catch (err: any) {
+      const msg =
+        err.response?.data?.message ||
+        (confirmDialog.kind === 'disqualify'
+          ? 'Error al descalificar'
+          : confirmDialog.kind === 'undoDisqualify'
+            ? 'Error al quitar la descalificación'
+            : confirmDialog.kind === 'cancelScorecard'
+              ? 'Error al cancelar la tarjeta'
+              : 'Error al habilitar la tarjeta');
+      setError(msg);
+    } finally {
+      setConfirmActionLoading(false);
     }
   };
 
@@ -383,6 +424,30 @@ const FrutalesLeaderboardPage = () => {
       },
       variant: 'danger',
     },
+    {
+      label: (row) => (row.status === 'DISQUALIFIED' ? 'Quitar Descalificación' : 'Descalificar'),
+      onClick: (row) => {
+        setConfirmDialog(
+          row.status === 'DISQUALIFIED'
+            ? { kind: 'undoDisqualify', entry: row }
+            : { kind: 'disqualify', entry: row }
+        );
+      },
+      variant: 'danger',
+      show: (row) => Boolean(row.scorecardId),
+    },
+    {
+      label: (row) => (row.status === 'CANCELLED' ? 'Habilitar Tarjeta' : 'Cancelar Tarjeta'),
+      onClick: (row) => {
+        setConfirmDialog(
+          row.status === 'CANCELLED'
+            ? { kind: 'undoCancelScorecard', entry: row }
+            : { kind: 'cancelScorecard', entry: row }
+        );
+      },
+      variant: 'danger',
+      show: (row) => Boolean(row.scorecardId),
+    },
   ];
 
   if (loading) return <div className="loading">Cargando leaderboard...</div>;
@@ -505,6 +570,37 @@ const FrutalesLeaderboardPage = () => {
         onClose={() => setResultsMessageModal(null)}
       />
 
+      <Modal
+        isOpen={confirmDialog !== null}
+        onClose={() => {
+          if (!confirmActionLoading) setConfirmDialog(null);
+        }}
+        onConfirm={executeConfirmDialog}
+        title={
+          confirmDialog?.kind === 'disqualify'
+            ? 'Descalificar tarjeta'
+            : confirmDialog?.kind === 'undoDisqualify'
+              ? 'Quitar descalificación'
+              : confirmDialog?.kind === 'cancelScorecard'
+                ? 'Cancelar tarjeta'
+                : 'Habilitar tarjeta'
+        }
+        message={
+          confirmDialog?.kind === 'disqualify'
+            ? `¿Descalificar la tarjeta de ${confirmDialog.entry.playerName}?`
+            : confirmDialog?.kind === 'undoDisqualify'
+              ? `¿Quitar la descalificación de ${confirmDialog.entry.playerName}?`
+              : confirmDialog?.kind === 'cancelScorecard'
+                ? `¿Cancelar la tarjeta de ${confirmDialog.entry.playerName}? No se computarán sus golpes.`
+                : confirmDialog?.kind === 'undoCancelScorecard'
+                  ? `¿Habilitar nuevamente la tarjeta de ${confirmDialog.entry.playerName}?`
+                  : undefined
+        }
+        type="confirm"
+        confirmText="Confirmar"
+        cancelText="Cancelar"
+      />
+
       {/* Edit Scorecard Modal */}
       {editingScorecardId && editingScorecard && (
         <div className="modal-overlay" onClick={handleCloseModal}>
@@ -601,28 +697,6 @@ const FrutalesLeaderboardPage = () => {
                     style={{ width: '18px', height: '18px', cursor: 'inherit' }}
                   />
                   Entregada
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: '#e74c3c' }}>
-                  <input
-                    type="checkbox"
-                    checked={editingScorecard.status === 'DISQUALIFIED'}
-                    onChange={async (e) => {
-                      try {
-                        if (e.target.checked) {
-                          await scorecardService.disqualifyScorecard(editingScorecard.id);
-                        } else {
-                          await scorecardService.undoDisqualifyScorecard(editingScorecard.id);
-                        }
-                        const updated = await scorecardService.getById(editingScorecard.id);
-                        setEditingScorecard(updated);
-                        await loadData();
-                      } catch (err: any) {
-                        setError(err.response?.data?.message || 'Error al cambiar estado');
-                      }
-                    }}
-                    style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                  />
-                  Descalificado
                 </label>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem' }}>

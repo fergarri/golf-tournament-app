@@ -11,7 +11,7 @@ interface Column<T> {
 }
 
 export interface TableAction<T> {
-  label: string;
+  label: string | ((row: T) => string);
   onClick: (row: T) => void;
   variant?: 'default' | 'primary' | 'secondary' | 'danger';
   icon?: string;
@@ -102,7 +102,8 @@ function Table<T>({
     if (actions) {
       actions.forEach(action => {
         if (!action.show || action.show(row)) {
-          menuItems.push({ label: action.label, onClick: () => action.onClick(row), variant: action.variant, icon: action.icon });
+          const label = typeof action.label === 'function' ? action.label(row) : action.label;
+          menuItems.push({ label, onClick: () => action.onClick(row), variant: action.variant, icon: action.icon });
         }
       });
     } else {

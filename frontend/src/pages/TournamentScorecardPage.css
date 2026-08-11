@@ -323,7 +323,13 @@
 .summary-item {
   display: flex;
   flex-direction: column;
+  align-items: flex-start;
   gap: 0.25rem;
+}
+
+.summary-item strong {
+  display: inline-block;
+  width: auto;
 }
 
 .summary-item span {
@@ -385,6 +391,31 @@
   opacity: 0.7;
 }
 
+.scorecard-floating-actions {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem;
+  z-index: 500;
+  padding: 5px
+}
+
+.btn-floating {
+  border-radius: 10px;
+  padding: 0.9rem 1.5rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+  width: 200px;
+  text-align: center;
+}
+
+.btn-floating:disabled {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
 .error-card {
   background: white;
   padding: 2rem;
@@ -431,13 +462,20 @@
     flex-direction: column;
   }
 
-  .btn-deliver, .btn-cancel {
-    width: 100%;
-  }
-
   .scorecard-legend {
     flex-direction: column;
     gap: 0.5rem;
+  }
+
+  .scorecard-floating-actions {
+    bottom: 1rem;
+    right: 1rem;
+  }
+
+  .btn-floating {
+    padding: 0.8rem 1.2rem;
+    font-size: 0.95rem;
+    width: 170px;
   }
 }
 

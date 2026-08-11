@@ -96,4 +96,16 @@ public class ScorecardController {
     public ResponseEntity<ScorecardDTO> undoDisqualifyScorecard(@PathVariable Long scorecardId) {
         return ResponseEntity.ok(scorecardService.undoDisqualifyScorecard(scorecardId));
     }
+
+    @PostMapping("/{scorecardId}/admin-cancel")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    public ResponseEntity<ScorecardDTO> adminCancelScorecard(@PathVariable Long scorecardId) {
+        return ResponseEntity.ok(scorecardService.adminCancelScorecard(scorecardId));
+    }
+
+    @PostMapping("/{scorecardId}/undo-cancel")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    public ResponseEntity<ScorecardDTO> undoCancelScorecard(@PathVariable Long scorecardId) {
+        return ResponseEntity.ok(scorecardService.undoCancelScorecard(scorecardId));
+    }
 }

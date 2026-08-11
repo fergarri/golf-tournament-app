@@ -45,7 +45,6 @@ const TournamentLeaderboardPage = () => {
   const [exportingExcelInscriptions, setExportingExcelInscriptions] = useState(false);
   const [exportingExcelResults, setExportingExcelResults] = useState(false);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
-  const [showDisqualifiedConfirm, setShowDisqualifiedConfirm] = useState(false);
   const [showInscriptionModal, setShowInscriptionModal] = useState(false);
   const [prizeConfirmation, setPrizeConfirmation] = useState<{
     prizeType: string;
@@ -58,6 +57,10 @@ const TournamentLeaderboardPage = () => {
     | { kind: 'finalize' }
     | { kind: 'reopen' }
     | { kind: 'removeInscription'; entry: LeaderboardEntry }
+    | { kind: 'disqualify'; entry: LeaderboardEntry }
+    | { kind: 'undoDisqualify'; entry: LeaderboardEntry }
+    | { kind: 'cancelScorecard'; entry: LeaderboardEntry }
+    | { kind: 'undoCancelScorecard'; entry: LeaderboardEntry }
   >(null);
   const [confirmActionLoading, setConfirmActionLoading] = useState(false);
 
@@ -185,6 +188,30 @@ const TournamentLeaderboardPage = () => {
         await inscriptionService.removeInscription(confirmDialog.entry.inscriptionId);
         await loadData();
         setError('');
+      } else if (confirmDialog.kind === 'disqualify') {
+        if (confirmDialog.entry.scorecardId) {
+          await scorecardService.disqualifyScorecard(confirmDialog.entry.scorecardId);
+        }
+        await loadData();
+        setError('');
+      } else if (confirmDialog.kind === 'undoDisqualify') {
+        if (confirmDialog.entry.scorecardId) {
+          await scorecardService.undoDisqualifyScorecard(confirmDialog.entry.scorecardId);
+        }
+        await loadData();
+        setError('');
+      } else if (confirmDialog.kind === 'cancelScorecard') {
+        if (confirmDialog.entry.scorecardId) {
+          await scorecardService.adminCancelScorecard(confirmDialog.entry.scorecardId);
+        }
+        await loadData();
+        setError('');
+      } else if (confirmDialog.kind === 'undoCancelScorecard') {
+        if (confirmDialog.entry.scorecardId) {
+          await scorecardService.undoCancelScorecard(confirmDialog.entry.scorecardId);
+        }
+        await loadData();
+        setError('');
       }
       setConfirmDialog(null);
     } catch (err: any) {
@@ -194,7 +221,15 @@ const TournamentLeaderboardPage = () => {
           ? 'Error al finalizar el torneo'
           : confirmDialog.kind === 'reopen'
             ? 'Error al habilitar el torneo'
-            : 'Error dando de baja al jugador');
+            : confirmDialog.kind === 'removeInscription'
+              ? 'Error dando de baja al jugador'
+              : confirmDialog.kind === 'disqualify'
+                ? 'Error al descalificar'
+                : confirmDialog.kind === 'undoDisqualify'
+                  ? 'Error al quitar la descalificación'
+                  : confirmDialog.kind === 'cancelScorecard'
+                    ? 'Error al cancelar la tarjeta'
+                    : 'Error al habilitar la tarjeta');
       setError(msg);
     } finally {
       setConfirmActionLoading(false);
@@ -724,6 +759,30 @@ const TournamentLeaderboardPage = () => {
       },
       variant: 'danger',
     },
+    {
+      label: (row) => (row.status === 'DISQUALIFIED' ? 'Quitar Descalificación' : 'Descalificar'),
+      onClick: (row) => {
+        setConfirmDialog(
+          row.status === 'DISQUALIFIED'
+            ? { kind: 'undoDisqualify', entry: row }
+            : { kind: 'disqualify', entry: row }
+        );
+      },
+      variant: 'danger',
+      show: (row) => Boolean(row.scorecardId),
+    },
+    {
+      label: (row) => (row.status === 'CANCELLED' ? 'Habilitar Tarjeta' : 'Cancelar Tarjeta'),
+      onClick: (row) => {
+        setConfirmDialog(
+          row.status === 'CANCELLED'
+            ? { kind: 'undoCancelScorecard', entry: row }
+            : { kind: 'cancelScorecard', entry: row }
+        );
+      },
+      variant: 'danger',
+      show: (row) => Boolean(row.scorecardId),
+    },
     ...prizeActions,
   ];
 
@@ -986,7 +1045,15 @@ const TournamentLeaderboardPage = () => {
             ? 'Finalizar torneo'
             : confirmDialog?.kind === 'reopen'
               ? 'Habilitar torneo'
-              : 'Dar de baja'
+              : confirmDialog?.kind === 'removeInscription'
+                ? 'Dar de baja'
+                : confirmDialog?.kind === 'disqualify'
+                  ? 'Descalificar tarjeta'
+                  : confirmDialog?.kind === 'undoDisqualify'
+                    ? 'Quitar descalificación'
+                    : confirmDialog?.kind === 'cancelScorecard'
+                      ? 'Cancelar tarjeta'
+                      : 'Habilitar tarjeta'
         }
         size="medium"
         footer={
@@ -1016,7 +1083,15 @@ const TournamentLeaderboardPage = () => {
                 ? 'Procesando…'
                 : confirmDialog?.kind === 'removeInscription'
                   ? 'Dar de baja'
-                  : 'Confirmar'}
+                  : confirmDialog?.kind === 'disqualify'
+                    ? 'Descalificar'
+                    : confirmDialog?.kind === 'undoDisqualify'
+                      ? 'Quitar descalificación'
+                      : confirmDialog?.kind === 'cancelScorecard'
+                        ? 'Cancelar tarjeta'
+                        : confirmDialog?.kind === 'undoCancelScorecard'
+                          ? 'Habilitar tarjeta'
+                          : 'Confirmar'}
             </button>
           </div>
         }
@@ -1037,6 +1112,26 @@ const TournamentLeaderboardPage = () => {
           {confirmDialog?.kind === 'removeInscription' && (
             <>
               ¿Dar de baja a <strong>{confirmDialog.entry.playerName}</strong> de este torneo?
+            </>
+          )}
+          {confirmDialog?.kind === 'disqualify' && (
+            <>
+              ¿Descalificar la tarjeta de <strong>{confirmDialog.entry.playerName}</strong>?
+            </>
+          )}
+          {confirmDialog?.kind === 'undoDisqualify' && (
+            <>
+              ¿Quitar la descalificación de <strong>{confirmDialog.entry.playerName}</strong>?
+            </>
+          )}
+          {confirmDialog?.kind === 'cancelScorecard' && (
+            <>
+              ¿Cancelar la tarjeta de <strong>{confirmDialog.entry.playerName}</strong>? No se computarán sus golpes.
+            </>
+          )}
+          {confirmDialog?.kind === 'undoCancelScorecard' && (
+            <>
+              ¿Habilitar nuevamente la tarjeta de <strong>{confirmDialog.entry.playerName}</strong>?
             </>
           )}
         </p>
@@ -1282,42 +1377,6 @@ const TournamentLeaderboardPage = () => {
                 <button onClick={handleCloseModal} className="btn-modal-cancel">
                   Cancelar
                 </button>
-                {editingScorecard.status !== 'DISQUALIFIED' ? (
-                  <button
-                    className="btn-disqualify"
-                    onClick={async () => {
-                      try {
-                        await scorecardService.disqualifyScorecard(editingScorecard.id);
-                        setShowDisqualifiedConfirm(true);
-                        setTimeout(async () => {
-                          setShowDisqualifiedConfirm(false);
-                          handleCloseModal();
-                          await loadData();
-                        }, 2000);
-                      } catch (err: any) {
-                        setError(err.response?.data?.message || 'Error al descalificar');
-                      }
-                    }}
-                  >
-                    Descalificar
-                  </button>
-                ) : (
-                  <button
-                    className="btn-undo-disqualify"
-                    onClick={async () => {
-                      try {
-                        await scorecardService.undoDisqualifyScorecard(editingScorecard.id);
-                        const updated = await scorecardService.getById(editingScorecard.id);
-                        setEditingScorecard(updated);
-                        await loadData();
-                      } catch (err: any) {
-                        setError(err.response?.data?.message || 'Error al revertir descalificación');
-                      }
-                    }}
-                  >
-                    Quitar Descalificación
-                  </button>
-                )}
                 <button 
                   onClick={handleSaveScorecard} 
                   className="btn-save"
@@ -1331,23 +1390,6 @@ const TournamentLeaderboardPage = () => {
         </div>
       )}
 
-      {/* Modal de confirmación de descalificación — se cierra solo tras 2 segundos */}
-      {showDisqualifiedConfirm && (
-        <div style={{
-          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000,
-        }}>
-          <div style={{
-            backgroundColor: 'white', borderRadius: '0.75rem', padding: '2.5rem 3rem',
-            textAlign: 'center', boxShadow: '0 10px 40px rgba(0,0,0,0.25)',
-          }}>
-            <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🚫</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#e74c3c' }}>
-              Descalificado
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
