@@ -1,0 +1,1 @@
+ALTER TABLE tournaments ADD COLUMN horario_inicio TIME NOT NULL DEFAULT '00:00:00';

@@ -30,6 +30,7 @@ public class TournamentDTO {
     private Long teeFemeninoId;
     private LocalDate fechaInicio;
     private LocalDate fechaFin;
+    private LocalTime horarioInicio;
     private LocalTime horarioCierre;
     private Integer limiteInscriptos;
     private BigDecimal valorInscripcion;

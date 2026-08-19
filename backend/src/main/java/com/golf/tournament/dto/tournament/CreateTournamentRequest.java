@@ -39,6 +39,10 @@ public class CreateTournamentRequest {
     private LocalDate fechaInicio;
     
     private LocalDate fechaFin;
+
+    @NotNull(message = "Start time is required")
+    private LocalTime horarioInicio;
+
     private LocalTime horarioCierre;
     private Integer limiteInscriptos;
     private BigDecimal valorInscripcion;

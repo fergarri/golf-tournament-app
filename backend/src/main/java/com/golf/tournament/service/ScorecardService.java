@@ -55,6 +55,8 @@ public class ScorecardService {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
 
+        validateTournamentStarted(tournament);
+
         boolean isFinalizado = "FINALIZED".equals(tournament.getEstado());
 
         Player player = playerRepository.findById(playerId)
@@ -121,6 +123,25 @@ public class ScorecardService {
             assignCategoryToInscription(tournamentId, playerId, player.getHandicapIndex());
         }
         return convertToDTO(scorecard);
+    }
+
+    /**
+     * Bloquea el acceso a la tarjeta si el torneo aún no comenzó (estado PENDING y todavía no
+     * se alcanzó fechaInicio + horarioInicio). Un inicio manual (botón "Iniciar") cambia el estado
+     * a IN_PROGRESS y habilita el acceso inmediatamente, sin esperar al scheduler.
+     */
+    private void validateTournamentStarted(Tournament tournament) {
+        if (!"PENDING".equals(tournament.getEstado())) {
+            return;
+        }
+        java.time.LocalTime horarioInicio = tournament.getHorarioInicio() != null
+                ? tournament.getHorarioInicio() : java.time.LocalTime.MIDNIGHT;
+        LocalDateTime startDateTime = LocalDateTime.of(tournament.getFechaInicio(), horarioInicio);
+        if (LocalDateTime.now().isBefore(startDateTime)) {
+            throw new BadRequestException(String.format(
+                    "El torneo comienza a las %s hs, todavía no se puede ingresar a la tarjeta.",
+                    horarioInicio.format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))));
+        }
     }
 
     private boolean isTournamentFullyConfigured(Tournament tournament) {

@@ -43,6 +43,7 @@ const TournamentsPage = () => {
     teeFemeninoId: '',
     fechaInicio: '',
     fechaFin: '',
+    horarioInicio: '00:00',
     horarioCierre: '',
     limiteInscriptos: '',
     valorInscripcion: '',
@@ -118,6 +119,7 @@ const TournamentsPage = () => {
       teeFemeninoId: '',
       fechaInicio: '',
       fechaFin: '',
+      horarioInicio: '00:00',
       horarioCierre: '',
       limiteInscriptos: '',
       doublePoints: false,
@@ -140,6 +142,7 @@ const TournamentsPage = () => {
       teeFemeninoId: tournament.teeFemeninoId || '',
       fechaInicio: tournament.fechaInicio,
       fechaFin: tournament.fechaFin || '',
+      horarioInicio: tournament.horarioInicio || '00:00',
       horarioCierre: tournament.horarioCierre || '',
       limiteInscriptos: tournament.limiteInscriptos || '',
       valorInscripcion: tournament.valorInscripcion ? formatCurrency(tournament.valorInscripcion) : '',
@@ -156,6 +159,14 @@ const TournamentsPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.horarioInicio) {
+      setError('El horario de inicio es obligatorio.');
+      return;
+    }
+    if (formData.horarioCierre && formData.horarioInicio >= formData.horarioCierre) {
+      setError('El horario de inicio debe ser anterior al horario de cierre.');
+      return;
+    }
     try {
       const payload = {
         ...formData,
@@ -164,6 +175,7 @@ const TournamentsPage = () => {
         teeMasculinoId: formData.teeMasculinoId ? parseInt(formData.teeMasculinoId) : null,
         teeFemeninoId: formData.teeFemeninoId ? parseInt(formData.teeFemeninoId) : null,
         limiteInscriptos: formData.limiteInscriptos ? parseInt(formData.limiteInscriptos) : null,
+        horarioInicio: formData.horarioInicio,
         horarioCierre: formData.horarioCierre || null,
         valorInscripcion: parseCurrency(formData.valorInscripcion),
         doublePoints: formData.tipo === 'FRUTALES' ? (formData.doublePoints || false) : false,
@@ -766,6 +778,19 @@ const TournamentsPage = () => {
                 onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })}
                 required
               />
+            </div>
+            <div className="form-group"></div>
+            <div className="form-group">
+              <label>Horario de Inicio *</label>
+              <input
+                type="time"
+                value={formData.horarioInicio || ''}
+                onChange={(e) => setFormData({ ...formData, horarioInicio: e.target.value })}
+                required
+              />
+              <small style={{ color: '#666', fontSize: '0.75rem' }}>
+                Al llegar este horario el torneo se inicia automáticamente y los jugadores pueden acceder a su tarjeta.
+              </small>
             </div>
             <div className="form-group">
               <label>Horario de Cierre</label>

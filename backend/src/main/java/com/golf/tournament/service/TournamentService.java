@@ -73,6 +73,7 @@ public class TournamentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
         validateCantidadHoyosJuego(request.getCantidadHoyosJuego());
         validateCategorySexes(request.getCategories());
+        validateHorarios(request.getHorarioInicio(), request.getHorarioCierre());
         CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId());
         CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId());
 
@@ -91,6 +92,7 @@ public class TournamentService {
                 .teeFemenino(teeFemenino)
                 .fechaInicio(request.getFechaInicio())
                 .fechaFin(request.getFechaFin())
+                .horarioInicio(request.getHorarioInicio())
                 .horarioCierre(request.getHorarioCierre())
                 .limiteInscriptos(request.getLimiteInscriptos())
                 .valorInscripcion(request.getValorInscripcion())
@@ -126,6 +128,7 @@ public class TournamentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
         validateCantidadHoyosJuego(request.getCantidadHoyosJuego());
         validateCategorySexes(request.getCategories());
+        validateHorarios(request.getHorarioInicio(), request.getHorarioCierre());
         CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId());
         CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId());
 
@@ -138,6 +141,7 @@ public class TournamentService {
         tournament.setTeeFemenino(teeFemenino);
         tournament.setFechaInicio(request.getFechaInicio());
         tournament.setFechaFin(request.getFechaFin());
+        tournament.setHorarioInicio(request.getHorarioInicio());
         tournament.setHorarioCierre(request.getHorarioCierre());
         tournament.setLimiteInscriptos(request.getLimiteInscriptos());
         tournament.setValorInscripcion(request.getValorInscripcion());
@@ -363,6 +367,7 @@ public class TournamentService {
                 .teeFemeninoId(tournament.getTeeFemenino() != null ? tournament.getTeeFemenino().getId() : null)
                 .fechaInicio(tournament.getFechaInicio())
                 .fechaFin(tournament.getFechaFin())
+                .horarioInicio(tournament.getHorarioInicio())
                 .horarioCierre(tournament.getHorarioCierre())
                 .limiteInscriptos(tournament.getLimiteInscriptos())
                 .valorInscripcion(tournament.getValorInscripcion())
@@ -483,6 +488,15 @@ public class TournamentService {
         }
         if (cantidadHoyosJuego != 9 && cantidadHoyosJuego != 18) {
             throw new BadRequestException("La cantidad de hoyos a jugar debe ser 9 o 18.");
+        }
+    }
+
+    /**
+     * Valida que, si ambos horarios están definidos, el horario de inicio sea anterior al de cierre.
+     */
+    private void validateHorarios(java.time.LocalTime horarioInicio, java.time.LocalTime horarioCierre) {
+        if (horarioInicio != null && horarioCierre != null && !horarioInicio.isBefore(horarioCierre)) {
+            throw new BadRequestException("El horario de inicio debe ser anterior al horario de cierre.");
         }
     }
 

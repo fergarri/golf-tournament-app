@@ -66,6 +66,10 @@ public class Tournament {
     @Column(name = "fecha_fin")
     private LocalDate fechaFin;
 
+    @Column(name = "horario_inicio", nullable = false)
+    @Builder.Default
+    private LocalTime horarioInicio = LocalTime.MIDNIGHT;
+
     @Column(name = "horario_cierre")
     private LocalTime horarioCierre;
 

@@ -54,4 +54,16 @@ public interface TournamentRepository extends JpaRepository<Tournament, Long> {
            "     OR (t.fechaInicio = :today AND t.horarioCierre <= :now))")
     List<Tournament> findTournamentsToAutoClose(@Param("today") LocalDate today,
                                                @Param("now") LocalTime now);
+
+    /**
+     * Torneos pendientes cuyo horario de inicio ya fue alcanzado.
+     * Cubre:
+     *  - Torneos de días anteriores (fechaInicio < hoy) que quedaron sin iniciarse.
+     *  - Torneos de hoy (fechaInicio = hoy) cuyo horarioInicio <= hora actual.
+     */
+    @Query("SELECT t FROM Tournament t WHERE t.estado = 'PENDING' " +
+           "AND (t.fechaInicio < :today " +
+           "     OR (t.fechaInicio = :today AND t.horarioInicio <= :now))")
+    List<Tournament> findTournamentsToAutoStart(@Param("today") LocalDate today,
+                                                @Param("now") LocalTime now);
 }

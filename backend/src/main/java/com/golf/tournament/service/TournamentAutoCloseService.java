@@ -18,8 +18,11 @@ import java.time.LocalTime;
 import java.util.List;
 
 /**
- * Scheduler que cierra automáticamente los torneos cuyo horario de cierre fue alcanzado.
+ * Scheduler que abre y cierra automáticamente los torneos según sus horarios configurados.
  *
+ * Auto-inicio: torneos PENDING cuyo horarioInicio ya fue alcanzado pasan a IN_PROGRESS.
+ *
+ * Auto-cierre: torneos IN_PROGRESS cuyo horarioCierre ya fue alcanzado se finalizan.
  * Lógica de tarjetas al cerrar:
  *  - IN_PROGRESS / PENDING_CONFIG con todos los hoyos cargados → DELIVERED
  *  - IN_PROGRESS / PENDING_CONFIG con carga parcial              → CANCELLED
@@ -28,9 +31,9 @@ import java.util.List;
  * Además, si el torneo pertenece a un Torneo Administrativo, calcula los puntos
  * automáticamente según el tipo (FRUTALES o CLASICO).
  *
- * Se ejecuta cada minuto. Si el servidor estuvo caído y el horario ya pasó,
- * el torneo se detecta y cierra en la primera ejecución post-inicio.
- * También cierra torneos de días anteriores que quedaron en IN_PROGRESS.
+ * Ambos procesos se ejecutan cada minuto. Si el servidor estuvo caído y el horario ya pasó,
+ * el torneo se detecta y procesa en la primera ejecución post-inicio.
+ * También procesa torneos de días anteriores que quedaron sin actualizar su estado.
  */
 @Slf4j
 @Service
@@ -44,6 +47,28 @@ public class TournamentAutoCloseService {
     private final ScorecardRepository scorecardRepository;
     private final FrutalesScoreService frutalesScoreService;
     private final ClasicScoreService clasicScoreService;
+
+    @Scheduled(cron = "0 * * * * *")
+    @Transactional
+    public void autoStartTournaments() {
+        LocalDate today = LocalDate.now();
+        LocalTime now = LocalTime.now();
+
+        List<Tournament> toStart = tournamentRepository.findTournamentsToAutoStart(today, now);
+
+        if (toStart.isEmpty()) return;
+
+        log.info("Inicio automático: {} torneo(s) a procesar", toStart.size());
+
+        for (Tournament tournament : toStart) {
+            try {
+                tournamentService.startTournament(tournament.getId());
+                log.info("Torneo {} iniciado automáticamente", tournament.getId());
+            } catch (Exception e) {
+                log.error("Error en inicio automático del torneo {}: {}", tournament.getId(), e.getMessage(), e);
+            }
+        }
+    }
 
     @Scheduled(cron = "0 * * * * *")
     @Transactional
