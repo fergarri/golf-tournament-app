@@ -10,6 +10,7 @@ import { formatDateSafe } from '../utils/dateUtils';
 import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
 import { buildResultsShareMessage } from '../utils/resultsMessage';
 import ResultsMessageModal from '../components/ResultsMessageModal';
+import PrintScorecardsModal from '../components/PrintScorecardsModal';
 import Modal from '../components/Modal';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
@@ -33,6 +34,7 @@ const FrutalesLeaderboardPage = () => {
   const [resultsMessageModal, setResultsMessageModal] = useState<string | null>(null);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<
     | null
     | { kind: 'disqualify'; entry: FrutalesScore }
@@ -484,6 +486,11 @@ const FrutalesLeaderboardPage = () => {
               Link de Resultados
             </button>
           )}
+          {tournament && (
+            <button onClick={() => setShowPrintModal(true)} className="btn-export">
+              Imprimir Tarjetas
+            </button>
+          )}
         </div>
 
         <div className="tournament-info">
@@ -569,6 +576,14 @@ const FrutalesLeaderboardPage = () => {
         message={resultsMessageModal}
         onClose={() => setResultsMessageModal(null)}
       />
+
+      {tournament && (
+        <PrintScorecardsModal
+          isOpen={showPrintModal}
+          onClose={() => setShowPrintModal(false)}
+          tournament={tournament}
+        />
+      )}
 
       <Modal
         isOpen={confirmDialog !== null}

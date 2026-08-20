@@ -1,6 +1,18 @@
 import api from './api';
 import { Scorecard } from '../types';
 
+const downloadPdfBlob = (data: ArrayBuffer, filename: string) => {
+  const blob = new Blob([data], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
 export interface UpdateScoreRequest {
   holeId: number;
   golpes: number;
@@ -97,5 +109,21 @@ export const scorecardService = {
   undoCancelScorecard: async (scorecardId: number): Promise<Scorecard> => {
     const response = await api.post<Scorecard>(`/scorecards/${scorecardId}/undo-cancel`);
     return response.data;
+  },
+
+  printScorecards: async (
+    tournamentId: number,
+    playerIds: number[],
+    tournamentName?: string
+  ): Promise<void> => {
+    const response = await api.post(
+      `/scorecards/tournaments/${tournamentId}/print`,
+      { playerIds },
+      { responseType: 'arraybuffer' }
+    );
+    const filename = tournamentName
+      ? `tarjetas_${tournamentName.toLowerCase().replace(/\s+/g, '_')}.pdf`
+      : `tarjetas_torneo_${tournamentId}.pdf`;
+    downloadPdfBlob(response.data, filename);
   },
 };

@@ -80,6 +80,13 @@
             <version>5.2.5</version>
         </dependency>
 
+        <!-- Apache PDFBox for PDF generation (tarjetas imprimibles) -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>2.0.31</version>
+        </dependency>
+
         <!-- JWT for Authentication -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>

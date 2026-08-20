@@ -12,6 +12,7 @@ import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
 import Table, { TableAction } from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
+import PrintScorecardsModal from '../components/PrintScorecardsModal';
 import Modal from '../components/Modal';
 import ResultsMessageModal from '../components/ResultsMessageModal';
 import { formatDateSafe } from '../utils/dateUtils';
@@ -46,6 +47,7 @@ const TournamentLeaderboardPage = () => {
   const [exportingExcelResults, setExportingExcelResults] = useState(false);
   const [markAsDelivered, setMarkAsDelivered] = useState(false);
   const [showInscriptionModal, setShowInscriptionModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [prizeConfirmation, setPrizeConfirmation] = useState<{
     prizeType: string;
     prizeLabel: string;
@@ -800,6 +802,11 @@ const TournamentLeaderboardPage = () => {
               Inscribir
             </button>
           )}
+          {tournament && (
+            <button onClick={() => setShowPrintModal(true)} className="btn-export">
+              Imprimir Tarjetas
+            </button>
+          )}
           {tournament?.estado === 'FINALIZED' && (
             <button 
               onClick={copyResultsMessage} 
@@ -1032,6 +1039,14 @@ const TournamentLeaderboardPage = () => {
             setShowInscriptionModal(false);
             await loadData();
           }}
+        />
+      )}
+
+      {tournament && (
+        <PrintScorecardsModal
+          isOpen={showPrintModal}
+          onClose={() => setShowPrintModal(false)}
+          tournament={tournament}
         />
       )}
 

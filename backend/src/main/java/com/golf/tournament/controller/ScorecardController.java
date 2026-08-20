@@ -1,13 +1,16 @@
 package com.golf.tournament.controller;
 
+import com.golf.tournament.dto.scorecard.PrintScorecardsRequest;
 import com.golf.tournament.dto.scorecard.ScorecardDTO;
 import com.golf.tournament.dto.scorecard.UpdateScoreRequest;
 import com.golf.tournament.dto.scorecard.UpdateScorecardRequest;
 import com.golf.tournament.dto.scorecard.ConfigureScorecardRequest;
 import com.golf.tournament.service.ScorecardEventService;
+import com.golf.tournament.service.ScorecardPrintService;
 import com.golf.tournament.service.ScorecardService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -23,6 +26,7 @@ public class ScorecardController {
 
     private final ScorecardService scorecardService;
     private final ScorecardEventService scorecardEventService;
+    private final ScorecardPrintService scorecardPrintService;
 
     @GetMapping("/{id}")
     public ResponseEntity<ScorecardDTO> getScorecardById(@PathVariable Long id) {
@@ -38,6 +42,19 @@ public class ScorecardController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ScorecardDTO>> getTournamentScorecards(@PathVariable Long tournamentId) {
         return ResponseEntity.ok(scorecardService.getTournamentScorecards(tournamentId));
+    }
+
+    @PostMapping("/tournaments/{tournamentId}/print")
+    public ResponseEntity<byte[]> printScorecards(
+            @PathVariable Long tournamentId,
+            @Valid @RequestBody PrintScorecardsRequest request) {
+        byte[] pdf = scorecardPrintService.generatePrintablePdf(tournamentId, request.getPlayerIds());
+        String filename = "tarjetas_torneo_" + tournamentId + ".pdf";
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(pdf.length))
+                .body(pdf);
     }
 
     @PostMapping("/tournaments/{tournamentId}/players/{playerId}")
