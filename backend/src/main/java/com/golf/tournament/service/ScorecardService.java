@@ -52,10 +52,27 @@ public class ScorecardService {
 
     @Transactional
     public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId, ConfigureScorecardRequest request) {
+        return getOrCreateScorecard(tournamentId, playerId, request, true);
+    }
+
+    /**
+     * Crea (si no existe) la tarjeta del jugador al momento de inscribirlo, sin bloquear por el
+     * horario de inicio del torneo. La validación de horario solo debe aplicar cuando el jugador
+     * intenta efectivamente ingresar a cargar golpes, no al inscribirse.
+     */
+    @Transactional
+    public ScorecardDTO createScorecardForInscription(Long tournamentId, Long playerId) {
+        return getOrCreateScorecard(tournamentId, playerId, null, false);
+    }
+
+    private ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId,
+                                                ConfigureScorecardRequest request, boolean validateStarted) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
 
-        validateTournamentStarted(tournament);
+        if (validateStarted) {
+            validateTournamentStarted(tournament);
+        }
 
         boolean isFinalizado = "FINALIZED".equals(tournament.getEstado());
 

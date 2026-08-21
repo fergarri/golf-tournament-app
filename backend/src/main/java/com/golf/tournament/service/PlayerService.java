@@ -47,8 +47,9 @@ public class PlayerService {
 
     @Transactional(readOnly = true)
     public PlayerDTO getPlayerByMatricula(String matricula) {
-        Player player = playerRepository.findByMatricula(matricula)
-                .orElseThrow(() -> new ResourceNotFoundException("Player", "matricula", matricula));
+        String trimmedMatricula = trim(matricula);
+        Player player = playerRepository.findByMatricula(trimmedMatricula)
+                .orElseThrow(() -> new ResourceNotFoundException("Player", "matricula", trimmedMatricula));
         return convertToDTO(player);
     }
 
@@ -61,20 +62,22 @@ public class PlayerService {
 
     @Transactional
     public PlayerDTO createPlayer(CreatePlayerRequest request) {
-        if (playerRepository.existsByMatricula(request.getMatricula())) {
-            throw new DuplicateResourceException("Player", "matricula", request.getMatricula());
+        String matricula = trim(request.getMatricula());
+
+        if (playerRepository.existsByMatricula(matricula)) {
+            throw new DuplicateResourceException("Player", "matricula", matricula);
         }
 
         Player player = Player.builder()
-                .nombre(request.getNombre())
-                .apellido(request.getApellido())
-                .email(request.getEmail())
-                .matricula(request.getMatricula())
+                .nombre(trim(request.getNombre()))
+                .apellido(trim(request.getApellido()))
+                .email(trim(request.getEmail()))
+                .matricula(matricula)
                 .fechaNacimiento(request.getFechaNacimiento())
-                .sexo(request.getSexo())
+                .sexo(trim(request.getSexo()))
                 .handicapIndex(request.getHandicapIndex())
-                .telefono(request.getTelefono())
-                .clubOrigen(request.getClubOrigen())
+                .telefono(trim(request.getTelefono()))
+                .clubOrigen(trim(request.getClubOrigen()))
                 .build();
 
         player = playerRepository.save(player);
@@ -87,24 +90,30 @@ public class PlayerService {
         Player player = playerRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Player", "id", id));
 
-        if (!player.getMatricula().equals(request.getMatricula()) &&
-                playerRepository.existsByMatricula(request.getMatricula())) {
-            throw new DuplicateResourceException("Player", "matricula", request.getMatricula());
+        String matricula = trim(request.getMatricula());
+
+        if (!player.getMatricula().equals(matricula) &&
+                playerRepository.existsByMatricula(matricula)) {
+            throw new DuplicateResourceException("Player", "matricula", matricula);
         }
 
-        player.setNombre(request.getNombre());
-        player.setApellido(request.getApellido());
-        player.setEmail(request.getEmail());
-        player.setMatricula(request.getMatricula());
+        player.setNombre(trim(request.getNombre()));
+        player.setApellido(trim(request.getApellido()));
+        player.setEmail(trim(request.getEmail()));
+        player.setMatricula(matricula);
         player.setFechaNacimiento(request.getFechaNacimiento());
-        player.setSexo(request.getSexo());
+        player.setSexo(trim(request.getSexo()));
         player.setHandicapIndex(request.getHandicapIndex());
-        player.setTelefono(request.getTelefono());
-        player.setClubOrigen(request.getClubOrigen());
+        player.setTelefono(trim(request.getTelefono()));
+        player.setClubOrigen(trim(request.getClubOrigen()));
 
         player = playerRepository.save(player);
         log.info("Player updated with id: {}", player.getId());
         return convertToDTO(player);
+    }
+
+    private String trim(String value) {
+        return value != null ? value.trim() : null;
     }
 
     @Transactional

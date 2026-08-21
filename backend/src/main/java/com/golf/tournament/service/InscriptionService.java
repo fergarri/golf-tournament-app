@@ -45,7 +45,8 @@ public class InscriptionService {
         }
 
         // Buscar el jugador en la base de datos por matrícula
-        Player player = playerRepository.findByMatricula(request.getMatricula())
+        String matricula = request.getMatricula() != null ? request.getMatricula().trim() : null;
+        Player player = playerRepository.findByMatricula(matricula)
                 .orElseThrow(() -> new BadRequestException("El player no se encuentra registrado en la app. Por favor comunicarse con secretaria."));
 
         // Verificar si el jugador ya está inscripto en este torneo
@@ -172,7 +173,7 @@ public class InscriptionService {
 
     private void createScorecardAfterInscription(Tournament tournament, Player player) {
         try {
-            scorecardService.getOrCreateScorecard(tournament.getId(), player.getId());
+            scorecardService.createScorecardForInscription(tournament.getId(), player.getId());
         } catch (BadRequestException ex) {
             String message = ex.getMessage() != null ? ex.getMessage() : "";
             if (message.toLowerCase().contains("handicap index")
