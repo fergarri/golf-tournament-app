@@ -17,6 +17,9 @@ public class UserDTO {
     private String email;
     private String matricula;
     private String role;
+    /** Null para superadmins (rol ADMIN). */
+    private Long courseId;
+    private String courseName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

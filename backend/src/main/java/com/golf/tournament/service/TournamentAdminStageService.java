@@ -26,6 +26,7 @@ public class TournamentAdminStageService {
     private final TournamentAdminStageScoreRepository stageScoreRepository;
     private final TournamentRepository tournamentRepository;
     private final TournamentInscriptionRepository inscriptionRepository;
+    private final TournamentAdminInscriptionRepository tournamentAdminInscriptionRepository;
     private final TournamentScoreRepository tournamentScoreRepository;
     private final TournamentCategoryRepository categoryRepository;
     private final LeaderboardService leaderboardService;
@@ -111,7 +112,8 @@ public class TournamentAdminStageService {
 
         String hcpScoreType = "FRUTALES".equals(tipo) ? TournamentScore.SCORE_TYPE_GLOBAL : TournamentScore.SCORE_TYPE_CATEGORY;
 
-        Map<Long, Player> playersById = collectPlayersById(stageTournaments);
+        Set<Long> activePlayerIds = getActiveAdminPlayerIds(tournamentAdminId);
+        Map<Long, Player> playersById = collectPlayersById(stageTournaments, activePlayerIds);
         Map<Long, Map<Long, Integer>> hcpPoints = collectPointsByTournamentAndPlayer(stageTournaments, hcpScoreType);
         Map<Long, TournamentAdminStageScore> hcpScores = stageScoreRepository
                 .findByStageIdAndScoreTypeOrderByPositionAsc(stageId, "HCP").stream()
@@ -219,7 +221,8 @@ public class TournamentAdminStageService {
             throw new BadRequestException("La etapa no tiene fechas para calcular");
         }
 
-        Map<Long, Player> playersById = collectPlayersById(stageTournaments);
+        Set<Long> activePlayerIds = getActiveAdminPlayerIds(tournamentAdminId);
+        Map<Long, Player> playersById = collectPlayersById(stageTournaments, activePlayerIds);
 
         Tournament lastTournament = stageTournaments.get(stageTournaments.size() - 1);
         Map<Long, BigDecimal> lastNetoByPlayer = leaderboardService
@@ -295,15 +298,33 @@ public class TournamentAdminStageService {
                 .thenComparing(s -> s.getPlayer().getApellido() + " " + s.getPlayer().getNombre());
     }
 
-    private Map<Long, Player> collectPlayersById(List<Tournament> tournaments) {
+    /**
+     * Recolecta los jugadores inscriptos en las fechas de la etapa, filtrando solo aquellos
+     * que sigan actualmente inscriptos en el Torneo Administrativo (activePlayerIds).
+     * Esto evita que jugadores dados de baja del Torneo Administrativo sigan apareciendo
+     * en la tabla de posiciones (HCP, categorías y Scratch) de sus etapas.
+     */
+    private Map<Long, Player> collectPlayersById(List<Tournament> tournaments, Set<Long> activePlayerIds) {
         Map<Long, Player> playersById = new LinkedHashMap<>();
         for (Tournament tournament : tournaments) {
             List<TournamentInscription> inscriptions = inscriptionRepository.findByTournamentId(tournament.getId());
             for (TournamentInscription inscription : inscriptions) {
-                playersById.put(inscription.getPlayer().getId(), inscription.getPlayer());
+                Long playerId = inscription.getPlayer().getId();
+                if (activePlayerIds.contains(playerId)) {
+                    playersById.put(playerId, inscription.getPlayer());
+                }
             }
         }
         return playersById;
+    }
+
+    /**
+     * IDs de jugadores actualmente inscriptos en el Torneo Administrativo (no dados de baja).
+     */
+    private Set<Long> getActiveAdminPlayerIds(Long tournamentAdminId) {
+        return tournamentAdminInscriptionRepository.findByTournamentAdminId(tournamentAdminId).stream()
+                .map(inscription -> inscription.getPlayer().getId())
+                .collect(Collectors.toSet());
     }
 
     private Map<Long, Map<Long, Integer>> collectPointsByTournamentAndPlayer(List<Tournament> tournaments, String scoreType) {

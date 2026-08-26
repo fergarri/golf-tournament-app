@@ -2,6 +2,9 @@ export interface User {
   email: string;
   role: string;
   permissions: string[];
+  /** Club (course) asignado al usuario. null/undefined para superadmin (rol ADMIN, ve todos los clubes). */
+  courseId?: number | null;
+  courseName?: string | null;
 }
 
 export interface UserDetail {
@@ -9,6 +12,8 @@ export interface UserDetail {
   email: string;
   matricula?: string;
   role: string;
+  courseId?: number | null;
+  courseName?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -18,12 +23,15 @@ export interface CreateUserRequest {
   matricula?: string;
   password: string;
   role: string;
+  /** Requerido cuando role=USER (club-admin). Ignorado para ADMIN (superadmin). */
+  courseId?: number | null;
 }
 
 export interface UpdateUserRequest {
   email: string;
   matricula?: string;
   role: string;
+  courseId?: number | null;
 }
 
 export interface ChangePasswordRequest {
@@ -36,6 +44,8 @@ export interface LoginResponse {
   email: string;
   role: string;
   permissions: string[];
+  courseId?: number | null;
+  courseName?: string | null;
 }
 
 export interface Player {
@@ -49,6 +59,9 @@ export interface Player {
   handicapIndex: number;
   telefono?: string;
   clubOrigen?: string;
+  courseId?: number | null;
+  courseName?: string | null;
+  hcpActivo?: boolean;
 }
 
 export interface BulkUpdateAltaItem {
@@ -256,6 +269,8 @@ export interface TournamentAdmin {
   estado: string;
   currentInscriptos: number;
   totalRecaudado: number;
+  courseId: number;
+  courseName: string;
 }
 
 export interface TournamentRelationOption {

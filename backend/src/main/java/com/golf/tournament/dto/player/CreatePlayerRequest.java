@@ -39,4 +39,5 @@ public class CreatePlayerRequest {
     
     private String telefono;
     private String clubOrigen;
+    private Boolean hcpActivo;
 }

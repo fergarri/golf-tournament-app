@@ -50,6 +50,25 @@ public class Player {
     @Column(name = "club_origen")
     private String clubOrigen;
 
+    /**
+     * Club (course) resuelto automáticamente a partir de clubOrigen. Se usa solo para
+     * poder filtrar "jugadores de mi club" en la UI; no restringe el acceso al jugador,
+     * que sigue siendo visible en toda la app.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id")
+    private Course course;
+
+    /**
+     * Estado del handicap del jugador. Si es false, el jugador puede inscribirse,
+     * cargar y entregar su tarjeta, pero no participa en la puntuación ni en las
+     * posiciones de los torneos (su tarjeta pasa a estado INACTIVE al entregarla
+     * o al finalizar el torneo).
+     */
+    @Column(name = "hcp_activo", nullable = false)
+    @Builder.Default
+    private Boolean hcpActivo = true;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

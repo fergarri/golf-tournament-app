@@ -5,6 +5,7 @@ import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.model.*;
 import com.golf.tournament.repository.*;
+import com.golf.tournament.security.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -27,15 +28,20 @@ public class TournamentAdminService {
     private final TournamentAdminPaymentRepository paymentRepository;
     private final TournamentInscriptionRepository tournamentInscriptionRepository;
     private final PlayerRepository playerRepository;
+    private final CourseRepository courseRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional
     public TournamentAdminDTO create(CreateTournamentAdminRequest request) {
+        Course course = resolveCourseForRequest(request.getCourseId());
+
         TournamentAdmin admin = TournamentAdmin.builder()
                 .nombre(request.getNombre())
                 .fecha(request.getFecha())
                 .tipo(request.getTipo())
                 .valorInscripcion(request.getValorInscripcion())
                 .cantidadCuotas(request.getCantidadCuotas())
+                .course(course)
                 .build();
 
         admin = tournamentAdminRepository.save(admin);
@@ -43,9 +49,28 @@ public class TournamentAdminService {
         return convertToDTO(admin);
     }
 
+    private Course resolveCourseForRequest(Long requestedCourseId) {
+        if (currentUserProvider.isSuperAdmin()) {
+            if (requestedCourseId == null) {
+                throw new BadRequestException("Debe seleccionar el club del torneo administrativo");
+            }
+            return courseRepository.findById(requestedCourseId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Course", "id", requestedCourseId));
+        }
+        Long currentCourseId = currentUserProvider.getCurrentCourseId();
+        if (currentCourseId == null) {
+            throw new BadRequestException("El usuario no tiene un club asignado");
+        }
+        return courseRepository.findById(currentCourseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", currentCourseId));
+    }
+
     @Transactional(readOnly = true)
     public List<TournamentAdminDTO> getAll() {
-        return tournamentAdminRepository.findAllByOrderByFechaDesc().stream()
+        List<TournamentAdmin> admins = currentUserProvider.isSuperAdmin()
+                ? tournamentAdminRepository.findAllByOrderByFechaDesc()
+                : tournamentAdminRepository.findByCourseIdOrderByFechaDesc(currentUserProvider.getCurrentCourseId());
+        return admins.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -54,6 +79,7 @@ public class TournamentAdminService {
     public TournamentAdminDTO getById(Long id) {
         TournamentAdmin admin = tournamentAdminRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", id));
+        currentUserProvider.assertClubAccess(admin.getCourse().getId());
         return convertToDTO(admin);
     }
 
@@ -61,6 +87,7 @@ public class TournamentAdminService {
     public TournamentAdminDTO update(Long id, UpdateTournamentAdminRequest request) {
         TournamentAdmin admin = tournamentAdminRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", id));
+        currentUserProvider.assertClubAccess(admin.getCourse().getId());
 
         admin.setNombre(request.getNombre());
         admin.setFecha(request.getFecha());
@@ -81,9 +108,10 @@ public class TournamentAdminService {
 
     @Transactional
     public void delete(Long id) {
-        if (!tournamentAdminRepository.existsById(id)) {
-            throw new ResourceNotFoundException("TournamentAdmin", "id", id);
-        }
+        TournamentAdmin admin = tournamentAdminRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", id));
+        currentUserProvider.assertClubAccess(admin.getCourse().getId());
+        currentUserProvider.assertCanDelete();
         tournamentAdminRepository.deleteById(id);
         log.info("Torneo administrativo eliminado: {}", id);
     }
@@ -92,6 +120,7 @@ public class TournamentAdminService {
     public TournamentAdminDTO finalize(Long id) {
         TournamentAdmin admin = tournamentAdminRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", id));
+        currentUserProvider.assertClubAccess(admin.getCourse().getId());
         admin.setEstado("FINALIZED");
         admin = tournamentAdminRepository.save(admin);
         log.info("Torneo administrativo finalizado: {}", id);
@@ -102,6 +131,7 @@ public class TournamentAdminService {
     public void inscribePlayer(Long tournamentAdminId, Long playerId) {
         TournamentAdmin admin = tournamentAdminRepository.findById(tournamentAdminId)
                 .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", tournamentAdminId));
+        currentUserProvider.assertClubAccess(admin.getCourse().getId());
 
         Player player = playerRepository.findById(playerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Player", "id", playerId));
@@ -132,9 +162,9 @@ public class TournamentAdminService {
 
     @Transactional
     public void removeInscription(Long inscriptionId) {
-        if (!inscriptionRepository.existsById(inscriptionId)) {
-            throw new ResourceNotFoundException("TournamentAdminInscription", "id", inscriptionId);
-        }
+        TournamentAdminInscription inscription = inscriptionRepository.findById(inscriptionId)
+                .orElseThrow(() -> new ResourceNotFoundException("TournamentAdminInscription", "id", inscriptionId));
+        currentUserProvider.assertClubAccess(inscription.getTournamentAdmin().getCourse().getId());
         inscriptionRepository.deleteById(inscriptionId);
         log.info("Inscripción admin eliminada: {}", inscriptionId);
     }
@@ -143,6 +173,7 @@ public class TournamentAdminService {
     public TournamentAdminDetailDTO getDetail(Long id) {
         TournamentAdmin admin = tournamentAdminRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", id));
+        currentUserProvider.assertClubAccess(admin.getCourse().getId());
 
         List<TournamentAdminInscription> inscriptions = inscriptionRepository.findByTournamentAdminId(id);
 
@@ -175,9 +206,9 @@ public class TournamentAdminService {
 
     @Transactional
     public void savePayments(Long tournamentAdminId, SavePaymentsRequest request) {
-        if (!tournamentAdminRepository.existsById(tournamentAdminId)) {
-            throw new ResourceNotFoundException("TournamentAdmin", "id", tournamentAdminId);
-        }
+        TournamentAdmin admin = tournamentAdminRepository.findById(tournamentAdminId)
+                .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", tournamentAdminId));
+        currentUserProvider.assertClubAccess(admin.getCourse().getId());
 
         for (SavePaymentsRequest.PaymentUpdate update : request.getPayments()) {
             TournamentAdminPayment payment = paymentRepository.findById(update.getPaymentId())
@@ -198,6 +229,7 @@ public class TournamentAdminService {
     public ImportAdminInscriptionsResultDTO importInscriptionsToRelatedPendingTournaments(Long tournamentAdminId) {
         TournamentAdmin admin = tournamentAdminRepository.findById(tournamentAdminId)
                 .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", tournamentAdminId));
+        currentUserProvider.assertClubAccess(admin.getCourse().getId());
 
         List<TournamentAdminInscription> adminInscriptions = inscriptionRepository.findByTournamentAdminId(tournamentAdminId);
 
@@ -265,6 +297,7 @@ public class TournamentAdminService {
     public ExportTournamentInscriptionsResultDTO exportTournamentInscriptionsToAdmin(Long tournamentId) {
         TournamentAdmin admin = tournamentAdminRepository.findByTournamentInAnyStage(tournamentId)
                 .orElseThrow(() -> new BadRequestException("Este torneo no está asociado a ningún Torneo Administrativo"));
+        currentUserProvider.assertClubAccess(admin.getCourse().getId());
 
         List<TournamentInscription> tournamentInscriptions = tournamentInscriptionRepository.findByTournamentId(tournamentId);
 
@@ -354,6 +387,8 @@ public class TournamentAdminService {
                 .estado(admin.getEstado())
                 .currentInscriptos(count.intValue())
                 .totalRecaudado(totalRecaudado)
+                .courseId(admin.getCourse() != null ? admin.getCourse().getId() : null)
+                .courseName(admin.getCourse() != null ? admin.getCourse().getNombre() : null)
                 .build();
     }
 

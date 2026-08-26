@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { tournamentAdminService } from '../services/tournamentAdminService';
 import { playerService } from '../services/playerService';
-import { TournamentAdmin, Player } from '../types';
+import { courseService } from '../services/courseService';
+import { useAuth } from '../hooks/useAuth';
+import { TournamentAdmin, Player, Course } from '../types';
 import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
 import { formatDateSafe } from '../utils/dateUtils';
@@ -11,7 +13,9 @@ import '../components/Form.css';
 
 const AdministrationPage = () => {
   const navigate = useNavigate();
+  const { isSuperAdmin, canDelete } = useAuth();
   const [admins, setAdmins] = useState<TournamentAdmin[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -24,6 +28,7 @@ const AdministrationPage = () => {
     tipo: 'FRUTALES',
     valorInscripcion: '',
     cantidadCuotas: '1',
+    courseId: '' as number | '',
   });
 
   // Inscription modal
@@ -41,7 +46,10 @@ const AdministrationPage = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+    if (isSuperAdmin) {
+      loadCourses();
+    }
+  }, [isSuperAdmin]);
 
   const loadData = async () => {
     try {
@@ -53,6 +61,15 @@ const AdministrationPage = () => {
       setError(err.response?.data?.message || 'Error cargando datos');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCourses = async () => {
+    try {
+      const data = await courseService.getAll();
+      setCourses(data);
+    } catch (err: any) {
+      console.error('Error cargando clubes:', err);
     }
   };
 
@@ -85,6 +102,7 @@ const AdministrationPage = () => {
       tipo: 'FRUTALES',
       valorInscripcion: '',
       cantidadCuotas: '1',
+      courseId: courses.length > 0 ? courses[0].id : '',
     });
     setShowModal(true);
   };
@@ -97,6 +115,7 @@ const AdministrationPage = () => {
       tipo: admin.tipo,
       valorInscripcion: formatCurrency(admin.valorInscripcion),
       cantidadCuotas: String(admin.cantidadCuotas),
+      courseId: admin.courseId ?? '',
     });
     setShowModal(true);
   };
@@ -110,6 +129,7 @@ const AdministrationPage = () => {
         tipo: formData.tipo,
         valorInscripcion: parseCurrency(formData.valorInscripcion),
         cantidadCuotas: parseInt(formData.cantidadCuotas),
+        ...(isSuperAdmin && !editingAdmin ? { courseId: formData.courseId ? Number(formData.courseId) : null } : {}),
       };
 
       if (editingAdmin) {
@@ -270,6 +290,7 @@ const AdministrationPage = () => {
       </span>
     )},
     { header: 'Fecha', accessor: (row: TournamentAdmin) => formatDateSafe(row.fecha) },
+    ...(isSuperAdmin ? [{ header: 'Club', accessor: (row: TournamentAdmin) => row.courseName }] : []),
     { header: 'Jugadores', accessor: (row: TournamentAdmin) => row.currentInscriptos },
     { header: 'Valor Inscripción', accessor: (row: TournamentAdmin) => `$${formatCurrency(row.valorInscripcion)}` },
     { header: 'T. Recaudado', accessor: (row: TournamentAdmin) => (
@@ -326,6 +347,7 @@ const AdministrationPage = () => {
       label: 'Eliminar',
       onClick: handleDelete,
       variant: 'danger',
+      show: () => canDelete,
     },
   ];
 
@@ -429,6 +451,27 @@ const AdministrationPage = () => {
               />
             </div>
           </div>
+
+          {isSuperAdmin && !editingAdmin && (
+            <div className="form-group">
+              <label>Club *</label>
+              <select
+                value={formData.courseId}
+                onChange={(e) => setFormData({ ...formData, courseId: e.target.value ? parseInt(e.target.value) : '' })}
+                required
+              >
+                <option value="">Seleccionar un club</option>
+                {courses.map((course) => (
+                  <option key={course.id} value={course.id}>{course.nombre}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {isSuperAdmin && editingAdmin && (
+            <p style={{ color: '#7f8c8d', fontSize: '0.85rem', margin: 0 }}>
+              Club: <strong>{editingAdmin.courseName}</strong> (no puede modificarse una vez creado el torneo)
+            </p>
+          )}
         </form>
       </Modal>
 

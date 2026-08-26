@@ -5,6 +5,7 @@ import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.model.*;
 import com.golf.tournament.repository.*;
+import com.golf.tournament.security.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -13,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -27,9 +29,11 @@ public class TournamentService {
     private final TournamentCategoryRepository tournamentCategoryRepository;
     private final TournamentInscriptionRepository tournamentInscriptionRepository;
     private final ScorecardRepository scorecardRepository;
+    private final HoleScoreRepository holeScoreRepository;
     private final TournamentPrizeService tournamentPrizeService;
     private final TournamentAdminStageRepository tournamentAdminStageRepository;
     private final TournamentAdminScoringConfigService tournamentAdminScoringConfigService;
+    private final CurrentUserProvider currentUserProvider;
 
     private static final String CODIGO_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int CODIGO_LENGTH = 8;
@@ -40,7 +44,10 @@ public class TournamentService {
 
     @Transactional(readOnly = true)
     public List<TournamentDTO> getAllTournaments() {
-        return tournamentRepository.findAllOrderByFechaInicioDesc().stream()
+        List<Tournament> tournaments = currentUserProvider.isSuperAdmin()
+                ? tournamentRepository.findAllOrderByFechaInicioDesc()
+                : tournamentRepository.findByCourseIdOrderByFechaInicioDesc(currentUserProvider.getCurrentCourseId());
+        return tournaments.stream()
                 .map(tournament -> {
                     TournamentDTO dto = convertToDTO(tournament);
                     enrichWithAdminStage(dto, false);
@@ -53,6 +60,7 @@ public class TournamentService {
     public TournamentDTO getTournamentById(Long id) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
         TournamentDTO dto = convertToDTO(tournament);
         enrichWithAdminStage(dto, true);
         return dto;
@@ -69,8 +77,9 @@ public class TournamentService {
 
     @Transactional
     public TournamentDTO createTournament(CreateTournamentRequest request) {
-        Course course = courseRepository.findById(request.getCourseId())
-                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
+        Long courseId = resolveCourseIdForRequest(request.getCourseId());
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
         validateCantidadHoyosJuego(request.getCantidadHoyosJuego());
         validateCategorySexes(request.getCategories());
         validateHorarios(request.getHorarioInicio(), request.getHorarioCierre());
@@ -123,9 +132,11 @@ public class TournamentService {
     public TournamentDTO updateTournament(Long id, CreateTournamentRequest request) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
 
-        Course course = courseRepository.findById(request.getCourseId())
-                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
+        Long courseId = resolveCourseIdForRequest(request.getCourseId());
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
         validateCantidadHoyosJuego(request.getCantidadHoyosJuego());
         validateCategorySexes(request.getCategories());
         validateHorarios(request.getHorarioInicio(), request.getHorarioCierre());
@@ -245,11 +256,31 @@ public class TournamentService {
 
     @Transactional
     public void deleteTournament(Long id) {
-        if (!tournamentRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Tournament", "id", id);
-        }
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
+        currentUserProvider.assertCanDelete();
         tournamentRepository.deleteById(id);
         log.info("Tournament deleted with id: {}", id);
+    }
+
+    /**
+     * Resuelve el course al que debe pertenecer el torneo: para un admin de club (rol USER)
+     * siempre es su propio club, sin importar lo que llegue en el request; para un superadmin
+     * se respeta el course elegido explícitamente.
+     */
+    private Long resolveCourseIdForRequest(Long requestedCourseId) {
+        if (currentUserProvider.isSuperAdmin()) {
+            if (requestedCourseId == null) {
+                throw new BadRequestException("Debe seleccionar el campo de golf del torneo");
+            }
+            return requestedCourseId;
+        }
+        Long currentCourseId = currentUserProvider.getCurrentCourseId();
+        if (currentCourseId == null) {
+            throw new BadRequestException("El usuario no tiene un club asignado");
+        }
+        return currentCourseId;
     }
 
     /**
@@ -403,6 +434,7 @@ public class TournamentService {
     public TournamentDTO startTournament(Long id) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
 
         if (!"PENDING".equals(tournament.getEstado())) {
             throw new BadRequestException("Tournament can only be started from PENDING status");
@@ -418,27 +450,108 @@ public class TournamentService {
     public TournamentDTO finalizeTournament(Long id) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
 
-        // Convert any in-progress scorecards to CANCELLED before finalizing.
-        List<Scorecard> inProgressScorecards = scorecardRepository
-                .findByTournamentIdAndStatusIn(id, List.of(ScorecardStatus.IN_PROGRESS, ScorecardStatus.PENDING_CONFIG));
-
-        if (!inProgressScorecards.isEmpty()) {
-            LocalDateTime now = LocalDateTime.now();
-            for (Scorecard scorecard : inProgressScorecards) {
-                scorecard.setStatus(ScorecardStatus.CANCELLED);
-                if (scorecard.getDeliveredAt() == null) {
-                    scorecard.setDeliveredAt(now);
-                }
-            }
-            scorecardRepository.saveAll(inProgressScorecards);
-            scorecardRepository.flush();
-        }
+        // Resolver tarjetas pendientes: completas → DELIVERED, incompletas → CANCELLED
+        resolveScorecardsBeforeFinalize(tournament);
 
         tournament.setEstado("FINALIZED");
         tournament = tournamentRepository.save(tournament);
         log.info("Tournament {} finalized", id);
         return convertToDTO(tournament);
+    }
+
+    /**
+     * Resuelve el estado de cada tarjeta al finalizar el torneo:
+     *  - Jugador con hcp_activo=false                        → INACTIVE (no participa en puntuación/posiciones),
+     *    incluso si la tarjeta ya estaba DELIVERED (el jugador pudo entregarla antes de quedar inactivo).
+     *  - Tarjeta pendiente (IN_PROGRESS/PENDING_CONFIG) con todos los hoyos cargados → DELIVERED
+     *  - Tarjeta pendiente con carga parcial o sin hoyos     → CANCELLED
+     *
+     * Las tarjetas ya CANCELLED, DISQUALIFIED o INACTIVE no se tocan. Las DELIVERED tampoco se
+     * tocan salvo que el jugador tenga hcp_activo=false.
+     */
+    private void resolveScorecardsBeforeFinalize(Tournament tournament) {
+        int holesRequired = resolveHolesRequiredForTournament(tournament);
+
+        List<Scorecard> candidates = scorecardRepository
+                .findByTournamentIdAndStatusIn(tournament.getId(),
+                        List.of(ScorecardStatus.IN_PROGRESS, ScorecardStatus.PENDING_CONFIG, ScorecardStatus.DELIVERED));
+
+        if (candidates.isEmpty()) return;
+
+        LocalDateTime now = LocalDateTime.now();
+        int delivered = 0;
+        int cancelled = 0;
+        int inactivated = 0;
+        List<Scorecard> toSave = new ArrayList<>();
+
+        for (Scorecard scorecard : candidates) {
+            boolean hcpActivo = scorecard.getPlayer() == null
+                    || scorecard.getPlayer().getHcpActivo() == null
+                    || scorecard.getPlayer().getHcpActivo();
+
+            if (!hcpActivo) {
+                scorecard.setStatus(ScorecardStatus.INACTIVE);
+                if (scorecard.getDeliveredAt() == null) {
+                    scorecard.setDeliveredAt(now);
+                }
+                inactivated++;
+                toSave.add(scorecard);
+                continue;
+            }
+
+            if (scorecard.getStatus() == ScorecardStatus.DELIVERED) {
+                // Ya entregada y el jugador tiene el hcp activo: no se toca.
+                continue;
+            }
+
+            if (isScorecardComplete(scorecard, holesRequired)) {
+                scorecard.setStatus(ScorecardStatus.DELIVERED);
+                scorecard.setDeliveredAt(now);
+                delivered++;
+            } else {
+                scorecard.setStatus(ScorecardStatus.CANCELLED);
+                if (scorecard.getDeliveredAt() == null) {
+                    scorecard.setDeliveredAt(now);
+                }
+                cancelled++;
+            }
+            toSave.add(scorecard);
+        }
+
+        if (toSave.isEmpty()) return;
+
+        scorecardRepository.saveAll(toSave);
+        scorecardRepository.flush();
+        log.info("Torneo {}: {} tarjeta(s) entregadas, {} canceladas, {} inactivas (hcp) al finalizar",
+                tournament.getId(), delivered, cancelled, inactivated);
+    }
+
+    /**
+     * Determina si una tarjeta tiene todos los hoyos requeridos con golpesPropio cargados.
+     * Usa holeScoreRepository para cargar los holeScores (evita problemas de lazy loading).
+     */
+    private boolean isScorecardComplete(Scorecard scorecard, int holesRequired) {
+        List<HoleScore> holeScores = holeScoreRepository.findByScorecardId(scorecard.getId());
+        if (holeScores == null || holeScores.isEmpty()) {
+            return false;
+        }
+        long filledHoles = holeScores.stream()
+                .filter(hs -> hs.getGolpesPropio() != null && hs.getGolpesPropio() > 0)
+                .count();
+        return filledHoles >= holesRequired;
+    }
+
+    /**
+     * Determina la cantidad de hoyos requeridos para el torneo.
+     * Usa cantidadHoyosJuego del torneo; si no está definido, asume 18.
+     */
+    private int resolveHolesRequiredForTournament(Tournament tournament) {
+        if (tournament.getCantidadHoyosJuego() != null && tournament.getCantidadHoyosJuego() > 0) {
+            return tournament.getCantidadHoyosJuego();
+        }
+        return 18;
     }
 
     /**
@@ -448,6 +561,7 @@ public class TournamentService {
     public TournamentDTO reopenTournament(Long id) {
         Tournament tournament = tournamentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
 
         if (!"FINALIZED".equals(tournament.getEstado())) {
             throw new BadRequestException("Solo se puede habilitar un torneo que esté finalizado");

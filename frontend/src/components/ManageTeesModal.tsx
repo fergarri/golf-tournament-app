@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Course, CourseTee } from '../types';
 import { courseService } from '../services/courseService';
+import { useAuth } from '../hooks/useAuth';
 import Modal from './Modal';
 import Table, { TableAction } from './Table';
 import '../components/Form.css';
@@ -13,6 +14,7 @@ interface ManageTeesModalProps {
 }
 
 const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalProps) => {
+  const { canDelete } = useAuth();
   const [tees, setTees] = useState<CourseTee[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -108,7 +110,7 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
       label: 'Desactivar',
       onClick: handleDeactivate,
       variant: 'danger',
-      show: (tee) => tee.active,
+      show: (tee) => tee.active && canDelete,
     },
   ];
 

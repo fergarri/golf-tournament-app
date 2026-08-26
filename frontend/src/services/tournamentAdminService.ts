@@ -23,6 +23,7 @@ export const tournamentAdminService = {
     tipo: string;
     valorInscripcion: number;
     cantidadCuotas: number;
+    courseId?: number | null;
   }): Promise<TournamentAdmin> => {
     const response = await api.post<TournamentAdmin>('/tournament-admin', data);
     return response.data;
@@ -34,6 +35,7 @@ export const tournamentAdminService = {
     tipo: string;
     valorInscripcion: number;
     cantidadCuotas: number;
+    courseId?: number | null;
   }): Promise<TournamentAdmin> => {
     const response = await api.put<TournamentAdmin>(`/tournament-admin/${id}`, data);
     return response.data;

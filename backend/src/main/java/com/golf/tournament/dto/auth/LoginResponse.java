@@ -19,4 +19,7 @@ public class LoginResponse {
     private String email;
     private String role;
     private List<String> permissions;
+    /** Null para superadmins (rol ADMIN), que ven todos los clubes. */
+    private Long courseId;
+    private String courseName;
 }

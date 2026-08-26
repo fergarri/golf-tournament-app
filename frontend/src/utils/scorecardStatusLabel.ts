@@ -14,6 +14,7 @@ export function getScorecardStatusLabel(
 ): ScorecardStatusLabel | null {
   if (status === 'DISQUALIFIED') return { code: 'DS', color: '#e74c3c' };
   if (status === 'CANCELLED') return { code: 'CA', color: '#7f8c8d' };
+  if (status === 'INACTIVE') return { code: 'INA', color: '#8e44ad' };
   if (!hasScorecard) return null;
   if (status && status !== 'DELIVERED') return { code: 'NM', color: '#f39c12' };
   return null;

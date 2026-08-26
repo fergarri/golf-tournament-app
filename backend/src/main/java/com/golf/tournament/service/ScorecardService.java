@@ -455,20 +455,22 @@ public class ScorecardService {
             validateScorecardCrossed(scorecard);
         }
 
-        scorecard.setStatus(ScorecardStatus.DELIVERED);
+        boolean hcpActivo = scorecard.getPlayer().getHcpActivo() == null || scorecard.getPlayer().getHcpActivo();
+        scorecard.setStatus(hcpActivo ? ScorecardStatus.DELIVERED : ScorecardStatus.INACTIVE);
         scorecard.setDeliveredAt(LocalDateTime.now());
         scorecard = scorecardRepository.save(scorecard);
 
-        log.info("Scorecard delivered: {}", scorecardId);
+        log.info("Scorecard delivered: {} (status={})", scorecardId, scorecard.getStatus());
         return convertToDTO(scorecard);
     }
 
     /**
-     * Tarjetas en estos estados quedan "fuera de juego": si un jugador cancela o es descalificado,
-     * ni quien lo marca ni a quien él marca deben quedar bloqueados por su falta de validación.
+     * Tarjetas en estos estados quedan "fuera de juego": si un jugador cancela, es descalificado
+     * o queda inactivo por handicap, ni quien lo marca ni a quien él marca deben quedar bloqueados
+     * por su falta de validación.
      */
     private static final java.util.Set<ScorecardStatus> EXEMPT_FROM_CROSS_VALIDATION =
-            java.util.EnumSet.of(ScorecardStatus.CANCELLED, ScorecardStatus.DISQUALIFIED);
+            java.util.EnumSet.of(ScorecardStatus.CANCELLED, ScorecardStatus.DISQUALIFIED, ScorecardStatus.INACTIVE);
 
     private void validateScorecardCrossed(Scorecard scorecard) {
         boolean markedPlayerExempt = false;

@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
@@ -18,4 +19,6 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     List<Course> searchCourses(@Param("search") String search);
     
     List<Course> findByPais(String pais);
+
+    Optional<Course> findByNombreIgnoreCase(String nombre);
 }

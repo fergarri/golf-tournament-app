@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { courseService } from '../services/courseService';
 import { locationService, Country, Province } from '../services/locationService';
 import { Course } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
 import ManageHolesModal from '../components/ManageHolesModal';
@@ -9,6 +10,7 @@ import ManageTeesModal from '../components/ManageTeesModal';
 import '../components/Form.css';
 
 const CoursesPage = () => {
+  const { isSuperAdmin } = useAuth();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -205,6 +207,7 @@ const CoursesPage = () => {
       label: 'Eliminar',
       onClick: handleDelete,
       variant: 'danger',
+      show: () => isSuperAdmin,
     },
   ];
 
@@ -214,9 +217,11 @@ const CoursesPage = () => {
     <div>
       <div className="page-header">
         <h1>Campos de Golf</h1>
-        <button onClick={handleCreate} className="btn btn-primary">
-          Crear Campo
-        </button>
+        {isSuperAdmin && (
+          <button onClick={handleCreate} className="btn btn-primary">
+            Crear Campo
+          </button>
+        )}
       </div>
 
       {error && <div className="error-message">{error}</div>}

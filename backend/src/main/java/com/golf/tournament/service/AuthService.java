@@ -1,5 +1,6 @@
 package com.golf.tournament.service;
 
+import com.golf.tournament.config.CustomUserDetails;
 import com.golf.tournament.config.JwtUtil;
 import com.golf.tournament.dto.auth.LoginRequest;
 import com.golf.tournament.dto.auth.LoginResponse;
@@ -36,6 +37,7 @@ public class AuthService {
             );
 
             UserDetails userDetails = userDetailsService.loadUserByUsername(request.getUsername());
+            CustomUserDetails customUserDetails = (CustomUserDetails) userDetails;
             String token = jwtUtil.generateToken(userDetails);
 
             User user = userRepository.findByEmail(request.getUsername())
@@ -52,6 +54,8 @@ public class AuthService {
                     .permissions(user.getRole().getPermissions().stream()
                             .map(Permission::name)
                             .toList())
+                    .courseId(customUserDetails.getCourseId())
+                    .courseName(customUserDetails.getCourseName())
                     .build();
 
         } catch (Exception e) {

@@ -10,6 +10,10 @@ interface AuthContextType {
   logout: () => void;
   isLoading: boolean;
   hasPermission: (permission: string) => boolean;
+  /** true para el rol ADMIN (superadmin, ve y administra todos los clubes) */
+  isSuperAdmin: boolean;
+  /** false para el rol USER: puede crear/editar players, torneos, torneos administrativos, campo, tees y hoyos, pero no eliminarlos */
+  canDelete: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -69,6 +73,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: response.email,
         role: response.role,
         permissions: response.permissions,
+        courseId: response.courseId,
+        courseName: response.courseName,
       };
       
       localStorage.setItem('token', response.token);
@@ -92,8 +98,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return user.permissions.includes('TOTAL') || user.permissions.includes(permission);
   };
 
+  const isSuperAdmin = user?.role === 'ADMIN';
+  const canDelete = user?.role !== 'USER';
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, hasPermission }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading, hasPermission, isSuperAdmin, canDelete }}>
       {children}
     </AuthContext.Provider>
   );

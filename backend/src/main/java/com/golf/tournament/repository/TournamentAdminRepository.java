@@ -14,6 +14,8 @@ public interface TournamentAdminRepository extends JpaRepository<TournamentAdmin
 
     List<TournamentAdmin> findAllByOrderByFechaDesc();
 
+    List<TournamentAdmin> findByCourseIdOrderByFechaDesc(Long courseId);
+
     @Query("SELECT COUNT(i) FROM TournamentAdminInscription i WHERE i.tournamentAdmin.id = :tournamentAdminId")
     Long countInscriptionsByTournamentAdminId(@Param("tournamentAdminId") Long tournamentAdminId);
 

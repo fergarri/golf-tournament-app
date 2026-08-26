@@ -40,7 +40,7 @@ function App() {
           <Route path="/tournaments/:id/frutales-leaderboard" element={<PermissionRoute permission="GAMES"><FrutalesLeaderboardPage /></PermissionRoute>} />
           <Route path="/players" element={<PermissionRoute permission="GAMES"><PlayersPage /></PermissionRoute>} />
           <Route path="/courses" element={<PermissionRoute permission="GAMES"><CoursesPage /></PermissionRoute>} />
-          <Route path="/users" element={<PermissionRoute permission="TOTAL"><UsersPage /></PermissionRoute>} />
+          <Route path="/users" element={<PermissionRoute permission="CLUB_USERS"><UsersPage /></PermissionRoute>} />
           <Route path="/administration" element={<PermissionRoute permission="ADMINISTRATION"><AdministrationPage /></PermissionRoute>} />
           <Route path="/administration/:id" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminDetailPage /></PermissionRoute>} />
           <Route path="/administration/:id/stages" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminStagesPage /></PermissionRoute>} />

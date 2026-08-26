@@ -10,7 +10,7 @@ const navItems = [
   { to: '/tournaments', label: 'Torneos', icon: Trophy, permission: 'GAMES' },
   { to: '/players', label: 'Jugadores', icon: Users, permission: 'GAMES' },
   { to: '/courses', label: 'Campos', icon: Map, permission: 'GAMES' },
-  { to: '/users', label: 'Usuarios', icon: Shield, permission: 'TOTAL' },
+  { to: '/users', label: 'Usuarios', icon: Shield, permission: 'CLUB_USERS' },
   { to: '/administration', label: 'Administración', icon: Settings, permission: 'ADMINISTRATION' },
 ];
 
@@ -59,6 +59,12 @@ const Layout = () => {
 
           {/* User section */}
           <div className="flex items-center gap-3">
+            {user?.courseName && (
+              <span className="hidden lg:flex items-center gap-1.5 text-xs font-medium bg-emerald-900/60 text-emerald-100 px-2.5 py-1 rounded-full">
+                <Map className="h-3.5 w-3.5" />
+                {user.courseName}
+              </span>
+            )}
             <span className="hidden sm:block text-sm text-emerald-200 truncate max-w-[180px]">
               {user?.email}
             </span>

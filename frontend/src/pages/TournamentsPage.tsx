@@ -9,10 +9,12 @@ import ResultsMessageModal from '../components/ResultsMessageModal';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
 import { formatDateSafe } from '../utils/dateUtils';
 import { buildResultsShareMessage } from '../utils/resultsMessage';
+import { useAuth } from '../hooks/useAuth';
 import '../components/Form.css';
 
 const TournamentsPage = () => {
   const navigate = useNavigate();
+  const { canDelete } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -455,6 +457,7 @@ const TournamentsPage = () => {
       label: 'Eliminar',
       onClick: requestDeleteTournament,
       variant: 'danger',
+      show: () => canDelete,
     },
   ];
 

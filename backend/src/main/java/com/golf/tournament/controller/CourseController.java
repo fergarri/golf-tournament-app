@@ -37,7 +37,7 @@ public class CourseController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    @PreAuthorize("hasAuthority('TOTAL')")
     public ResponseEntity<CourseDTO> createCourse(@Valid @RequestBody CreateCourseRequest request) {
         CourseDTO course = courseService.createCourse(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(course);
@@ -52,7 +52,7 @@ public class CourseController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    @PreAuthorize("hasAuthority('TOTAL')")
     public ResponseEntity<Void> deleteCourse(@PathVariable Long id) {
         courseService.deleteCourse(id);
         return ResponseEntity.noContent().build();

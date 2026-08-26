@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { playerService } from '../services/playerService';
 import { BulkUpdateResult, Player } from '../types';
+import { useAuth } from '../hooks/useAuth';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
 import { Button } from '../components/ui/button';
@@ -16,6 +17,8 @@ const formatHcpIndex = (value: number | null | undefined): string => {
 };
 
 const PlayersPage = () => {
+  const { user, canDelete } = useAuth();
+  const hasOwnClub = !!user?.courseId;
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,13 +26,15 @@ const PlayersPage = () => {
   const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
   const [formData, setFormData] = useState<Partial<Player>>({
     nombre: '', apellido: '', email: '', matricula: '',
-    fechaNacimiento: '', sexo: 'M', handicapIndex: 0, telefono: '', clubOrigen: '',
+    fechaNacimiento: '', sexo: 'M', handicapIndex: 0, telefono: '', clubOrigen: '', hcpActivo: true,
   });
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [bulkUpdateResult, setBulkUpdateResult] = useState<BulkUpdateResult | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  // Por defecto, un admin de club ve solo "sus" jugadores; el superadmin ve todos.
+  const [clubFilter, setClubFilter] = useState<'mine' | 'all'>(hasOwnClub ? 'mine' : 'all');
 
   useEffect(() => { loadPlayers(); }, []);
 
@@ -48,7 +53,7 @@ const PlayersPage = () => {
 
   const handleCreate = () => {
     setEditingPlayer(null);
-    setFormData({ nombre: '', apellido: '', email: '', matricula: '', fechaNacimiento: '', sexo: 'M', handicapIndex: 0, telefono: '', clubOrigen: '' });
+    setFormData({ nombre: '', apellido: '', email: '', matricula: '', fechaNacimiento: '', sexo: 'M', handicapIndex: 0, telefono: '', clubOrigen: '', hcpActivo: true });
     setShowModal(true);
   };
 
@@ -59,6 +64,7 @@ const PlayersPage = () => {
       matricula: player.matricula, fechaNacimiento: player.fechaNacimiento || '',
       sexo: player.sexo, handicapIndex: player.handicapIndex,
       telefono: player.telefono || '', clubOrigen: player.clubOrigen || '',
+      hcpActivo: player.hcpActivo !== false,
     });
     setShowModal(true);
   };
@@ -115,9 +121,19 @@ const PlayersPage = () => {
     setError('');
   };
 
-  const filteredPlayers = searchQuery
-    ? players.filter(p => `${p.nombre} ${p.apellido} ${p.matricula}`.toLowerCase().includes(searchQuery.toLowerCase()))
+  const clubFilteredPlayers = clubFilter === 'mine' && user?.courseId
+    ? players.filter(p => p.courseId === user.courseId)
     : players;
+
+  const filteredPlayers = searchQuery
+    ? clubFilteredPlayers.filter(p => {
+        const q = searchQuery.toLowerCase().trim();
+        const haystack = [p.nombre, p.apellido, p.matricula, p.clubOrigen ?? '']
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(q);
+      })
+    : clubFilteredPlayers;
 
   const columns = [
     {
@@ -146,6 +162,17 @@ const PlayersPage = () => {
     },
     { header: 'Club', accessor: 'clubOrigen' as keyof Player },
     { header: 'Email', accessor: 'email' as keyof Player },
+    {
+      header: 'HCP',
+      accessor: (row: Player) => (
+        row.hcpActivo === false ? (
+          <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700">Inactivo</Badge>
+        ) : (
+          <Badge variant="success" className="text-xs">Activo</Badge>
+        )
+      ),
+      sortValue: (row: Player) => (row.hcpActivo === false ? 0 : 1),
+    },
   ];
 
   if (loading) return <div className="loading">Cargando jugadores...</div>;
@@ -156,7 +183,7 @@ const PlayersPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Jugadores</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{players.length} jugadores registrados</p>
+          <p className="text-slate-500 text-sm mt-0.5">{clubFilteredPlayers.length} jugadores registrados</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setShowBulkUpdateModal(true)}>
@@ -172,13 +199,35 @@ const PlayersPage = () => {
 
       {error && <div className="error-message">{error}</div>}
 
-      {/* Search */}
-      <div className="mb-5">
+      {/* Filtro por club + búsqueda */}
+      <div className="mb-5 space-y-3">
+        {hasOwnClub && (
+          <div className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-sm">
+            <button
+              type="button"
+              onClick={() => setClubFilter('mine')}
+              className={`px-3 py-1.5 rounded-[5px] font-medium transition-colors ${
+                clubFilter === 'mine' ? 'bg-primary text-primary-foreground' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Jugadores de mi club
+            </button>
+            <button
+              type="button"
+              onClick={() => setClubFilter('all')}
+              className={`px-3 py-1.5 rounded-[5px] font-medium transition-colors ${
+                clubFilter === 'all' ? 'bg-primary text-primary-foreground' : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              Todos los jugadores
+            </button>
+          </div>
+        )}
         <div className="relative w-full sm:max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             type="text"
-            placeholder="Buscar por nombre, apellido o matrícula…"
+            placeholder="Buscar por nombre, apellido, matrícula o club…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9 pr-8"
@@ -195,12 +244,12 @@ const PlayersPage = () => {
         </div>
         {searchQuery && (
           <p className="mt-1.5 text-xs text-slate-500">
-            Mostrando {filteredPlayers.length} de {players.length} jugadores
+            Mostrando {filteredPlayers.length} de {clubFilteredPlayers.length} jugadores
           </p>
         )}
       </div>
 
-      <Table data={filteredPlayers} columns={columns} onEdit={handleEdit} onDelete={handleDelete} />
+      <Table data={filteredPlayers} columns={columns} onEdit={handleEdit} onDelete={canDelete ? handleDelete : undefined} />
 
       {/* Modal editar/crear jugador */}
       <Modal
@@ -265,6 +314,22 @@ const PlayersPage = () => {
             <div className="form-group">
               <label>Club</label>
               <input type="text" value={formData.clubOrigen} onChange={(e) => setFormData({ ...formData, clubOrigen: e.target.value })} />
+            </div>
+          </div>
+          <div className="form-row">
+            <div className="form-group">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.hcpActivo !== false}
+                  onChange={(e) => setFormData({ ...formData, hcpActivo: e.target.checked })}
+                  className="h-4 w-4"
+                />
+                HCP Activo
+              </label>
+              <p className="text-xs text-slate-500 mt-1">
+                Si está desactivado, el jugador puede seguir cargando y entregando su tarjeta, pero no participará en la puntuación ni en las posiciones de los torneos.
+              </p>
             </div>
           </div>
         </form>

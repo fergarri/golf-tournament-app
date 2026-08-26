@@ -36,6 +36,14 @@ public class User {
     @Builder.Default
     private Role role = Role.ADMIN;
 
+    /**
+     * Club al que pertenece el usuario. Null para superadmins (rol ADMIN), que ven todos los clubes.
+     * Obligatorio para usuarios con rol USER ("admin de club").
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id")
+    private Course course;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

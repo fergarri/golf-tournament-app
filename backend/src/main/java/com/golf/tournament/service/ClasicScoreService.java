@@ -224,10 +224,44 @@ public class ClasicScoreService {
                     .build());
         }
 
+        // Jugadores con hcp_activo=false: no participan en puntuación ni posiciones,
+        // pero aparecen en su categoría (si se puede determinar) y en scratch.
+        List<Scorecard> inactiveCards = scorecardRepository.findByTournamentIdAndStatus(tournamentId, ScorecardStatus.INACTIVE);
+        for (Scorecard sc : inactiveCards) {
+            TournamentCategory cat = findCategoryByHandicapIndex(
+                    sc.getPlayer().getHandicapIndex(), sc.getPlayer().getSexo(), categories);
+            if (cat != null) {
+                allScores.add(TournamentScore.builder()
+                        .tournament(tournament)
+                        .scorecard(sc)
+                        .player(sc.getPlayer())
+                        .scoreType(TournamentScore.SCORE_TYPE_CATEGORY)
+                        .categoryId(cat.getId())
+                        .position(null).positionPoints(0)
+                        .birdieCount(0).birdiePoints(0)
+                        .eagleCount(0).eaglePoints(0)
+                        .aceCount(0).acePoints(0)
+                        .participationPoints(0).totalPoints(0)
+                        .build());
+            }
+            allScores.add(TournamentScore.builder()
+                    .tournament(tournament)
+                    .scorecard(sc)
+                    .player(sc.getPlayer())
+                    .scoreType(TournamentScore.SCORE_TYPE_SCRATCH)
+                    .categoryId(null)
+                    .position(null).positionPoints(0)
+                    .birdieCount(0).birdiePoints(0)
+                    .eagleCount(0).eaglePoints(0)
+                    .aceCount(0).acePoints(0)
+                    .participationPoints(0).totalPoints(0)
+                    .build());
+        }
+
         tournamentScoreRepository.saveAll(allScores);
 
-        log.info("Clásic scores calculados para torneo {}: {} categorías, {} scratch delivered",
-                tournamentId, categories.size(), scratchDelivered.size());
+        log.info("Clásic scores calculados para torneo {}: {} categorías, {} scratch delivered, {} inactivos (hcp)",
+                tournamentId, categories.size(), scratchDelivered.size(), inactiveCards.size());
 
         return getScores(tournamentId);
     }
@@ -266,8 +300,14 @@ public class ClasicScoreService {
                 .collect(Collectors.toList());
 
         List<TournamentScore> nmScores = scores.stream()
-                .filter(s -> s.getPosition() == null && s.getScorecard().getStatus() != ScorecardStatus.DISQUALIFIED)
+                .filter(s -> s.getPosition() == null
+                        && s.getScorecard().getStatus() != ScorecardStatus.DISQUALIFIED
+                        && s.getScorecard().getStatus() != ScorecardStatus.INACTIVE)
                 .sorted(Comparator.comparingInt(TournamentScore::getTotalPoints).reversed())
+                .collect(Collectors.toList());
+
+        List<TournamentScore> inactiveScores = scores.stream()
+                .filter(s -> s.getScorecard().getStatus() == ScorecardStatus.INACTIVE)
                 .collect(Collectors.toList());
 
         List<TournamentScore> dsScores = scores.stream()
@@ -277,6 +317,7 @@ public class ClasicScoreService {
         List<TournamentScore> ordered = new ArrayList<>();
         ordered.addAll(positioned);
         ordered.addAll(nmScores);
+        ordered.addAll(inactiveScores);
         ordered.addAll(dsScores);
 
         return ordered.stream()

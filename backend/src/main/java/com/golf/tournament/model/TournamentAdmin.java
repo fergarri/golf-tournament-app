@@ -48,6 +48,11 @@ public class TournamentAdmin {
     @Builder.Default
     private String estado = "ACTIVE";
 
+    /** Club al que pertenece este torneo administrativo. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "course_id", nullable = false)
+    private Course course;
+
     @OneToMany(mappedBy = "tournamentAdmin", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TournamentAdminInscription> inscriptions = new ArrayList<>();

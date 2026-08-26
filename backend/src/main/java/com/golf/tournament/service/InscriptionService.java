@@ -7,6 +7,7 @@ import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.model.*;
 import com.golf.tournament.repository.*;
+import com.golf.tournament.security.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -26,6 +27,7 @@ public class InscriptionService {
     private final TournamentInscriptionRepository inscriptionRepository;
     private final ScorecardRepository scorecardRepository;
     private final ScorecardService scorecardService;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional
     public InscriptionResponse inscribePlayer(String codigo, InscriptionRequest request) {
@@ -77,6 +79,7 @@ public class InscriptionService {
     public InscriptionResponse inscribePlayerManual(Long tournamentId, Long playerId) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
 
         Player player = playerRepository.findById(playerId)
                 .orElseThrow(() -> new ResourceNotFoundException("Player", "id", playerId));
@@ -114,6 +117,9 @@ public class InscriptionService {
 
     @Transactional(readOnly = true)
     public List<InscriptionResponse> getTournamentInscriptions(Long tournamentId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
         return inscriptionRepository.findByTournamentId(tournamentId).stream()
                 .map(this::convertInscriptionToResponse)
                 .collect(Collectors.toList());
@@ -123,6 +129,7 @@ public class InscriptionService {
     public void updateHandicapCourse(Long inscriptionId, BigDecimal handicapCourse) {
         TournamentInscription inscription = inscriptionRepository.findById(inscriptionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inscription", "id", inscriptionId));
+        currentUserProvider.assertClubAccess(inscription.getTournament().getCourse().getId());
 
         inscription.setHandicapCourse(handicapCourse);
         inscriptionRepository.save(inscription);
@@ -134,6 +141,7 @@ public class InscriptionService {
     public void removeInscription(Long inscriptionId) {
         TournamentInscription inscription = inscriptionRepository.findById(inscriptionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inscription", "id", inscriptionId));
+        currentUserProvider.assertClubAccess(inscription.getTournament().getCourse().getId());
 
         boolean hasScorecard = scorecardRepository.existsByTournamentIdAndPlayerId(
                 inscription.getTournament().getId(),

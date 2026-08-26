@@ -1,0 +1,1 @@
+ALTER TABLE players ADD COLUMN hcp_activo BOOLEAN NOT NULL DEFAULT true;

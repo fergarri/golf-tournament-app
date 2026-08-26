@@ -5,6 +5,7 @@ import com.golf.tournament.dto.user.CreateUserRequest;
 import com.golf.tournament.dto.user.UpdateUserRequest;
 import com.golf.tournament.dto.user.UserDTO;
 import com.golf.tournament.model.Role;
+import com.golf.tournament.security.CurrentUserProvider;
 import com.golf.tournament.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,14 +20,18 @@ import java.util.List;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
-@PreAuthorize("hasAuthority('TOTAL')")
+@PreAuthorize("hasAnyAuthority('TOTAL', 'CLUB_USERS')")
 public class UserController {
 
     private final UserService userService;
+    private final CurrentUserProvider currentUserProvider;
 
     @GetMapping("/roles")
     public ResponseEntity<List<String>> getAvailableRoles() {
+        // Un admin de club (ADMIN_CLUB) sólo puede asignar roles de club (USER, ADMIN_CLUB),
+        // nunca el rol ADMIN (superadmin). El superadmin puede asignar cualquier rol.
         List<String> roles = Arrays.stream(Role.values())
+                .filter(role -> currentUserProvider.isSuperAdmin() || role != Role.ADMIN)
                 .map(Role::name)
                 .toList();
         return ResponseEntity.ok(roles);

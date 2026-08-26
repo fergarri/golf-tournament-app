@@ -28,6 +28,9 @@ public interface TournamentRepository extends JpaRepository<Tournament, Long> {
     @Query("SELECT t FROM Tournament t ORDER BY t.fechaInicio DESC")
     List<Tournament> findAllOrderByFechaInicioDesc();
 
+    @Query("SELECT t FROM Tournament t WHERE t.course.id = :courseId ORDER BY t.fechaInicio DESC")
+    List<Tournament> findByCourseIdOrderByFechaInicioDesc(@Param("courseId") Long courseId);
+
     @Query("SELECT t FROM Tournament t WHERE t.tipo = :tipo AND t.id NOT IN (" +
             "SELECT st.id FROM TournamentAdminStage s JOIN s.tournaments st" +
             ") ORDER BY t.fechaInicio DESC")

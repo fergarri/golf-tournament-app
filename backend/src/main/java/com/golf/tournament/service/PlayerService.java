@@ -8,8 +8,11 @@ import com.golf.tournament.dto.player.PlayerDTO;
 import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.DuplicateResourceException;
 import com.golf.tournament.exception.ResourceNotFoundException;
+import com.golf.tournament.model.Course;
 import com.golf.tournament.model.Player;
+import com.golf.tournament.repository.CourseRepository;
 import com.golf.tournament.repository.PlayerRepository;
+import com.golf.tournament.security.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
@@ -30,6 +33,8 @@ import java.util.stream.Collectors;
 public class PlayerService {
 
     private final PlayerRepository playerRepository;
+    private final CourseRepository courseRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional(readOnly = true)
     public List<PlayerDTO> getAllPlayers() {
@@ -68,6 +73,7 @@ public class PlayerService {
             throw new DuplicateResourceException("Player", "matricula", matricula);
         }
 
+        String clubOrigen = trim(request.getClubOrigen());
         Player player = Player.builder()
                 .nombre(trim(request.getNombre()))
                 .apellido(trim(request.getApellido()))
@@ -77,7 +83,9 @@ public class PlayerService {
                 .sexo(trim(request.getSexo()))
                 .handicapIndex(request.getHandicapIndex())
                 .telefono(trim(request.getTelefono()))
-                .clubOrigen(trim(request.getClubOrigen()))
+                .clubOrigen(clubOrigen)
+                .course(resolveCourseFromClubOrigen(clubOrigen))
+                .hcpActivo(request.getHcpActivo() != null ? request.getHcpActivo() : true)
                 .build();
 
         player = playerRepository.save(player);
@@ -105,7 +113,10 @@ public class PlayerService {
         player.setSexo(trim(request.getSexo()));
         player.setHandicapIndex(request.getHandicapIndex());
         player.setTelefono(trim(request.getTelefono()));
-        player.setClubOrigen(trim(request.getClubOrigen()));
+        String clubOrigen = trim(request.getClubOrigen());
+        player.setClubOrigen(clubOrigen);
+        player.setCourse(resolveCourseFromClubOrigen(clubOrigen));
+        player.setHcpActivo(request.getHcpActivo() != null ? request.getHcpActivo() : true);
 
         player = playerRepository.save(player);
         log.info("Player updated with id: {}", player.getId());
@@ -116,11 +127,62 @@ public class PlayerService {
         return value != null ? value.trim() : null;
     }
 
+    /**
+     * Resuelve el club (course) correspondiente al texto libre clubOrigen, creándolo si
+     * todavía no existe (match case-insensitive por nombre). No afecta el acceso a los
+     * jugadores, que siguen siendo visibles en toda la app; solo habilita el filtro
+     * "de mi club / todos" en la UI.
+     */
+    private Course resolveCourseFromClubOrigen(String clubOrigen) {
+        if (clubOrigen == null || clubOrigen.isBlank()) {
+            return null;
+        }
+        String normalized = toTitleCase(clubOrigen);
+        return courseRepository.findByNombreIgnoreCase(normalized)
+                .orElseGet(() -> {
+                    Course newCourse = Course.builder()
+                            .nombre(normalized)
+                            .pais("Argentina")
+                            .cantidadHoyos(18)
+                            .build();
+                    Course saved = courseRepository.save(newCourse);
+                    log.info("Club creado automáticamente a partir de clubOrigen: {} (id {})", normalized, saved.getId());
+                    return saved;
+                });
+    }
+
+    /**
+     * Convierte un texto a Title Case (ej. "CARANDAY GOLF CLUB" -> "Caranday Golf Club"),
+     * equivalente al initcap() usado en las migraciones de datos.
+     */
+    private String toTitleCase(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return trimmed;
+        }
+        StringBuilder result = new StringBuilder(trimmed.length());
+        boolean capitalizeNext = true;
+        for (char c : trimmed.toCharArray()) {
+            if (Character.isLetter(c)) {
+                result.append(capitalizeNext ? Character.toUpperCase(c) : Character.toLowerCase(c));
+                capitalizeNext = false;
+            } else {
+                result.append(c);
+                capitalizeNext = true;
+            }
+        }
+        return result.toString();
+    }
+
     @Transactional
     public void deletePlayer(Long id) {
         if (!playerRepository.existsById(id)) {
             throw new ResourceNotFoundException("Player", "id", id);
         }
+        currentUserProvider.assertCanDelete();
         playerRepository.deleteById(id);
         log.info("Player deleted with id: {}", id);
     }
@@ -173,7 +235,7 @@ public class PlayerService {
                     // Extraer campos opcionales
                     String telefono = getCellValueAsString(row, columnIndexMap.get("Tel_Movil"));
                     String email = getCellValueAsString(row, columnIndexMap.get("Email"));
-                    String clubOrigen = getCellValueAsString(row, columnIndexMap.get("Club"));
+                    String clubOrigen = toTitleCase(getCellValueAsString(row, columnIndexMap.get("Club")));
                     String nacimientoStr = getCellValueAsString(row, columnIndexMap.get("Nacimiento"));
                     
                     LocalDate fechaNacimiento = null;
@@ -219,6 +281,7 @@ public class PlayerService {
                         }
                         if (!Objects.equals(player.getClubOrigen(), clubOrigen)) {
                             player.setClubOrigen(clubOrigen);
+                            player.setCourse(resolveCourseFromClubOrigen(clubOrigen));
                             updated = true;
                         }
                         if (!Objects.equals(player.getFechaNacimiento(), fechaNacimiento)) {
@@ -242,6 +305,7 @@ public class PlayerService {
                                 .telefono(telefono)
                                 .email(email)
                                 .clubOrigen(clubOrigen)
+                                .course(resolveCourseFromClubOrigen(clubOrigen))
                                 .fechaNacimiento(fechaNacimiento)
                                 .build();
                         
@@ -334,6 +398,9 @@ public class PlayerService {
                 .handicapIndex(player.getHandicapIndex())
                 .telefono(player.getTelefono())
                 .clubOrigen(player.getClubOrigen())
+                .courseId(player.getCourse() != null ? player.getCourse().getId() : null)
+                .courseName(player.getCourse() != null ? player.getCourse().getNombre() : null)
+                .hcpActivo(player.getHcpActivo() != null ? player.getHcpActivo() : true)
                 .build();
     }
 }

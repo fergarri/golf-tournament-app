@@ -26,4 +26,7 @@ public class CreateUserRequest {
     
     @NotBlank(message = "Role is required")
     private String role;
+
+    /** Club al que pertenece el usuario. Requerido cuando role = USER; ignorado para role = ADMIN. */
+    private Long courseId;
 }

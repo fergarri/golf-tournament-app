@@ -24,4 +24,8 @@ public class PlayerDTO {
     private BigDecimal handicapIndex;
     private String telefono;
     private String clubOrigen;
+    /** Club (course) resuelto automáticamente a partir de clubOrigen. Puede ser null. */
+    private Long courseId;
+    private String courseName;
+    private Boolean hcpActivo;
 }

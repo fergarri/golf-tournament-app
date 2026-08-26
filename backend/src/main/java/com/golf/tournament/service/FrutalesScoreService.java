@@ -146,10 +146,34 @@ public class FrutalesScoreService {
             persistedScores.add(score);
         }
 
+        // Jugadores con hcp_activo=false: no participan en puntuación ni posiciones
+        List<Scorecard> inactiveScorecards = scorecardRepository
+                .findByTournamentIdAndStatus(tournamentId, ScorecardStatus.INACTIVE);
+
+        for (Scorecard sc : inactiveScorecards) {
+            TournamentScore score = TournamentScore.builder()
+                    .tournament(tournament)
+                    .scorecard(sc)
+                    .player(sc.getPlayer())
+                    .scoreType(TournamentScore.SCORE_TYPE_GLOBAL)
+                    .position(null)
+                    .positionPoints(0)
+                    .birdieCount(0)
+                    .birdiePoints(0)
+                    .eagleCount(0)
+                    .eaglePoints(0)
+                    .aceCount(0)
+                    .acePoints(0)
+                    .participationPoints(0)
+                    .totalPoints(0)
+                    .build();
+            persistedScores.add(score);
+        }
+
         tournamentScoreRepository.saveAll(persistedScores);
 
-        log.info("Frutales scores calculados para torneo {}: {} delivered, {} cancelled, multiplier={}, tieBreakMode={}",
-                tournamentId, deliveredData.size(), cancelledData.size(), multiplier, config.getTieBreakMode());
+        log.info("Frutales scores calculados para torneo {}: {} delivered, {} cancelled, {} inactivos (hcp), multiplier={}, tieBreakMode={}",
+                tournamentId, deliveredData.size(), cancelledData.size(), inactiveScorecards.size(), multiplier, config.getTieBreakMode());
 
         return getScores(tournamentId);
     }
@@ -168,8 +192,14 @@ public class FrutalesScoreService {
                 .collect(Collectors.toList());
 
         List<TournamentScore> nmScores = scores.stream()
-                .filter(s -> s.getPosition() == null && s.getScorecard().getStatus() != ScorecardStatus.DISQUALIFIED)
+                .filter(s -> s.getPosition() == null
+                        && s.getScorecard().getStatus() != ScorecardStatus.DISQUALIFIED
+                        && s.getScorecard().getStatus() != ScorecardStatus.INACTIVE)
                 .sorted(Comparator.comparingInt(TournamentScore::getTotalPoints).reversed())
+                .collect(Collectors.toList());
+
+        List<TournamentScore> inactiveScores = scores.stream()
+                .filter(s -> s.getScorecard().getStatus() == ScorecardStatus.INACTIVE)
                 .collect(Collectors.toList());
 
         List<TournamentScore> dsScores = scores.stream()
@@ -179,6 +209,7 @@ public class FrutalesScoreService {
         List<TournamentScore> ordered = new ArrayList<>();
         ordered.addAll(positioned);
         ordered.addAll(nmScores);
+        ordered.addAll(inactiveScores);
         ordered.addAll(dsScores);
 
         return ordered.stream()

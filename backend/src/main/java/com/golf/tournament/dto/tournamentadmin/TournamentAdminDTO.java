@@ -23,4 +23,6 @@ public class TournamentAdminDTO {
     private String estado;
     private Integer currentInscriptos;
     private BigDecimal totalRecaudado;
+    private Long courseId;
+    private String courseName;
 }

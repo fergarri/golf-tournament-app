@@ -32,4 +32,7 @@ public class CreateTournamentAdminRequest {
     @NotNull(message = "La cantidad de cuotas es requerida")
     @Min(value = 1, message = "La cantidad de cuotas debe ser al menos 1")
     private Integer cantidadCuotas;
+
+    /** Club al que pertenece el torneo. Solo lo usa el superadmin; para un admin de club se ignora. */
+    private Long courseId;
 }

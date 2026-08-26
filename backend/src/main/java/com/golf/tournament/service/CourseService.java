@@ -7,6 +7,7 @@ import com.golf.tournament.dto.course.HoleDTO;
 import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.model.*;
 import com.golf.tournament.repository.*;
+import com.golf.tournament.security.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,10 +25,20 @@ public class CourseService {
     private final CourseTeeRepository courseTeeRepository;
     private final HoleRepository holeRepository;
     private final HoleDistanceRepository holeDistanceRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional(readOnly = true)
     public List<CourseDTO> getAllCourses() {
-        return courseRepository.findAll().stream()
+        List<Course> courses;
+        if (currentUserProvider.isSuperAdmin()) {
+            courses = courseRepository.findAll();
+        } else {
+            Long courseId = currentUserProvider.getCurrentCourseId();
+            courses = courseId != null
+                    ? courseRepository.findById(courseId).map(List::of).orElse(List.of())
+                    : List.of();
+        }
+        return courses.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -36,6 +47,7 @@ public class CourseService {
     public CourseDTO getCourseById(Long id) {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", id));
+        currentUserProvider.assertClubAccess(course.getId());
         return convertToDTO(course);
     }
 
@@ -67,6 +79,7 @@ public class CourseService {
     public CourseDTO updateCourse(Long id, CreateCourseRequest request) {
         Course course = courseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", id));
+        currentUserProvider.assertClubAccess(course.getId());
 
         course.setNombre(request.getNombre());
         course.setPais(request.getPais());
@@ -86,6 +99,7 @@ public class CourseService {
         if (!courseRepository.existsById(id)) {
             throw new ResourceNotFoundException("Course", "id", id);
         }
+        currentUserProvider.assertClubAccess(id);
         courseRepository.deleteById(id);
         log.info("Course deleted with id: {}", id);
     }
@@ -94,6 +108,7 @@ public class CourseService {
     public CourseTeeDTO addTee(Long courseId, CourseTeeDTO teeDTO) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+        currentUserProvider.assertClubAccess(course.getId());
 
         CourseTee tee = CourseTee.builder()
                 .course(course)
@@ -111,6 +126,7 @@ public class CourseService {
     public CourseTeeDTO updateTee(Long teeId, CourseTeeDTO teeDTO) {
         CourseTee tee = courseTeeRepository.findById(teeId)
                 .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeId));
+        currentUserProvider.assertClubAccess(tee.getCourse().getId());
 
         tee.setNombre(teeDTO.getNombre());
         tee.setGrupo(teeDTO.getGrupo());
@@ -127,6 +143,8 @@ public class CourseService {
     public void deactivateTee(Long teeId) {
         CourseTee tee = courseTeeRepository.findById(teeId)
                 .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeId));
+        currentUserProvider.assertClubAccess(tee.getCourse().getId());
+        currentUserProvider.assertCanDelete();
         tee.setActive(false);
         courseTeeRepository.save(tee);
         log.info("Tee deactivated: {}", teeId);
@@ -143,6 +161,7 @@ public class CourseService {
     public HoleDTO addOrUpdateHole(Long courseId, HoleDTO holeDTO) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course", "id", courseId));
+        currentUserProvider.assertClubAccess(course.getId());
 
         Hole hole = holeRepository.findByCourseIdAndNumeroHoyo(courseId, holeDTO.getNumeroHoyo())
                 .orElse(Hole.builder()
