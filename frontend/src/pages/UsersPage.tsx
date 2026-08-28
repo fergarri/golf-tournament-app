@@ -26,14 +26,14 @@ const UsersPage = () => {
     email: '',
     matricula: '',
     password: '',
-    role: 'ADMIN',
+    role: 'USER',
     courseId: null,
   });
 
   const [editData, setEditData] = useState({
     email: '',
     matricula: '',
-    role: 'ADMIN',
+    role: 'USER',
     courseId: null as number | null,
   });
 
@@ -44,18 +44,23 @@ const UsersPage = () => {
   useEffect(() => {
     loadUsers();
     loadRoles();
-    if (isSuperAdmin) {
-      loadCourses();
-    }
-  }, [isSuperAdmin]);
+    loadCourses();
+  }, []);
 
-  // Si el rol por defecto (ADMIN) no está disponible para el usuario actual
+  // Si el rol por defecto no está disponible para el usuario actual
   // (p. ej. ADMIN_CLUB, que sólo puede asignar USER/ADMIN_CLUB), usar el primero disponible.
   useEffect(() => {
     if (roles.length > 0 && !roles.includes(createData.role)) {
       setCreateData((prev) => ({ ...prev, role: roles[0] }));
     }
   }, [roles]);
+
+  // Un admin de club queda preseleccionado en su propio club al abrir el alta.
+  useEffect(() => {
+    if (!isSuperAdmin && currentUser?.courseId && !createData.courseId) {
+      setCreateData((prev) => ({ ...prev, courseId: currentUser.courseId ?? null }));
+    }
+  }, [isSuperAdmin, currentUser?.courseId]);
 
   const loadUsers = async () => {
     try {
@@ -88,18 +93,28 @@ const UsersPage = () => {
     }
   };
 
+  const resolveCourseId = (role: string, selectedCourseId: number | null) => {
+    if (!ROLES_WITH_CLUB.includes(role)) return null;
+    // Un admin de club (no superadmin) sólo puede crear/editar usuarios de su propio club;
+    // el backend fuerza esto igualmente, acá sólo evitamos mandar un courseId ajeno.
+    return isSuperAdmin ? selectedCourseId : currentUser?.courseId ?? null;
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const needsCourse = ROLES_WITH_CLUB.includes(createData.role);
       await userService.create({
         ...createData,
-        // Un admin de club (no superadmin) sólo puede crear usuarios de su propio club;
-        // el backend fuerza esto igualmente, acá sólo evitamos mandar un courseId ajeno.
-        courseId: needsCourse ? (isSuperAdmin ? createData.courseId : currentUser?.courseId ?? null) : null,
+        courseId: resolveCourseId(createData.role, createData.courseId ?? null),
       });
       setShowCreateModal(false);
-      setCreateData({ email: '', matricula: '', password: '', role: roles[0] || 'USER', courseId: null });
+      setCreateData({
+        email: '',
+        matricula: '',
+        password: '',
+        role: roles.find((role) => role !== 'ADMIN') || roles[0] || 'USER',
+        courseId: isSuperAdmin ? null : currentUser?.courseId ?? null,
+      });
       loadUsers();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error creando usuario');
@@ -121,10 +136,9 @@ const UsersPage = () => {
     e.preventDefault();
     if (!selectedUser) return;
     try {
-      const needsCourse = ROLES_WITH_CLUB.includes(editData.role);
       await userService.update(selectedUser.id, {
         ...editData,
-        courseId: needsCourse ? (isSuperAdmin ? editData.courseId : currentUser?.courseId ?? null) : null,
+        courseId: resolveCourseId(editData.role, editData.courseId),
       });
       setShowEditModal(false);
       setSelectedUser(null);
@@ -195,13 +209,31 @@ const UsersPage = () => {
     },
   ];
 
+  const clubOptions = [...courses]
+    .sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+  const extraClubOption = (courseId: number | null, courseName?: string | null) => {
+    if (!courseId || clubOptions.some((course) => course.id === courseId)) return null;
+    return { id: courseId, nombre: courseName || `Club #${courseId}` };
+  };
+
   if (loading) return <div className="loading">Cargando usuarios...</div>;
 
   return (
     <div>
       <div className="page-header">
         <h1>Gestión de Usuarios</h1>
-        <button onClick={() => setShowCreateModal(true)} className="btn btn-primary">
+        <button onClick={() => {
+          setCreateData((prev) => ({
+            ...prev,
+            email: '',
+            matricula: '',
+            password: '',
+            role: roles.find((role) => role !== 'ADMIN') || roles[0] || 'USER',
+            courseId: isSuperAdmin ? null : currentUser?.courseId ?? null,
+          }));
+          setShowCreateModal(true);
+        }} className="btn btn-primary">
           Crear Usuario
         </button>
       </div>
@@ -257,7 +289,16 @@ const UsersPage = () => {
             <label>Rol *</label>
             <select
               value={createData.role}
-              onChange={(e) => setCreateData({ ...createData, role: e.target.value, courseId: ROLES_WITH_CLUB.includes(e.target.value) ? createData.courseId : null })}
+              onChange={(e) => {
+                const role = e.target.value;
+                setCreateData({
+                  ...createData,
+                  role,
+                  courseId: ROLES_WITH_CLUB.includes(role)
+                    ? (isSuperAdmin ? createData.courseId : currentUser?.courseId ?? null)
+                    : null,
+                });
+              }}
               required
             >
               {roles.map((role) => (
@@ -269,25 +310,24 @@ const UsersPage = () => {
             </small>
           </div>
           {ROLES_WITH_CLUB.includes(createData.role) && (
-            isSuperAdmin ? (
-              <div className="form-group">
-                <label>Club *</label>
-                <select
-                  value={createData.courseId ?? ''}
-                  onChange={(e) => setCreateData({ ...createData, courseId: e.target.value ? parseInt(e.target.value) : null })}
-                  required
-                >
-                  <option value="">Seleccionar un club</option>
-                  {courses.map((course) => (
-                    <option key={course.id} value={course.id}>{course.nombre}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <p style={{ color: '#7f8c8d', fontSize: '0.85rem' }}>
-                Club: <strong>{currentUser?.courseName}</strong>
-              </p>
-            )
+            <div className="form-group">
+              <label>Club *</label>
+              <select
+                value={createData.courseId ?? ''}
+                onChange={(e) => setCreateData({ ...createData, courseId: e.target.value ? parseInt(e.target.value) : null })}
+                required
+                disabled={!isSuperAdmin}
+              >
+                <option value="">Seleccionar un club</option>
+                {(() => {
+                  const extra = extraClubOption(createData.courseId ?? null, currentUser?.courseName);
+                  return extra ? <option key={extra.id} value={extra.id}>{extra.nombre}</option> : null;
+                })()}
+                {clubOptions.map((course) => (
+                  <option key={course.id} value={course.id}>{course.nombre}</option>
+                ))}
+              </select>
+            </div>
           )}
         </form>
       </Modal>
@@ -329,7 +369,16 @@ const UsersPage = () => {
             <label>Rol *</label>
             <select
               value={editData.role}
-              onChange={(e) => setEditData({ ...editData, role: e.target.value, courseId: ROLES_WITH_CLUB.includes(e.target.value) ? editData.courseId : null })}
+              onChange={(e) => {
+                const role = e.target.value;
+                setEditData({
+                  ...editData,
+                  role,
+                  courseId: ROLES_WITH_CLUB.includes(role)
+                    ? (isSuperAdmin ? editData.courseId : currentUser?.courseId ?? null)
+                    : null,
+                });
+              }}
               required
             >
               {roles.map((role) => (
@@ -338,25 +387,24 @@ const UsersPage = () => {
             </select>
           </div>
           {ROLES_WITH_CLUB.includes(editData.role) && (
-            isSuperAdmin ? (
-              <div className="form-group">
-                <label>Club *</label>
-                <select
-                  value={editData.courseId ?? ''}
-                  onChange={(e) => setEditData({ ...editData, courseId: e.target.value ? parseInt(e.target.value) : null })}
-                  required
-                >
-                  <option value="">Seleccionar un club</option>
-                  {courses.map((course) => (
-                    <option key={course.id} value={course.id}>{course.nombre}</option>
-                  ))}
-                </select>
-              </div>
-            ) : (
-              <p style={{ color: '#7f8c8d', fontSize: '0.85rem' }}>
-                Club: <strong>{currentUser?.courseName}</strong>
-              </p>
-            )
+            <div className="form-group">
+              <label>Club *</label>
+              <select
+                value={editData.courseId ?? ''}
+                onChange={(e) => setEditData({ ...editData, courseId: e.target.value ? parseInt(e.target.value) : null })}
+                required
+                disabled={!isSuperAdmin}
+              >
+                <option value="">Seleccionar un club</option>
+                {(() => {
+                  const extra = extraClubOption(editData.courseId, selectedUser?.courseName);
+                  return extra ? <option key={extra.id} value={extra.id}>{extra.nombre}</option> : null;
+                })()}
+                {clubOptions.map((course) => (
+                  <option key={course.id} value={course.id}>{course.nombre}</option>
+                ))}
+              </select>
+            </div>
           )}
         </form>
       </Modal>

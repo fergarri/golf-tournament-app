@@ -368,6 +368,8 @@ export interface TournamentAdminStage {
   createdAt: string;
   tournamentIds: number[];
   tournaments: TournamentAdminStageTournament[];
+  /** Resultado de la auto-inscripción al agregar fechas nuevas a la etapa (null si no se agregaron fechas). */
+  autoInscriptionResult?: ImportAdminInscriptionsResult | null;
 }
 
 export interface TournamentAdminStageTournament {

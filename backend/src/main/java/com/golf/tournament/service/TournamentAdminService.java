@@ -231,12 +231,27 @@ public class TournamentAdminService {
                 .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", tournamentAdminId));
         currentUserProvider.assertClubAccess(admin.getCourse().getId());
 
-        List<TournamentAdminInscription> adminInscriptions = inscriptionRepository.findByTournamentAdminId(tournamentAdminId);
-
-        // Recopilar todos los torneos de las etapas del admin que estén en estado PENDING o IN_PROGRESS
-        List<Tournament> pendingRelatedTournaments = admin.getStages().stream()
+        // Recopilar todos los torneos de las etapas del admin (el filtro por estado PENDING/IN_PROGRESS
+        // se aplica dentro de importInscriptionsForTournaments).
+        List<Tournament> relatedTournaments = admin.getStages().stream()
                 .flatMap(s -> s.getTournaments().stream())
                 .distinct()
+                .collect(Collectors.toList());
+
+        return importInscriptionsForTournaments(tournamentAdminId, relatedTournaments);
+    }
+
+    /**
+     * Inscribe a los jugadores actualmente inscriptos en el Torneo Administrativo dentro de los
+     * torneos indicados (solo si están en estado PENDING o IN_PROGRESS), respetando el cupo máximo
+     * de cada torneo y evitando duplicados. Reutilizado tanto por la exportación manual ("Exportar
+     * Inscriptos a Torneos") como por la auto-inscripción al agregar fechas a una etapa.
+     */
+    @Transactional
+    public ImportAdminInscriptionsResultDTO importInscriptionsForTournaments(Long tournamentAdminId, List<Tournament> candidateTournaments) {
+        List<TournamentAdminInscription> adminInscriptions = inscriptionRepository.findByTournamentAdminId(tournamentAdminId);
+
+        List<Tournament> eligibleTournaments = candidateTournaments.stream()
                 .filter(t -> "PENDING".equals(t.getEstado()) || "IN_PROGRESS".equals(t.getEstado()))
                 .collect(Collectors.toList());
 
@@ -244,7 +259,7 @@ public class TournamentAdminService {
         int skippedAlready = 0;
         int skippedByCapacity = 0;
 
-        for (Tournament tournament : pendingRelatedTournaments) {
+        for (Tournament tournament : eligibleTournaments) {
             Long currentCount = tournamentInscriptionRepository.countByTournamentId(tournament.getId());
             Integer limit = tournament.getLimiteInscriptos();
             int remainingSlots = limit != null ? Math.max(0, limit - currentCount.intValue()) : Integer.MAX_VALUE;
@@ -278,11 +293,11 @@ public class TournamentAdminService {
             }
         }
 
-        log.info("Importación de inscriptos admin {} completada. Torneos de etapas pendientes: {}, importados: {}, repetidos: {}, sin cupo: {}",
-                tournamentAdminId, pendingRelatedTournaments.size(), importedCount, skippedAlready, skippedByCapacity);
+        log.info("Importación de inscriptos admin {} completada. Torneos candidatos: {}, importados: {}, repetidos: {}, sin cupo: {}",
+                tournamentAdminId, eligibleTournaments.size(), importedCount, skippedAlready, skippedByCapacity);
 
         return ImportAdminInscriptionsResultDTO.builder()
-                .relatedPendingTournaments(pendingRelatedTournaments.size())
+                .relatedPendingTournaments(eligibleTournaments.size())
                 .importedCount(importedCount)
                 .skippedAlreadyInscribed(skippedAlready)
                 .skippedByCapacity(skippedByCapacity)

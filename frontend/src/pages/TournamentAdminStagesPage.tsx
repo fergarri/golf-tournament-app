@@ -23,6 +23,7 @@ const TournamentAdminStagesPage = () => {
   const [calculating, setCalculating] = useState(false);
   const [calcSuccess, setCalcSuccess] = useState(false);
   const [importingInscriptions, setImportingInscriptions] = useState(false);
+  const [importResultTitle, setImportResultTitle] = useState('Resultado de Exportación');
   const [importResultMessage, setImportResultMessage] = useState('');
   const [showImportResultModal, setShowImportResultModal] = useState(false);
 
@@ -116,13 +117,24 @@ const TournamentAdminStagesPage = () => {
     e.preventDefault();
     try {
       setSaving(true);
-      if (editingStage) {
-        await tournamentAdminStageService.update(tournamentAdminId, editingStage.id, formData);
-      } else {
-        await tournamentAdminStageService.create(tournamentAdminId, formData);
-      }
+      const savedStage = editingStage
+        ? await tournamentAdminStageService.update(tournamentAdminId, editingStage.id, formData)
+        : await tournamentAdminStageService.create(tournamentAdminId, formData);
       setShowModal(false);
       await loadData();
+
+      const autoResult = savedStage.autoInscriptionResult;
+      if (autoResult) {
+        setImportResultTitle('Auto-inscripción de Jugadores');
+        setImportResultMessage(
+          `Se agregaron fechas nuevas a la etapa y se inscribió automáticamente a los jugadores del torneo administrativo.\n` +
+          `Fechas nuevas procesadas: ${autoResult.relatedPendingTournaments}\n` +
+          `Inscriptos agregados: ${autoResult.importedCount}\n` +
+          `Saltados (ya inscriptos): ${autoResult.skippedAlreadyInscribed}\n` +
+          `Saltados (sin cupo): ${autoResult.skippedByCapacity}`
+        );
+        setShowImportResultModal(true);
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error guardando etapa');
     } finally {
@@ -134,6 +146,7 @@ const TournamentAdminStagesPage = () => {
     try {
       setImportingInscriptions(true);
       const result = await tournamentAdminService.importInscriptions(tournamentAdminId);
+      setImportResultTitle('Resultado de Exportación');
       setImportResultMessage(
         `Exportación completada.\n` +
         `Torneos pendientes relacionados: ${result.relatedPendingTournaments}\n` +
@@ -293,7 +306,7 @@ const TournamentAdminStagesPage = () => {
       <Modal
         isOpen={showImportResultModal}
         onClose={() => setShowImportResultModal(false)}
-        title="Resultado de Exportación"
+        title={importResultTitle}
         size="medium"
         footer={
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

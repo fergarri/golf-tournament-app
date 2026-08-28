@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { playerService } from '../services/playerService';
-import { BulkUpdateResult, Player } from '../types';
+import { courseService } from '../services/courseService';
+import { BulkUpdateResult, Course, Player } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
@@ -20,6 +21,7 @@ const PlayersPage = () => {
   const { user, canDelete } = useAuth();
   const hasOwnClub = !!user?.courseId;
   const [players, setPlayers] = useState<Player[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -36,7 +38,7 @@ const PlayersPage = () => {
   // Por defecto, un admin de club ve solo "sus" jugadores; el superadmin ve todos.
   const [clubFilter, setClubFilter] = useState<'mine' | 'all'>(hasOwnClub ? 'mine' : 'all');
 
-  useEffect(() => { loadPlayers(); }, []);
+  useEffect(() => { loadPlayers(); loadCourses(); }, []);
 
   const loadPlayers = async () => {
     try {
@@ -48,6 +50,15 @@ const PlayersPage = () => {
       setError(err.response?.data?.message || 'Error cargando jugadores');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCourses = async () => {
+    try {
+      const data = await courseService.getAll();
+      setCourses(data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error cargando clubes');
     }
   };
 
@@ -313,7 +324,20 @@ const PlayersPage = () => {
             </div>
             <div className="form-group">
               <label>Club</label>
-              <input type="text" value={formData.clubOrigen} onChange={(e) => setFormData({ ...formData, clubOrigen: e.target.value })} />
+              <select
+                value={formData.clubOrigen ?? ''}
+                onChange={(e) => setFormData({ ...formData, clubOrigen: e.target.value })}
+              >
+                <option value="">Sin club</option>
+                {formData.clubOrigen && !courses.some((c) => c.nombre === formData.clubOrigen) && (
+                  <option value={formData.clubOrigen}>{formData.clubOrigen} (no está en la lista)</option>
+                )}
+                {[...courses]
+                  .sort((a, b) => a.nombre.localeCompare(b.nombre))
+                  .map((course) => (
+                    <option key={course.id} value={course.nombre}>{course.nombre}</option>
+                  ))}
+              </select>
             </div>
           </div>
           <div className="form-row">

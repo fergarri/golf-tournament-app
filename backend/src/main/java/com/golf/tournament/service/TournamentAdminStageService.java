@@ -30,6 +30,7 @@ public class TournamentAdminStageService {
     private final TournamentScoreRepository tournamentScoreRepository;
     private final TournamentCategoryRepository categoryRepository;
     private final LeaderboardService leaderboardService;
+    private final TournamentAdminService tournamentAdminService;
 
     @Transactional(readOnly = true)
     public List<TournamentAdminStageDTO> getStages(Long tournamentAdminId) {
@@ -88,20 +89,39 @@ public class TournamentAdminStageService {
 
         stage = stageRepository.save(stage);
         log.info("Etapa creada: {} para torneo admin {}", stage.getId(), tournamentAdminId);
-        return toStageDTO(stage);
+
+        // Todas las fechas de una etapa nueva son "nuevas": auto-inscribir a los jugadores
+        // del Torneo Administrativo en esas fechas (respetando cupo y evitando duplicados).
+        ImportAdminInscriptionsResultDTO autoInscriptionResult =
+                tournamentAdminService.importInscriptionsForTournaments(tournamentAdminId, tournaments);
+
+        return toStageDTO(stage, autoInscriptionResult);
     }
 
     @Transactional
     public TournamentAdminStageDTO updateStage(Long tournamentAdminId, Long stageId, UpdateTournamentAdminStageRequest request) {
         TournamentAdminStage stage = getStageOrThrow(tournamentAdminId, stageId);
+        Set<Long> previousTournamentIds = stage.getTournaments().stream()
+                .map(Tournament::getId)
+                .collect(Collectors.toSet());
+
         List<Tournament> tournaments = resolveStageTournaments(stage.getTournamentAdmin(), request.getTournamentIds(), stageId);
 
         stage.setNombre(request.getNombre());
         stage.setTournaments(tournaments);
         stage = stageRepository.save(stage);
 
+        // Auto-inscribir a los jugadores del Torneo Administrativo solo en las fechas
+        // recién agregadas a la etapa (no se reprocesan las que ya estaban relacionadas).
+        List<Tournament> newlyAddedTournaments = tournaments.stream()
+                .filter(t -> !previousTournamentIds.contains(t.getId()))
+                .collect(Collectors.toList());
+        ImportAdminInscriptionsResultDTO autoInscriptionResult = newlyAddedTournaments.isEmpty()
+                ? null
+                : tournamentAdminService.importInscriptionsForTournaments(tournamentAdminId, newlyAddedTournaments);
+
         log.info("Etapa actualizada: {} para torneo admin {}", stage.getId(), tournamentAdminId);
-        return toStageDTO(stage);
+        return toStageDTO(stage, autoInscriptionResult);
     }
 
     @Transactional(readOnly = true)
@@ -344,6 +364,10 @@ public class TournamentAdminStageService {
     }
 
     private TournamentAdminStageDTO toStageDTO(TournamentAdminStage stage) {
+        return toStageDTO(stage, null);
+    }
+
+    private TournamentAdminStageDTO toStageDTO(TournamentAdminStage stage, ImportAdminInscriptionsResultDTO autoInscriptionResult) {
         List<Tournament> stageTournaments = getSortedStageTournaments(stage);
         return TournamentAdminStageDTO.builder()
                 .id(stage.getId())
@@ -360,6 +384,7 @@ public class TournamentAdminStageService {
                                 .doublePoints(t.getDoublePoints())
                                 .build())
                         .collect(Collectors.toList()))
+                .autoInscriptionResult(autoInscriptionResult)
                 .build();
     }
 

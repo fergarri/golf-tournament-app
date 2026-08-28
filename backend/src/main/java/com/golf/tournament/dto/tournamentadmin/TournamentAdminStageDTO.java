@@ -23,6 +23,13 @@ public class TournamentAdminStageDTO {
     private List<Long> tournamentIds;
     private List<TournamentDateDTO> tournaments;
 
+    /**
+     * Resultado de la auto-inscripción de jugadores del Torneo Administrativo en las fechas
+     * recién agregadas a la etapa. Null si no se agregaron fechas nuevas (p. ej. al solo consultar
+     * la etapa, o al editarla sin agregar torneos).
+     */
+    private ImportAdminInscriptionsResultDTO autoInscriptionResult;
+
     @Data
     @Builder
     @NoArgsConstructor
