@@ -104,6 +104,8 @@ export interface CourseTee {
   courseId: number;
   nombre: string;
   grupo?: string;
+  /** M = Caballeros, F = Damas */
+  genero?: 'M' | 'F';
   active: boolean;
 }
 
@@ -113,6 +115,44 @@ export interface Hole {
   par: number;
   handicap: number;
   distancesByTee: { [key: number]: number };
+}
+
+export interface HandicapConversion {
+  id: number;
+  hcpIndexFrom: number;
+  hcpIndexTo: number;
+  courseHandicap: number;
+}
+
+export interface TeeHandicapTable {
+  teeId: number;
+  nombre: string;
+  grupo?: string;
+  genero?: 'M' | 'F';
+  active: boolean;
+  conversions: HandicapConversion[];
+}
+
+export interface ImportHandicapConversionTeeResult {
+  teeId: number;
+  teeNombre: string;
+  genero?: string;
+  matchedRows: number;
+  imported: boolean;
+  message: string;
+}
+
+export interface ImportHandicapConversionResponse {
+  tees: ImportHandicapConversionTeeResult[];
+}
+
+export interface MissingCourseTee {
+  nombre: string;
+  genero: 'M' | 'F' | string;
+}
+
+export interface PreviewHandicapImportResponse {
+  missingTees: MissingCourseTee[];
 }
 
 export interface TournamentPrize {

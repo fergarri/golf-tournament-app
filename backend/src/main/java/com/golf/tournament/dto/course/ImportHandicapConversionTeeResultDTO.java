@@ -9,12 +9,11 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CourseTeeDTO {
-    
-    private Long id;
-    private Long courseId;
-    private String nombre;
-    private String grupo;
+public class ImportHandicapConversionTeeResultDTO {
+    private Long teeId;
+    private String teeNombre;
     private String genero;
-    private Boolean active;
+    private int matchedRows;
+    private boolean imported;
+    private String message;
 }

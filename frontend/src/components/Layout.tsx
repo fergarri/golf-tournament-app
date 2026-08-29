@@ -38,7 +38,9 @@ const Layout = () => {
           <nav className="hidden md:flex items-center gap-1">
             {visibleItems.map((item) => {
               const Icon = item.icon;
-              const active = location.pathname === item.to;
+              const active = item.to === '/'
+                ? location.pathname === '/'
+                : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
               return (
                 <Link
                   key={item.to}
@@ -93,7 +95,9 @@ const Layout = () => {
           <div className="md:hidden border-t border-emerald-800 bg-[#1a3c2e] px-4 py-2">
             {visibleItems.map((item) => {
               const Icon = item.icon;
-              const active = location.pathname === item.to;
+              const active = item.to === '/'
+                ? location.pathname === '/'
+                : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
               return (
                 <Link
                   key={item.to}

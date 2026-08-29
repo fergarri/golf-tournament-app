@@ -9,12 +9,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CourseTeeDTO {
-    
-    private Long id;
-    private Long courseId;
+public class MissingCourseTeeDTO {
     private String nombre;
-    private String grupo;
     private String genero;
-    private Boolean active;
 }

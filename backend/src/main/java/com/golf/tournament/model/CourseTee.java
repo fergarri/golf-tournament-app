@@ -32,6 +32,13 @@ public class CourseTee {
     @Column(length = 50)
     private String grupo;
 
+    /**
+     * Género del tee: M = Caballeros, F = Damas.
+     */
+    @Column(nullable = false, length = 1)
+    @Builder.Default
+    private String genero = "M";
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean active = true;

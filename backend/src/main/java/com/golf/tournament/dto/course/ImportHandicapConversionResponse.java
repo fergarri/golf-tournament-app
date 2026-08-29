@@ -5,16 +5,12 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CourseTeeDTO {
-    
-    private Long id;
-    private Long courseId;
-    private String nombre;
-    private String grupo;
-    private String genero;
-    private Boolean active;
+public class ImportHandicapConversionResponse {
+    private List<ImportHandicapConversionTeeResultDTO> tees;
 }

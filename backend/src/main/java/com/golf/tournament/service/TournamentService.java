@@ -83,8 +83,8 @@ public class TournamentService {
         validateCantidadHoyosJuego(request.getCantidadHoyosJuego());
         validateCategorySexes(request.getCategories());
         validateHorarios(request.getHorarioInicio(), request.getHorarioCierre());
-        CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId());
-        CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId());
+        CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId(), "M");
+        CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId(), "F");
 
         String codigo = generateUniqueCodigo();
 
@@ -140,8 +140,8 @@ public class TournamentService {
         validateCantidadHoyosJuego(request.getCantidadHoyosJuego());
         validateCategorySexes(request.getCategories());
         validateHorarios(request.getHorarioInicio(), request.getHorarioCierre());
-        CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId());
-        CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId());
+        CourseTee teeMasculino = resolveTournamentTee(course, request.getTeeMasculinoId(), "M");
+        CourseTee teeFemenino = resolveTournamentTee(course, request.getTeeFemeninoId(), "F");
 
         tournament.setNombre(request.getNombre());
         tournament.setTipo(request.getTipo());
@@ -583,7 +583,7 @@ public class TournamentService {
                 .build();
     }
 
-    private CourseTee resolveTournamentTee(Course course, Long teeId) {
+    private CourseTee resolveTournamentTee(Course course, Long teeId, String expectedGenero) {
         if (teeId == null) {
             return null;
         }
@@ -592,6 +592,11 @@ public class TournamentService {
                 .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeId));
         if (!tee.getCourse().getId().equals(course.getId())) {
             throw new BadRequestException("El tee seleccionado no pertenece al campo del torneo");
+        }
+        String teeGenero = tee.getGenero() != null ? tee.getGenero() : "M";
+        if (!expectedGenero.equals(teeGenero)) {
+            String label = "M".equals(expectedGenero) ? "Caballeros" : "Damas";
+            throw new BadRequestException("El tee seleccionado no corresponde al género " + label);
         }
         return tee;
     }

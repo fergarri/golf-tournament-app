@@ -22,7 +22,11 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
   const [formData, setFormData] = useState({
     nombre: '',
     grupo: '',
+    genero: 'M' as 'M' | 'F',
   });
+  const [teeToDelete, setTeeToDelete] = useState<CourseTee | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   useEffect(() => {
     if (course && isOpen) {
@@ -44,7 +48,7 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
 
   const handleCreate = () => {
     setEditingTee(null);
-    setFormData({ nombre: '', grupo: '' });
+    setFormData({ nombre: '', grupo: '', genero: 'M' });
     setShowForm(true);
   };
 
@@ -53,6 +57,7 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
     setFormData({
       nombre: tee.nombre,
       grupo: tee.grupo || '',
+      genero: tee.genero === 'F' ? 'F' : 'M',
     });
     setShowForm(true);
   };
@@ -77,13 +82,18 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
     onClose();
   };
 
-  const handleDeactivate = async (tee: CourseTee) => {
-    if (!confirm(`¿Estás seguro de querer desactivar ${tee.nombre}?`)) return;
+  const handleConfirmDelete = async () => {
+    if (!teeToDelete) return;
     try {
-      await courseService.deactivateTee(tee.id);
+      setDeleting(true);
+      await courseService.deleteTee(teeToDelete.id);
+      setTeeToDelete(null);
       loadTees();
     } catch (err: any) {
-      alert(err.response?.data?.message || 'Error desactivando tee');
+      setTeeToDelete(null);
+      setActionError(err.response?.data?.message || 'Error eliminando tee');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -91,12 +101,8 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
     { header: 'Nombre del Tee', accessor: 'nombre' as keyof CourseTee },
     { header: 'Group/Color', accessor: (row: CourseTee) => row.grupo || '-' },
     {
-      header: 'Estado',
-      accessor: (row: CourseTee) => (
-        <span className={row.active ? 'status-active' : 'status-inactive'}>
-          {row.active ? 'Active' : 'Inactive'}
-        </span>
-      ),
+      header: 'Género',
+      accessor: (row: CourseTee) => (row.genero === 'F' ? 'Damas' : 'Caballeros'),
     },
   ];
 
@@ -107,10 +113,10 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
       variant: 'primary',
     },
     {
-      label: 'Desactivar',
-      onClick: handleDeactivate,
+      label: 'Eliminar',
+      onClick: (tee) => setTeeToDelete(tee),
       variant: 'danger',
-      show: (tee) => tee.active && canDelete,
+      show: () => canDelete,
     },
   ];
 
@@ -171,10 +177,73 @@ const ManageTeesModal = ({ isOpen, onClose, course, onSave }: ManageTeesModalPro
                   />
                 </div>
               </div>
+              <div className="form-group">
+                <label>Género *</label>
+                <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.4rem' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontWeight: 500 }}>
+                    <input
+                      type="radio"
+                      name="tee-genero"
+                      value="M"
+                      checked={formData.genero === 'M'}
+                      onChange={() => setFormData({ ...formData, genero: 'M' })}
+                    />
+                    Caballeros
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontWeight: 500 }}>
+                    <input
+                      type="radio"
+                      name="tee-genero"
+                      value="F"
+                      checked={formData.genero === 'F'}
+                      onChange={() => setFormData({ ...formData, genero: 'F' })}
+                    />
+                    Damas
+                  </label>
+                </div>
+              </div>
             </form>
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={!!teeToDelete}
+        onClose={() => !deleting && setTeeToDelete(null)}
+        title="Eliminar tee"
+        size="small"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <button type="button" className="btn btn-cancel" onClick={() => setTeeToDelete(null)} disabled={deleting}>
+              Cancelar
+            </button>
+            <button type="button" className="btn btn-danger" onClick={handleConfirmDelete} disabled={deleting}>
+              {deleting ? 'Eliminando…' : 'Eliminar'}
+            </button>
+          </div>
+        }
+      >
+        <p>
+          ¿Eliminar el tee '{teeToDelete?.nombre} - {teeToDelete?.genero === 'F' ? 'Damas' : 'Caballeros'}'?
+          Se borrarán también sus equivalencias de HCP Course.
+        </p>
+      </Modal>
+
+      <Modal
+        isOpen={!!actionError}
+        onClose={() => setActionError('')}
+        title="No se pudo eliminar"
+        size="small"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <button type="button" className="btn btn-primary" onClick={() => setActionError('')}>
+              Aceptar
+            </button>
+          </div>
+        }
+      >
+        <p>{actionError}</p>
+      </Modal>
     </Modal>
   );
 };

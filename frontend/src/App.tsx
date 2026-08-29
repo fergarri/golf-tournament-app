@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage'
 import TournamentsPage from './pages/TournamentsPage'
 import PlayersPage from './pages/PlayersPage'
 import CoursesPage from './pages/CoursesPage'
+import CourseAdministrationPage from './pages/CourseAdministrationPage'
 import UsersPage from './pages/UsersPage'
 import TournamentLeaderboardPage from './pages/TournamentLeaderboardPage'
 import TournamentAccessPage from './pages/TournamentAccessPage'
@@ -40,6 +41,7 @@ function App() {
           <Route path="/tournaments/:id/frutales-leaderboard" element={<PermissionRoute permission="GAMES"><FrutalesLeaderboardPage /></PermissionRoute>} />
           <Route path="/players" element={<PermissionRoute permission="GAMES"><PlayersPage /></PermissionRoute>} />
           <Route path="/courses" element={<PermissionRoute permission="GAMES"><CoursesPage /></PermissionRoute>} />
+          <Route path="/courses/:id" element={<PermissionRoute permission="GAMES"><CourseAdministrationPage /></PermissionRoute>} />
           <Route path="/users" element={<PermissionRoute permission="CLUB_USERS"><UsersPage /></PermissionRoute>} />
           <Route path="/administration" element={<PermissionRoute permission="ADMINISTRATION"><AdministrationPage /></PermissionRoute>} />
           <Route path="/administration/:id" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminDetailPage /></PermissionRoute>} />

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { courseService } from '../services/courseService';
 import { locationService, Country, Province } from '../services/locationService';
 import { Course } from '../types';
@@ -180,7 +181,15 @@ const CoursesPage = () => {
   };
 
   const columns = [
-    { header: 'Nombre', accessor: 'nombre' as keyof Course },
+    {
+      header: 'Nombre',
+      accessor: (row: Course) => (
+        <Link to={`/courses/${row.id}`} className="tournament-name-link">
+          {row.nombre}
+        </Link>
+      ),
+      sortValue: (row: Course) => row.nombre,
+    },
     { header: 'Ubicación', accessor: (row: Course) => `${row.ciudad || ''}, ${row.provincia || ''}, ${row.pais}` },
     { header: 'Hoyos', accessor: 'cantidadHoyos' as keyof Course },
     { header: 'Puntuación', accessor: (row: Course) => row.courseRating || '-' },

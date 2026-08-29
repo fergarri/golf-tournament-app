@@ -4,6 +4,7 @@ import com.golf.tournament.dto.course.CourseDTO;
 import com.golf.tournament.dto.course.CourseTeeDTO;
 import com.golf.tournament.dto.course.CreateCourseRequest;
 import com.golf.tournament.dto.course.HoleDTO;
+import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.model.*;
 import com.golf.tournament.repository.*;
@@ -25,6 +26,9 @@ public class CourseService {
     private final CourseTeeRepository courseTeeRepository;
     private final HoleRepository holeRepository;
     private final HoleDistanceRepository holeDistanceRepository;
+    private final HandicapConversionRepository handicapConversionRepository;
+    private final TournamentRepository tournamentRepository;
+    private final ScorecardRepository scorecardRepository;
     private final CurrentUserProvider currentUserProvider;
 
     @Transactional(readOnly = true)
@@ -114,6 +118,7 @@ public class CourseService {
                 .course(course)
                 .nombre(teeDTO.getNombre())
                 .grupo(teeDTO.getGrupo())
+                .genero(normalizeTeeGenero(teeDTO.getGenero()))
                 .active(true)
                 .build();
 
@@ -130,6 +135,7 @@ public class CourseService {
 
         tee.setNombre(teeDTO.getNombre());
         tee.setGrupo(teeDTO.getGrupo());
+        tee.setGenero(normalizeTeeGenero(teeDTO.getGenero()));
         if (teeDTO.getActive() != null) {
             tee.setActive(teeDTO.getActive());
         }
@@ -140,14 +146,23 @@ public class CourseService {
     }
 
     @Transactional
-    public void deactivateTee(Long teeId) {
+    public void deleteTee(Long teeId) {
         CourseTee tee = courseTeeRepository.findById(teeId)
                 .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeId));
         currentUserProvider.assertClubAccess(tee.getCourse().getId());
         currentUserProvider.assertCanDelete();
-        tee.setActive(false);
-        courseTeeRepository.save(tee);
-        log.info("Tee deactivated: {}", teeId);
+
+        if (tournamentRepository.existsByAssignedTeeId(teeId)
+                || scorecardRepository.existsByTeeId(teeId)) {
+            throw new BadRequestException("No se puede eliminar porque está asignado a torneos o tarjetas");
+        }
+
+        handicapConversionRepository.deleteByTeeId(teeId);
+        handicapConversionRepository.flush();
+        holeDistanceRepository.deleteAll(holeDistanceRepository.findByCourseTeeId(teeId));
+        holeDistanceRepository.flush();
+        courseTeeRepository.delete(tee);
+        log.info("Tee eliminado: {}", teeId);
     }
 
     @Transactional(readOnly = true)
@@ -234,8 +249,20 @@ public class CourseService {
                 .courseId(tee.getCourse().getId())
                 .nombre(tee.getNombre())
                 .grupo(tee.getGrupo())
+                .genero(tee.getGenero() != null ? tee.getGenero() : "M")
                 .active(tee.getActive())
                 .build();
+    }
+
+    private String normalizeTeeGenero(String genero) {
+        if (genero == null || genero.isBlank()) {
+            return "M";
+        }
+        String normalized = genero.trim().toUpperCase();
+        if (!"M".equals(normalized) && !"F".equals(normalized)) {
+            throw new BadRequestException("El género del tee debe ser M (Caballeros) o F (Damas)");
+        }
+        return normalized;
     }
 
     private HoleDTO convertHoleToDTO(Hole hole) {

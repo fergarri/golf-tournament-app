@@ -745,7 +745,7 @@ const TournamentsPage = () => {
                 >
                   <option value="">Definir más adelante</option>
                   {selectedCourse.tees
-                    .filter((tee) => tee.active)
+                    .filter((tee) => tee.active && (tee.genero ?? 'M') === 'M')
                     .map((tee) => (
                       <option key={tee.id} value={tee.id}>
                         {tee.nombre} {tee.grupo ? `(${tee.grupo})` : ''}
@@ -761,7 +761,7 @@ const TournamentsPage = () => {
                 >
                   <option value="">Definir más adelante</option>
                   {selectedCourse.tees
-                    .filter((tee) => tee.active)
+                    .filter((tee) => tee.active && tee.genero === 'F')
                     .map((tee) => (
                       <option key={tee.id} value={tee.id}>
                         {tee.nombre} {tee.grupo ? `(${tee.grupo})` : ''}

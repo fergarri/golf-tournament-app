@@ -5,16 +5,15 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CourseTeeDTO {
-    
+public class HandicapConversionDTO {
     private Long id;
-    private Long courseId;
-    private String nombre;
-    private String grupo;
-    private String genero;
-    private Boolean active;
+    private BigDecimal hcpIndexFrom;
+    private BigDecimal hcpIndexTo;
+    private Integer courseHandicap;
 }

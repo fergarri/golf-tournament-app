@@ -15,6 +15,9 @@ import java.util.Optional;
 public interface TournamentRepository extends JpaRepository<Tournament, Long> {
     
     Optional<Tournament> findByCodigo(String codigo);
+
+    @Query("SELECT COUNT(t) > 0 FROM Tournament t WHERE t.teeMasculino.id = :teeId OR t.teeFemenino.id = :teeId")
+    boolean existsByAssignedTeeId(@Param("teeId") Long teeId);
     
     boolean existsByCodigo(String codigo);
     

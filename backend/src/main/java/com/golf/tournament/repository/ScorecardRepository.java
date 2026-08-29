@@ -23,6 +23,9 @@ public interface ScorecardRepository extends JpaRepository<Scorecard, Long> {
 
     List<Scorecard> findByTournamentIdOrderByDeliveredAtAsc(Long tournamentId);
     
+    @Query("SELECT COUNT(s) > 0 FROM Scorecard s WHERE s.tee.id = :teeId")
+    boolean existsByTeeId(@Param("teeId") Long teeId);
+
     Optional<Scorecard> findByTournamentIdAndPlayerId(Long tournamentId, Long playerId);
     
     boolean existsByTournamentIdAndPlayerId(Long tournamentId, Long playerId);

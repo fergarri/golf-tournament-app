@@ -1,5 +1,5 @@
 import api from './api';
-import { Course } from '../types';
+import { Course, ImportHandicapConversionResponse, PreviewHandicapImportResponse, TeeHandicapTable } from '../types';
 
 export const courseService = {
   getAll: async (): Promise<Course[]> => {
@@ -46,7 +46,7 @@ export const courseService = {
     return response.data;
   },
 
-  deactivateTee: async (teeId: number) => {
+  deleteTee: async (teeId: number) => {
     await api.delete(`/courses/tees/${teeId}`);
   },
 
@@ -57,6 +57,75 @@ export const courseService = {
 
   saveHole: async (courseId: number, hole: any) => {
     const response = await api.post(`/courses/${courseId}/holes`, hole);
+    return response.data;
+  },
+
+  getHandicapConversions: async (courseId: number): Promise<TeeHandicapTable[]> => {
+    const response = await api.get<TeeHandicapTable[]>(`/courses/${courseId}/handicap-conversions`);
+    return response.data;
+  },
+
+  previewHandicapConversions: async (
+    courseId: number,
+    file: File
+  ): Promise<PreviewHandicapImportResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<PreviewHandicapImportResponse>(
+      `/courses/${courseId}/handicap-conversions/preview`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  importHandicapConversions: async (
+    courseId: number,
+    file: File,
+    teeIds: number[],
+    createMissing = false
+  ): Promise<ImportHandicapConversionResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    teeIds.forEach((id) => formData.append('teeIds', String(id)));
+    formData.append('createMissing', String(createMissing));
+    const response = await api.post<ImportHandicapConversionResponse>(
+      `/courses/${courseId}/handicap-conversions/import`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  previewHoleDistances: async (
+    courseId: number,
+    file: File
+  ): Promise<PreviewHandicapImportResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await api.post<PreviewHandicapImportResponse>(
+      `/courses/${courseId}/hole-distances/preview`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  importHoleDistances: async (
+    courseId: number,
+    file: File,
+    teeIds: number[],
+    createMissing = false
+  ): Promise<ImportHandicapConversionResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    teeIds.forEach((id) => formData.append('teeIds', String(id)));
+    formData.append('createMissing', String(createMissing));
+    const response = await api.post<ImportHandicapConversionResponse>(
+      `/courses/${courseId}/hole-distances/import`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
     return response.data;
   },
 };
