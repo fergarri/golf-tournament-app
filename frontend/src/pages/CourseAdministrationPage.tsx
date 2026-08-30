@@ -9,6 +9,8 @@ import {
   TeeHandicapTable,
 } from '../types';
 import Modal from '../components/Modal';
+import ManageHolesModal from '../components/ManageHolesModal';
+import ManageTeesModal from '../components/ManageTeesModal';
 import { Button } from '../components/ui/button';
 import { Upload, ChevronDown, ChevronRight, ArrowLeft } from 'lucide-react';
 import '../components/Form.css';
@@ -62,6 +64,8 @@ const CourseAdministrationPage = () => {
   const [missingTees, setMissingTees] = useState<MissingCourseTee[]>([]);
   const [showMissingModal, setShowMissingModal] = useState(false);
   const [confirmingMissing, setConfirmingMissing] = useState(false);
+  const [showHolesModal, setShowHolesModal] = useState(false);
+  const [showTeesModal, setShowTeesModal] = useState(false);
 
   const activeTees = useMemo(
     () => (course?.tees || [])
@@ -295,6 +299,14 @@ const CourseAdministrationPage = () => {
 
       <section className="course-admin-section">
         <h2>Hoyos</h2>
+        <div className="holes-section-actions">
+          <Button variant="outline" size="sm" onClick={() => setShowHolesModal(true)}>
+            Gestionar Hoyos
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setShowTeesModal(true)}>
+            Gestionar Tees
+          </Button>
+        </div>
         <div className="holes-summary">
           <p><strong>Total Hoyos:</strong> {course.cantidadHoyos}</p>
           <p><strong>Total Par:</strong> {totalPar}</p>
@@ -384,6 +396,26 @@ const CourseAdministrationPage = () => {
           </div>
         )}
       </section>
+
+      <ManageTeesModal
+        isOpen={showTeesModal}
+        onClose={() => setShowTeesModal(false)}
+        course={{ ...course, holes }}
+        onSave={() => {
+          loadData();
+          setShowTeesModal(false);
+        }}
+      />
+
+      <ManageHolesModal
+        isOpen={showHolesModal}
+        onClose={() => setShowHolesModal(false)}
+        course={{ ...course, holes }}
+        onSave={() => {
+          loadData();
+          setShowHolesModal(false);
+        }}
+      />
 
       <Modal
         isOpen={showImportModal}
