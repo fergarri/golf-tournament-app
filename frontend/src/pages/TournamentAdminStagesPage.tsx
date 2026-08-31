@@ -273,6 +273,14 @@ const TournamentAdminStagesPage = () => {
             Tabla Play Off
           </button>
           <button
+            onClick={() => navigate(`/administration/${tournamentAdminId}/stages/playoff-brackets`)}
+            className="btn-admin-stages"
+            disabled={stages.length === 0}
+            title={stages.length === 0 ? 'No hay etapas creadas' : undefined}
+          >
+            Llaves
+          </button>
+          <button
             onClick={handleCalculateAll}
             className="btn-compact btn-compact-primary"
             disabled={calculating || stages.length === 0}

@@ -185,6 +185,12 @@ const TournamentAdminPlayoffResultsPage = () => {
           <button onClick={loadData} className="btn-refresh">
             ⟳ Actualizar
           </button>
+          <button
+            onClick={() => navigate(`/administration/${tournamentAdminId}/stages/playoff-brackets`)}
+            className="btn-admin-stages"
+          >
+            Ver Llaves
+          </button>
           <button type="button" onClick={copyPublicPlayoffResultsLink} className="btn-compact btn-compact-primary">
             Link resultados públicos
           </button>

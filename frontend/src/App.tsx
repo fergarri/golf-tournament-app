@@ -21,8 +21,10 @@ import TournamentAdminDetailPage from './pages/TournamentAdminDetailPage'
 import TournamentAdminStagesPage from './pages/TournamentAdminStagesPage'
 import TournamentAdminStageBoardPage from './pages/TournamentAdminStageBoardPage'
 import TournamentAdminPlayoffResultsPage from './pages/TournamentAdminPlayoffResultsPage'
+import TournamentAdminBracketsPage from './pages/TournamentAdminBracketsPage'
 import PublicTournamentAdminStageBoardPage from './pages/PublicTournamentAdminStageBoardPage'
 import PublicTournamentAdminPlayoffResultsPage from './pages/PublicTournamentAdminPlayoffResultsPage'
+import PublicTournamentAdminBracketsPage from './pages/PublicTournamentAdminBracketsPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import PermissionRoute from './components/PermissionRoute'
 import Layout from './components/Layout'
@@ -48,6 +50,7 @@ function App() {
           <Route path="/administration/:id/stages" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminStagesPage /></PermissionRoute>} />
           <Route path="/administration/:id/stages/:stageId" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminStageBoardPage /></PermissionRoute>} />
           <Route path="/administration/:id/stages/playoff-results" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminPlayoffResultsPage /></PermissionRoute>} />
+          <Route path="/administration/:id/stages/playoff-brackets" element={<PermissionRoute permission="ADMINISTRATION"><TournamentAdminBracketsPage /></PermissionRoute>} />
         </Route>
 
         {/* Public routes come after protected routes */}
@@ -60,6 +63,7 @@ function App() {
         <Route path="/frutales-results/:codigo" element={<PublicFrutalesLeaderboardPage />} />
         <Route path="/stage-results/:tournamentAdminId/:stageId" element={<PublicTournamentAdminStageBoardPage />} />
         <Route path="/playoff-results/:tournamentAdminId" element={<PublicTournamentAdminPlayoffResultsPage />} />
+        <Route path="/playoff-brackets/:tournamentAdminId" element={<PublicTournamentAdminBracketsPage />} />
       </Routes>
     </AuthProvider>
   )

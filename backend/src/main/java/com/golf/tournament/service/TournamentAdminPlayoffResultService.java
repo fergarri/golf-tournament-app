@@ -2,14 +2,18 @@ package com.golf.tournament.service;
 
 import com.golf.tournament.dto.tournamentadmin.ScoringConfigDTO;
 import com.golf.tournament.dto.tournamentadmin.TournamentAdminPlayoffResultsDTO;
+import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.model.Player;
 import com.golf.tournament.model.Tournament;
 import com.golf.tournament.model.TournamentAdmin;
+import com.golf.tournament.model.TournamentAdminPlayoffBracket;
 import com.golf.tournament.model.TournamentAdminPlayoffResult;
 import com.golf.tournament.model.TournamentAdminStage;
 import com.golf.tournament.model.TournamentAdminStageScore;
 import com.golf.tournament.model.TournamentCategory;
+import com.golf.tournament.repository.TournamentAdminPlayoffBracketRepository;
+import com.golf.tournament.repository.TournamentAdminPlayoffBracketSlotRepository;
 import com.golf.tournament.repository.TournamentAdminPlayoffResultRepository;
 import com.golf.tournament.repository.TournamentAdminRepository;
 import com.golf.tournament.repository.TournamentAdminStageRepository;
@@ -39,6 +43,8 @@ public class TournamentAdminPlayoffResultService {
     private final TournamentAdminScoringConfigService scoringConfigService;
     private final TournamentRepository tournamentRepository;
     private final TournamentCategoryRepository categoryRepository;
+    private final TournamentAdminPlayoffBracketRepository playoffBracketRepository;
+    private final TournamentAdminPlayoffBracketSlotRepository playoffBracketSlotRepository;
 
     @Transactional(readOnly = true)
     public TournamentAdminPlayoffResultsDTO getResults(Long tournamentAdminId) {
@@ -112,6 +118,8 @@ public class TournamentAdminPlayoffResultService {
         TournamentAdmin admin = tournamentAdminRepository.findById(tournamentAdminId)
                 .orElseThrow(() -> new ResourceNotFoundException("TournamentAdmin", "id", tournamentAdminId));
         String tipo = admin.getTipo();
+
+        guardOrRevertConfirmedBrackets(tournamentAdminId);
 
         List<TournamentAdminStage> stages = stageRepository.findByTournamentAdminIdOrderByCreatedAtAsc(tournamentAdminId);
         List<TournamentAdminStage> stagesAsc = new ArrayList<>(stages);
@@ -405,6 +413,37 @@ public class TournamentAdminPlayoffResultService {
 
     private TournamentAdminStageScore emptyStageScore() {
         return TournamentAdminStageScore.builder().totalPoints(0).build();
+    }
+
+    /**
+     * Antes de recalcular resultados de Play Off, resuelve el estado de las llaves de bracket
+     * ya generadas para este torneo:
+     * - CONFIRMED con al menos un "Vencedor" marcado (el playoff arrancó): bloquea el
+     *   recálculo, hay que resolver la llave manualmente primero.
+     * - CONFIRMED sin partidos jugados todavía: se revierte automáticamente a DRAFT para
+     *   permitir reasignar jugadores si cambió la lista de clasificados.
+     * - DRAFT: no se toca.
+     */
+    private void guardOrRevertConfirmedBrackets(Long tournamentAdminId) {
+        List<TournamentAdminPlayoffBracket> brackets = playoffBracketRepository
+                .findByTournamentAdminIdOrderByScoreTypeAsc(tournamentAdminId);
+        for (TournamentAdminPlayoffBracket bracket : brackets) {
+            if (!"CONFIRMED".equals(bracket.getStatus())) {
+                continue;
+            }
+            boolean hasWinner = playoffBracketSlotRepository.existsByBracketIdAndIsWinnerTrue(bracket.getId());
+            if (hasWinner) {
+                throw new BadRequestException(
+                        "No se puede recalcular: la llave de Playoff " + bracketLabel(bracket.getScoreType()) +
+                                " ya tiene partidos jugados. Resolvé la llave manualmente antes de recalcular puntos.");
+            }
+            bracket.setStatus("DRAFT");
+            playoffBracketRepository.save(bracket);
+        }
+    }
+
+    private String bracketLabel(String scoreType) {
+        return "SCRATCH".equals(scoreType) ? "SCRATCH" : "Con HCP";
     }
 
     private static class Candidate {

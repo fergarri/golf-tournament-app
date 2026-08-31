@@ -496,3 +496,52 @@ export interface TournamentAdminPlayoffCategoryLegend {
   /** Índice 0-based para asignación de color. */
   categoryIndex: number;
 }
+
+export type PlayoffScoreType = 'HCP' | 'SCRATCH';
+export type PlayoffBracketStatus = 'DRAFT' | 'CONFIRMED';
+
+export interface TournamentAdminPlayoffBrackets {
+  tournamentAdminId: number;
+  /** FRUTALES o CLASICO */
+  tipo: string;
+  /** true si el torneo tiene clasificación Scratch configurada (solo CLASICO). */
+  scratchApplicable: boolean;
+  /** Llaves ya generadas (0, 1 o 2: HCP y/o SCRATCH). */
+  brackets: TournamentAdminPlayoffBracket[];
+}
+
+export interface TournamentAdminPlayoffBracket {
+  bracketId: number;
+  scoreType: PlayoffScoreType;
+  size: number;
+  status: PlayoffBracketStatus;
+  /** true si está CONFIRMED y todavía no se jugó ningún partido. */
+  canRevertToDraft: boolean;
+  rounds: TournamentAdminPlayoffBracketRound[];
+  unassignedPlayers: TournamentAdminPlayoffBracketPlayerRef[];
+}
+
+export interface TournamentAdminPlayoffBracketRound {
+  roundNumber: number;
+  roundName: string;
+  slots: TournamentAdminPlayoffBracketSlot[];
+}
+
+export interface TournamentAdminPlayoffBracketSlot {
+  slotId: number;
+  slotIndex: number;
+  playerId: number | null;
+  playerName: string | null;
+  playerHandicapIndex: number | null;
+  /** Posición del jugador en la Tabla de Play Off (1 = mejor clasificado). Null si no hay jugador. */
+  playerSeed: number | null;
+  isWinner: boolean;
+}
+
+export interface TournamentAdminPlayoffBracketPlayerRef {
+  playerId: number;
+  playerName: string;
+  playerHandicapIndex: number | null;
+  /** Posición del jugador en la Tabla de Play Off (1 = mejor clasificado). Usada para el sembrado. */
+  seed: number;
+}

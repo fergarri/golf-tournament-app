@@ -18,6 +18,7 @@ const PUBLIC_PATHS = [
   /^\/frutales-results\//,
   /^\/stage-results\//,
   /^\/playoff-results\//,
+  /^\/playoff-brackets\//,
   /^\/tournaments\/[^/]+\/scorecard/,
 ];
 
