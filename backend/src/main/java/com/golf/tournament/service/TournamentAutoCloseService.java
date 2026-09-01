@@ -3,6 +3,7 @@ package com.golf.tournament.service;
 import com.golf.tournament.model.Tournament;
 import com.golf.tournament.repository.TournamentAdminRepository;
 import com.golf.tournament.repository.TournamentRepository;
+import com.golf.tournament.security.SystemProcessRunner;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,6 +29,10 @@ import java.util.List;
  * Ambos procesos se ejecutan cada minuto. Si el servidor estuvo caído y el horario ya pasó,
  * el torneo se detecta y procesa en la primera ejecución post-inicio.
  * También procesa torneos de días anteriores que quedaron sin actualizar su estado.
+ *
+ * Al ser un proceso automático del sistema (sin usuario autenticado detrás), se ejecuta
+ * mediante {@link SystemProcessRunner} para no quedar sujeto a las validaciones de
+ * club/rol de un usuario (ver {@link com.golf.tournament.security.CurrentUserProvider}).
  */
 @Slf4j
 @Service
@@ -40,10 +45,15 @@ public class TournamentAutoCloseService {
     private final TournamentService tournamentService;
     private final FrutalesScoreService frutalesScoreService;
     private final ClasicScoreService clasicScoreService;
+    private final SystemProcessRunner systemProcessRunner;
 
     @Scheduled(cron = "0 * * * * *")
     @Transactional
     public void autoStartTournaments() {
+        systemProcessRunner.run(this::doAutoStartTournaments);
+    }
+
+    private void doAutoStartTournaments() {
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
 
@@ -66,6 +76,10 @@ public class TournamentAutoCloseService {
     @Scheduled(cron = "0 * * * * *")
     @Transactional
     public void autoCloseTournaments() {
+        systemProcessRunner.run(this::doAutoCloseTournaments);
+    }
+
+    private void doAutoCloseTournaments() {
         LocalDate today = LocalDate.now();
         LocalTime now = LocalTime.now();
 
