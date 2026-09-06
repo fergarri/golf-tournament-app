@@ -9,6 +9,7 @@ import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.dto.scorecard.UpdateScorecardRequest.HoleScoreUpdate;
 import com.golf.tournament.model.*;
 import com.golf.tournament.repository.*;
+import com.golf.tournament.util.NineHoleCourseHandicapCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -739,15 +740,25 @@ public class ScorecardService {
             throw new BadRequestException("El jugador no tiene handicap index asignado. Hable con el capitan de cancha");
         }
 
+        if (cantidadHoyosJuego == 9) {
+            int parIda = sumParPrimeros9(tee.getCourse().getId());
+            int nineHoleCourseHandicap = NineHoleCourseHandicapCalculator.calculate(
+                    player.getHandicapIndex(), tee.getCourseRatingIda(), tee.getSlopeRatingIda(), parIda);
+            return BigDecimal.valueOf(nineHoleCourseHandicap);
+        }
+
         HandicapConversion conversion = handicapConversionRepository
                 .findByTeeAndHandicapIndex(tee.getId(), player.getHandicapIndex())
                 .orElseThrow(() -> new BadRequestException(
                         "No se encontró conversión de handicap para el tee seleccionado y el handicap index del jugador"));
-
-        if (cantidadHoyosJuego == 9) {
-            return BigDecimal.valueOf(conversion.getCourseHandicap() / 2.0);
-        }
         return BigDecimal.valueOf(conversion.getCourseHandicap());
+    }
+
+    private int sumParPrimeros9(Long courseId) {
+        return holeRepository.findByCourseIdOrderByNumeroHoyoAsc(courseId).stream()
+                .filter(hole -> hole.getNumeroHoyo() <= 9)
+                .mapToInt(Hole::getPar)
+                .sum();
     }
 
     private void initializeHoleScores(Scorecard scorecard) {

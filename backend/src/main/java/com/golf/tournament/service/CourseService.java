@@ -251,6 +251,10 @@ public class CourseService {
                 .grupo(tee.getGrupo())
                 .genero(tee.getGenero() != null ? tee.getGenero() : "M")
                 .active(tee.getActive())
+                .courseRatingIda(tee.getCourseRatingIda())
+                .courseRatingVuelta(tee.getCourseRatingVuelta())
+                .slopeRatingIda(tee.getSlopeRatingIda())
+                .slopeRatingVuelta(tee.getSlopeRatingVuelta())
                 .build();
     }
 

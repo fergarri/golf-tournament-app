@@ -1,5 +1,11 @@
 import api from './api';
-import { Course, ImportHandicapConversionResponse, PreviewHandicapImportResponse, TeeHandicapTable } from '../types';
+import {
+  Course,
+  ImportHandicapConversionResponse,
+  ImportNineHoleRatingsResponse,
+  PreviewHandicapImportResponse,
+  TeeHandicapTable,
+} from '../types';
 
 export const courseService = {
   getAll: async (): Promise<Course[]> => {
@@ -123,6 +129,27 @@ export const courseService = {
     formData.append('createMissing', String(createMissing));
     const response = await api.post<ImportHandicapConversionResponse>(
       `/courses/${courseId}/hole-distances/import`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+    return response.data;
+  },
+
+  /**
+   * Importa la planilla "Reporte de Tarjeta" de la AAG con la Calificación (Course Rating) y el
+   * Slope Rating de Ida/Vuelta de cada Salida. El matching contra los tees existentes es
+   * automático (por nombre + género): no requiere seleccionar tees manualmente.
+   */
+  importNineHoleRatings: async (
+    courseId: number,
+    file: File,
+    createMissing = true
+  ): Promise<ImportNineHoleRatingsResponse> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('createMissing', String(createMissing));
+    const response = await api.post<ImportNineHoleRatingsResponse>(
+      `/courses/${courseId}/nine-hole-ratings/import`,
       formData,
       { headers: { 'Content-Type': 'multipart/form-data' } }
     );

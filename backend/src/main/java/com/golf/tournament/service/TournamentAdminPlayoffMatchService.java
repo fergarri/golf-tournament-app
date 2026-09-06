@@ -28,6 +28,7 @@ import com.golf.tournament.repository.TournamentAdminPlayoffMatchCardRepository;
 import com.golf.tournament.repository.TournamentAdminPlayoffMatchHoleScoreRepository;
 import com.golf.tournament.repository.TournamentAdminPlayoffMatchRepository;
 import com.golf.tournament.repository.TournamentAdminPlayoffRoundSessionRepository;
+import com.golf.tournament.util.NineHoleCourseHandicapCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -371,9 +372,9 @@ public class TournamentAdminPlayoffMatchService {
                 .build());
 
         TournamentAdminPlayoffMatchCard cardA = createCard(match, playerA, teeMasculino, teeFemenino,
-                session.getCantidadHoyosJuego(), isHcp);
+                session.getCantidadHoyosJuego(), isHcp, holesInPlay);
         TournamentAdminPlayoffMatchCard cardB = createCard(match, playerB, teeMasculino, teeFemenino,
-                session.getCantidadHoyosJuego(), isHcp);
+                session.getCantidadHoyosJuego(), isHcp, holesInPlay);
 
         initializeHoleScores(cardA, holesInPlay);
         initializeHoleScores(cardB, holesInPlay);
@@ -381,7 +382,8 @@ public class TournamentAdminPlayoffMatchService {
 
     private TournamentAdminPlayoffMatchCard createCard(TournamentAdminPlayoffMatch match, Player player,
                                                         CourseTee teeMasculino, CourseTee teeFemenino,
-                                                        int cantidadHoyosJuego, boolean isHcp) {
+                                                        int cantidadHoyosJuego, boolean isHcp,
+                                                        List<Hole> holesInPlay) {
         String sexo = player.getSexo() != null ? player.getSexo().trim().toUpperCase() : null;
         CourseTee tee = "F".equals(sexo) ? teeFemenino : teeMasculino;
         if (tee == null) {
@@ -396,13 +398,18 @@ public class TournamentAdminPlayoffMatchService {
                 throw new BadRequestException("El jugador " + playerFullName(player) +
                         " no tiene handicap index asignado");
             }
-            HandicapConversion conversion = handicapConversionRepository
-                    .findByTeeAndHandicapIndex(tee.getId(), player.getHandicapIndex())
-                    .orElseThrow(() -> new BadRequestException(
-                            "No se encontró conversión de handicap para el tee seleccionado y el handicap index de " +
-                                    playerFullName(player)));
-            double raw = cantidadHoyosJuego == 9 ? conversion.getCourseHandicap() / 2.0 : conversion.getCourseHandicap();
-            handicapCourse = (int) Math.round(raw);
+            if (cantidadHoyosJuego == 9) {
+                int par9 = holesInPlay.stream().mapToInt(Hole::getPar).sum();
+                handicapCourse = NineHoleCourseHandicapCalculator.calculate(
+                        player.getHandicapIndex(), tee.getCourseRatingIda(), tee.getSlopeRatingIda(), par9);
+            } else {
+                HandicapConversion conversion = handicapConversionRepository
+                        .findByTeeAndHandicapIndex(tee.getId(), player.getHandicapIndex())
+                        .orElseThrow(() -> new BadRequestException(
+                                "No se encontró conversión de handicap para el tee seleccionado y el handicap index de " +
+                                        playerFullName(player)));
+                handicapCourse = conversion.getCourseHandicap();
+            }
         }
 
         return matchCardRepository.save(TournamentAdminPlayoffMatchCard.builder()

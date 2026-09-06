@@ -13,6 +13,7 @@ import com.golf.tournament.repository.HoleRepository;
 import com.golf.tournament.repository.PlayerRepository;
 import com.golf.tournament.repository.TournamentCategoryRepository;
 import com.golf.tournament.repository.TournamentRepository;
+import com.golf.tournament.util.NineHoleCourseHandicapCalculator;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -139,15 +140,23 @@ public class ScorecardPrintService {
 
         BigDecimal handicapCourse = null;
         if (tee != null && player.getHandicapIndex() != null) {
-            handicapCourse = handicapConversionRepository
-                    .findByTeeAndHandicapIndex(tee.getId(), player.getHandicapIndex())
-                    .map(conversion -> {
-                        double courseHandicap = cantidadHoyos == 9
-                                ? conversion.getCourseHandicap() / 2.0
-                                : conversion.getCourseHandicap();
-                        return BigDecimal.valueOf(courseHandicap).setScale(1, RoundingMode.HALF_UP);
-                    })
-                    .orElse(null);
+            if (cantidadHoyos == 9) {
+                try {
+                    int par9 = holes.stream().mapToInt(Hole::getPar).sum();
+                    int nineHoleCourseHandicap = NineHoleCourseHandicapCalculator.calculate(
+                            player.getHandicapIndex(), tee.getCourseRatingIda(), tee.getSlopeRatingIda(), par9);
+                    handicapCourse = BigDecimal.valueOf(nineHoleCourseHandicap);
+                } catch (BadRequestException e) {
+                    // Tee sin calificación de 9 hoyos cargada: se imprime la tarjeta sin HCP Course.
+                    handicapCourse = null;
+                }
+            } else {
+                handicapCourse = handicapConversionRepository
+                        .findByTeeAndHandicapIndex(tee.getId(), player.getHandicapIndex())
+                        .map(conversion -> BigDecimal.valueOf(conversion.getCourseHandicap())
+                                .setScale(1, RoundingMode.HALF_UP))
+                        .orElse(null);
+            }
         }
 
         TournamentCategory category = findCategoryForHandicap(player.getHandicapIndex(), sexo, categories);

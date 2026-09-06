@@ -5,6 +5,7 @@ import {
   CourseTee,
   Hole,
   ImportHandicapConversionTeeResult,
+  ImportNineHoleRatingsTeeResult,
   MissingCourseTee,
   TeeHandicapTable,
 } from '../types';
@@ -26,6 +27,16 @@ const formatDecimal = (value: number | null | undefined) => {
 
 const teeTitle = (tee: { nombre: string; genero?: string }) =>
   `Tee ${tee.nombre} - ${generoLabel(tee.genero)}`;
+
+const nineHoleRatingsLabel = (tee?: CourseTee) => {
+  if (!tee || tee.courseRatingIda == null || tee.slopeRatingIda == null) {
+    return 'Sin calificación de 9 hoyos cargada';
+  }
+  return `CR Ida ${formatDecimal(tee.courseRatingIda)} · Slope Ida ${tee.slopeRatingIda}` +
+    (tee.courseRatingVuelta != null && tee.slopeRatingVuelta != null
+      ? ` · CR Vuelta ${formatDecimal(tee.courseRatingVuelta)} · Slope Vuelta ${tee.slopeRatingVuelta}`
+      : '');
+};
 
 type ImportKind = 'hcp' | 'distances';
 
@@ -66,6 +77,15 @@ const CourseAdministrationPage = () => {
   const [confirmingMissing, setConfirmingMissing] = useState(false);
   const [showHolesModal, setShowHolesModal] = useState(false);
   const [showTeesModal, setShowTeesModal] = useState(false);
+
+  // Import de Calificación 9 Hoyos (Reporte de Tarjeta AAG): matching automático por Salida,
+  // sin paso de selección de tees.
+  const [showNineHoleModal, setShowNineHoleModal] = useState(false);
+  const [nineHoleFile, setNineHoleFile] = useState<File | null>(null);
+  const [nineHoleImporting, setNineHoleImporting] = useState(false);
+  const [nineHoleResults, setNineHoleResults] = useState<ImportNineHoleRatingsTeeResult[] | null>(null);
+  const [nineHoleError, setNineHoleError] = useState('');
+  const [nineHoleDragging, setNineHoleDragging] = useState(false);
 
   const activeTees = useMemo(
     () => (course?.tees || [])
@@ -224,6 +244,48 @@ const CourseAdministrationPage = () => {
     executeImport(false);
   };
 
+  const openNineHoleModal = () => {
+    setShowNineHoleModal(true);
+    setNineHoleFile(null);
+    setNineHoleResults(null);
+    setNineHoleError('');
+  };
+
+  const closeNineHoleModal = () => {
+    if (nineHoleImporting) return;
+    setShowNineHoleModal(false);
+    setNineHoleFile(null);
+    setNineHoleResults(null);
+    setNineHoleError('');
+  };
+
+  const handleNineHoleFile = (file: File | undefined) => {
+    if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.xlsx')) {
+      setNineHoleError('El archivo debe ser formato .xlsx');
+      return;
+    }
+    setNineHoleFile(file);
+    setNineHoleResults(null);
+    setNineHoleError('');
+  };
+
+  const handleImportNineHoleRatings = async () => {
+    if (!course || !nineHoleFile) return;
+    try {
+      setNineHoleImporting(true);
+      setNineHoleError('');
+      const result = await courseService.importNineHoleRatings(course.id, nineHoleFile, true);
+      setNineHoleResults(result.tees);
+      const teesData = await courseService.getTees(course.id);
+      setCourse((prev) => (prev ? { ...prev, tees: teesData || prev.tees || [] } : prev));
+    } catch (err: any) {
+      setNineHoleError(err.response?.data?.message || 'Error importando la calificación de 9 hoyos');
+    } finally {
+      setNineHoleImporting(false);
+    }
+  };
+
   const totalPar = holes.reduce((sum, hole) => sum + (hole.par || 0), 0);
 
   if (loading) return <div className="loading">Cargando administración del campo...</div>;
@@ -257,6 +319,10 @@ const CourseAdministrationPage = () => {
           <Button size="sm" onClick={() => openImportModal('distances')}>
             <Upload className="h-4 w-4" />
             Importar Distancias de Salidas
+          </Button>
+          <Button size="sm" onClick={openNineHoleModal}>
+            <Upload className="h-4 w-4" />
+            Importar Calificación 9 Hoyos
           </Button>
         </div>
       </div>
@@ -380,6 +446,9 @@ const CourseAdministrationPage = () => {
                       {table.conversions.length === 0 ? ' (sin datos)' : ` (${table.conversions.length})`}
                     </span>
                   </button>
+                  <p className="hcp-nine-hole-info">
+                    {nineHoleRatingsLabel((course.tees || []).find((t) => t.id === table.teeId))}
+                  </p>
                   {expanded && (
                     table.conversions.length === 0 ? (
                       <p className="hcp-empty">No hay equivalencias cargadas para este tee.</p>
@@ -532,6 +601,72 @@ const CourseAdministrationPage = () => {
             </>
           )}
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={showNineHoleModal}
+        onClose={closeNineHoleModal}
+        title="Importar Calificación 9 Hoyos"
+        size="medium"
+        footer={
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={closeNineHoleModal} disabled={nineHoleImporting}>
+              Cerrar
+            </Button>
+            {!nineHoleResults && (
+              <Button onClick={handleImportNineHoleRatings} disabled={!nineHoleFile || nineHoleImporting}>
+                {nineHoleImporting ? 'Importando…' : 'Importar'}
+              </Button>
+            )}
+          </div>
+        }
+      >
+        {nineHoleError && <div className="error-message">{nineHoleError}</div>}
+        {nineHoleResults ? (
+          <div className="space-y-3">
+            <p className="text-sm text-slate-600">Resultado de la importación:</p>
+            <ul className="import-result-list">
+              {nineHoleResults.map((r, idx) => (
+                <li key={r.teeId ?? `${r.teeNombre}-${r.genero}-${idx}`}>
+                  <strong>{teeTitle({ nombre: r.teeNombre, genero: r.genero })}:</strong> {r.message}
+                  {r.imported && (
+                    <span className="hcp-nine-hole-info">
+                      {' '}CR Ida {formatDecimal(r.courseRatingIda)} · Slope Ida {r.slopeRatingIda ?? '—'}
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Importá el "Reporte de Tarjeta" que exporta la AAG para este campo. Cada Salida del archivo se
+              matchea automáticamente con el tee correspondiente (por nombre y género): no hace falta
+              seleccionar tees. Si una Salida no existe todavía, se crea automáticamente.
+            </p>
+            <div
+              className={`import-dropzone ${nineHoleDragging ? 'dragging' : ''}`}
+              onDragOver={(e) => { e.preventDefault(); setNineHoleDragging(true); }}
+              onDragLeave={() => setNineHoleDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setNineHoleDragging(false);
+                handleNineHoleFile(e.dataTransfer.files?.[0]);
+              }}
+            >
+              <Upload className="h-6 w-6 text-slate-400" />
+              <p>Arrastrá la planilla aquí o buscala en tu equipo</p>
+              <p className="text-xs text-slate-500">Reporte de Tarjeta (AAG), formato .xlsx</p>
+              <input
+                type="file"
+                accept=".xlsx"
+                onChange={(e) => handleNineHoleFile(e.target.files?.[0])}
+              />
+              {nineHoleFile && <p className="selected-file">{nineHoleFile.name}</p>}
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

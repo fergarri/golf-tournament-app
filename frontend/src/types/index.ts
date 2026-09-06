@@ -107,6 +107,14 @@ export interface CourseTee {
   /** M = Caballeros, F = Damas */
   genero?: 'M' | 'F';
   active: boolean;
+  /** Calificación (Course Rating) de Ida (hoyos 1-9), usada para el HCP Course de 9 hoyos */
+  courseRatingIda?: number | null;
+  /** Calificación (Course Rating) de Vuelta (hoyos 10-18) */
+  courseRatingVuelta?: number | null;
+  /** Slope Rating de Ida (hoyos 1-9), usado para el HCP Course de 9 hoyos */
+  slopeRatingIda?: number | null;
+  /** Slope Rating de Vuelta (hoyos 10-18) */
+  slopeRatingVuelta?: number | null;
 }
 
 export interface Hole {
@@ -153,6 +161,23 @@ export interface MissingCourseTee {
 
 export interface PreviewHandicapImportResponse {
   missingTees: MissingCourseTee[];
+}
+
+export interface ImportNineHoleRatingsTeeResult {
+  teeId?: number;
+  teeNombre: string;
+  genero?: string;
+  imported: boolean;
+  created: boolean;
+  courseRatingIda?: number | null;
+  courseRatingVuelta?: number | null;
+  slopeRatingIda?: number | null;
+  slopeRatingVuelta?: number | null;
+  message: string;
+}
+
+export interface ImportNineHoleRatingsResponse {
+  tees: ImportNineHoleRatingsTeeResult[];
 }
 
 export interface TournamentPrize {

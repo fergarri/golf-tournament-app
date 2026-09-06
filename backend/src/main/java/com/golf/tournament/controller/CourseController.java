@@ -5,11 +5,13 @@ import com.golf.tournament.dto.course.CourseTeeDTO;
 import com.golf.tournament.dto.course.CreateCourseRequest;
 import com.golf.tournament.dto.course.HoleDTO;
 import com.golf.tournament.dto.course.ImportHandicapConversionResponse;
+import com.golf.tournament.dto.course.ImportNineHoleRatingsResponse;
 import com.golf.tournament.dto.course.PreviewHandicapImportResponse;
 import com.golf.tournament.dto.course.TeeHandicapTableDTO;
 import com.golf.tournament.service.CourseService;
 import com.golf.tournament.service.HandicapConversionService;
 import com.golf.tournament.service.HoleDistanceImportService;
+import com.golf.tournament.service.NineHoleRatingsImportService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -28,6 +30,7 @@ public class CourseController {
     private final CourseService courseService;
     private final HandicapConversionService handicapConversionService;
     private final HoleDistanceImportService holeDistanceImportService;
+    private final NineHoleRatingsImportService nineHoleRatingsImportService;
 
     @GetMapping
     public ResponseEntity<List<CourseDTO>> getAllCourses() {
@@ -141,6 +144,22 @@ public class CourseController {
             @RequestParam(value = "createMissing", defaultValue = "false") boolean createMissing) {
         return ResponseEntity.ok(holeDistanceImportService.importDistances(
                 courseId, teeIds != null ? teeIds : List.of(), createMissing, file));
+    }
+
+    /**
+     * Importa la planilla "Reporte de Tarjeta" de la AAG con la Calificación (Course Rating) y el
+     * Slope Rating de Ida/Vuelta de cada Salida. El matching contra los tees de salida existentes
+     * es automático (por nombre + género): no requiere que el usuario seleccione tees manualmente.
+     * Si una Salida del archivo no tiene un tee equivalente en el campo, se crea automáticamente
+     * salvo que se indique {@code createMissing=false}.
+     */
+    @PostMapping("/{courseId}/nine-hole-ratings/import")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    public ResponseEntity<ImportNineHoleRatingsResponse> importNineHoleRatings(
+            @PathVariable Long courseId,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "createMissing", defaultValue = "true") boolean createMissing) {
+        return ResponseEntity.ok(nineHoleRatingsImportService.importRatings(courseId, createMissing, file));
     }
 
     @PostMapping("/{courseId}/holes")

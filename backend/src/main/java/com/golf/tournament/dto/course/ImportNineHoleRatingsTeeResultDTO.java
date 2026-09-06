@@ -11,16 +11,15 @@ import java.math.BigDecimal;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CourseTeeDTO {
-    
-    private Long id;
-    private Long courseId;
-    private String nombre;
-    private String grupo;
+public class ImportNineHoleRatingsTeeResultDTO {
+    private Long teeId;
+    private String teeNombre;
     private String genero;
-    private Boolean active;
+    private boolean imported;
+    private boolean created;
     private BigDecimal courseRatingIda;
     private BigDecimal courseRatingVuelta;
     private Integer slopeRatingIda;
     private Integer slopeRatingVuelta;
+    private String message;
 }
