@@ -3,7 +3,13 @@ import { useParams } from 'react-router-dom';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import Tabs, { Tab } from '../components/Tabs';
 import { tournamentAdminPlayoffBracketService } from '../services/tournamentAdminPlayoffBracketService';
-import { PlayoffScoreType, TournamentAdminPlayoffBracket, TournamentAdminPlayoffBracketSlot } from '../types';
+import { tournamentAdminPlayoffMatchService } from '../services/tournamentAdminPlayoffMatchService';
+import {
+  PlayoffRoundSession,
+  PlayoffScoreType,
+  TournamentAdminPlayoffBracket,
+  TournamentAdminPlayoffBracketSlot,
+} from '../types';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 import './TournamentAdminBracketsPage.css';
@@ -26,6 +32,7 @@ const PublicTournamentAdminBracketsPage = () => {
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState<PlayoffScoreType>('HCP');
   const [zoomScale, setZoomScale] = useState(1);
+  const [roundSessionsByBracket, setRoundSessionsByBracket] = useState<Record<number, PlayoffRoundSession[]>>({});
 
   useEffect(() => {
     if (!Number.isFinite(tournamentAdminId)) {
@@ -37,6 +44,24 @@ const PublicTournamentAdminBracketsPage = () => {
     const interval = setInterval(() => loadData({ silent: true }), 100000);
     return () => clearInterval(interval);
   }, [tournamentAdminId]);
+
+  useEffect(() => {
+    const bracket = data?.brackets.find((b) => b.scoreType === activeTab) ?? null;
+    if (!bracket) return;
+    const bracketId = bracket.bracketId;
+    const loadRoundSessions = async () => {
+      try {
+        const sessions = await tournamentAdminPlayoffMatchService.getPublicRoundSessions(tournamentAdminId, bracketId);
+        setRoundSessionsByBracket((prev) => ({ ...prev, [bracketId]: sessions }));
+      } catch (err) {
+        console.error('Error cargando rondas de partidos', err);
+      }
+    };
+    void loadRoundSessions();
+    const interval = window.setInterval(() => void loadRoundSessions(), 10000);
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tournamentAdminId, data, activeTab]);
 
   useEffect(() => {
     setZoomScale(1);
@@ -80,6 +105,7 @@ const PublicTournamentAdminBracketsPage = () => {
   };
 
   const renderBracket = (activeBracket: TournamentAdminPlayoffBracket) => {
+    const roundSessions = roundSessionsByBracket[activeBracket.bracketId] ?? [];
     const championSlot = activeBracket.rounds
       .find((r) => r.roundNumber === activeBracket.rounds.length)
       ?.slots.find((s) => s.isWinner);
@@ -133,15 +159,32 @@ const PublicTournamentAdminBracketsPage = () => {
                       for (let i = 0; i < round.slots.length; i += 2) {
                         pairs.push(round.slots.slice(i, i + 2));
                       }
+                      const session = roundSessions.find((s) => s.roundNumber === round.roundNumber);
                       return (
                         <div key={round.roundNumber} className="bracket-round">
                           <div className="bracket-round-title">{round.roundName}</div>
                           <div className="bracket-round-body">
-                            {pairs.map((pair, pairIdx) => (
-                              <div key={pairIdx} className={`bracket-match-pair ${!isLast ? 'has-connector' : ''}`}>
-                                {pair.map((slot) => renderSlot(slot, pair))}
-                              </div>
-                            ))}
+                            {pairs.map((pair, pairIdx) => {
+                              const match = session?.matches.find((m) =>
+                                pair.some((s) => s.slotId === m.topSlotId || s.slotId === m.bottomSlotId)
+                              );
+                              return (
+                                <div key={pairIdx} className="bracket-match-group">
+                                  <div className={`bracket-match-pair ${!isLast ? 'has-connector' : ''}`}>
+                                    {pair.map((slot) => renderSlot(slot, pair))}
+                                  </div>
+                                  {match && (
+                                    <div
+                                      className={`bracket-match-chip ${match.status === 'FINISHED' ? 'is-finished' : ''}`}
+                                    >
+                                      {match.status === 'FINISHED'
+                                        ? `✔ ${match.winnerPlayerId === match.playerAId ? match.playerAName : match.playerBName} — ${match.resultSummary}`
+                                        : match.liveStatusLabel}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       );

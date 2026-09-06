@@ -25,6 +25,8 @@ import TournamentAdminBracketsPage from './pages/TournamentAdminBracketsPage'
 import PublicTournamentAdminStageBoardPage from './pages/PublicTournamentAdminStageBoardPage'
 import PublicTournamentAdminPlayoffResultsPage from './pages/PublicTournamentAdminPlayoffResultsPage'
 import PublicTournamentAdminBracketsPage from './pages/PublicTournamentAdminBracketsPage'
+import PlayoffMatchAccessPage from './pages/PlayoffMatchAccessPage'
+import PlayoffMatchScorecardPage from './pages/PlayoffMatchScorecardPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import PermissionRoute from './components/PermissionRoute'
 import Layout from './components/Layout'
@@ -64,6 +66,8 @@ function App() {
         <Route path="/stage-results/:tournamentAdminId/:stageId" element={<PublicTournamentAdminStageBoardPage />} />
         <Route path="/playoff-results/:tournamentAdminId" element={<PublicTournamentAdminPlayoffResultsPage />} />
         <Route path="/playoff-brackets/:tournamentAdminId" element={<PublicTournamentAdminBracketsPage />} />
+        <Route path="/playoff-match/:code" element={<PlayoffMatchAccessPage />} />
+        <Route path="/playoff-match/:code/:matchId/scorecard" element={<PlayoffMatchScorecardPage />} />
       </Routes>
     </AuthProvider>
   )

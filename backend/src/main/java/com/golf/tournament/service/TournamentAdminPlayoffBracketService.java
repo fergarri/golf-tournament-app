@@ -14,6 +14,7 @@ import com.golf.tournament.repository.PlayerRepository;
 import com.golf.tournament.repository.TournamentAdminPlayoffBracketRepository;
 import com.golf.tournament.repository.TournamentAdminPlayoffBracketSlotRepository;
 import com.golf.tournament.repository.TournamentAdminPlayoffResultRepository;
+import com.golf.tournament.repository.TournamentAdminPlayoffRoundSessionRepository;
 import com.golf.tournament.repository.TournamentAdminRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class TournamentAdminPlayoffBracketService {
     private final TournamentAdminPlayoffBracketRepository bracketRepository;
     private final TournamentAdminPlayoffBracketSlotRepository slotRepository;
     private final TournamentAdminPlayoffResultRepository playoffResultRepository;
+    private final TournamentAdminPlayoffRoundSessionRepository roundSessionRepository;
     private final TournamentAdminScoringConfigService scoringConfigService;
     private final PlayerRepository playerRepository;
 
@@ -250,6 +252,9 @@ public class TournamentAdminPlayoffBracketService {
     @Transactional
     public TournamentAdminPlayoffBracketsDTO reset(Long tournamentAdminId, Long bracketId) {
         TournamentAdminPlayoffBracket bracket = getBracketOrThrow(tournamentAdminId, bracketId);
+        // Las rondas de Match Play (y sus partidos/tarjetas/hoyos) referencian los casilleros de
+        // la llave; hay que borrarlas primero para no violar la FK al eliminar los casilleros.
+        roundSessionRepository.deleteByBracketId(bracketId);
         slotRepository.deleteByBracketId(bracketId);
         bracketRepository.delete(bracket);
         return getBrackets(tournamentAdminId);

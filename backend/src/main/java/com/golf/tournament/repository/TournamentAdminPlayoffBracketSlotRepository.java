@@ -20,6 +20,11 @@ public interface TournamentAdminPlayoffBracketSlotRepository extends JpaReposito
     Optional<TournamentAdminPlayoffBracketSlot> findByBracketIdAndRoundNumberAndSlotIndex(
             Long bracketId, Integer roundNumber, Integer slotIndex);
 
+    @Query("SELECT s FROM TournamentAdminPlayoffBracketSlot s LEFT JOIN FETCH s.player " +
+            "WHERE s.bracket.id = :bracketId AND s.roundNumber = :roundNumber ORDER BY s.slotIndex ASC")
+    List<TournamentAdminPlayoffBracketSlot> findByBracketIdAndRoundNumberOrderBySlotIndexAsc(
+            @Param("bracketId") Long bracketId, @Param("roundNumber") Integer roundNumber);
+
     boolean existsByBracketIdAndIsWinnerTrue(Long bracketId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)

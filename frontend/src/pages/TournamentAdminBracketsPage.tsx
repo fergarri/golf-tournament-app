@@ -16,8 +16,15 @@ import {
   tournamentAdminPlayoffBracketService,
   SlotAssignment,
 } from '../services/tournamentAdminPlayoffBracketService';
+import { tournamentAdminPlayoffMatchService } from '../services/tournamentAdminPlayoffMatchService';
+import { tournamentAdminService } from '../services/tournamentAdminService';
+import { courseService } from '../services/courseService';
 import {
+  CourseTee,
+  PlayoffMatchSummary,
+  PlayoffRoundSession,
   PlayoffScoreType,
+  StartPlayoffRoundRequest,
   TournamentAdminPlayoffBracket,
   TournamentAdminPlayoffBrackets,
   TournamentAdminPlayoffBracketSlot,
@@ -112,7 +119,26 @@ const TournamentAdminBracketsPage = () => {
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
   const [zoomScale, setZoomScale] = useState(1);
 
+  // Match Play: rondas de partidos iniciadas, tees disponibles y modales asociados
+  const [roundSessionsByBracket, setRoundSessionsByBracket] = useState<Record<number, PlayoffRoundSession[]>>({});
+  const [tees, setTees] = useState<CourseTee[]>([]);
+  const [startRoundModal, setStartRoundModal] = useState<{ bracketId: number; roundNumber: number } | null>(null);
+  const [startRoundForm, setStartRoundForm] = useState({
+    teeMasculinoId: '',
+    teeFemeninoId: '',
+    cantidadHoyosJuego: '18',
+  });
+  const [startingRound, setStartingRound] = useState(false);
+  const [newRoundCode, setNewRoundCode] = useState<string | null>(null);
+  const [resetRoundTarget, setResetRoundTarget] = useState<{ bracketId: number; roundNumber: number } | null>(null);
+  const [winnerOverrideWarning, setWinnerOverrideWarning] = useState<{ bracketId: number; slotId: number } | null>(
+    null
+  );
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const bracket = data?.brackets.find((b) => b.scoreType === activeTab) ?? null;
+  const roundSessions = bracket ? roundSessionsByBracket[bracket.bracketId] ?? [] : [];
 
   useEffect(() => {
     if (!Number.isFinite(tournamentAdminId)) {
@@ -124,8 +150,43 @@ const TournamentAdminBracketsPage = () => {
   }, [tournamentAdminId]);
 
   useEffect(() => {
+    if (!Number.isFinite(tournamentAdminId)) return;
+    (async () => {
+      try {
+        const admin = await tournamentAdminService.getById(tournamentAdminId);
+        if (admin.courseId) {
+          const teesData = await courseService.getTees(admin.courseId);
+          setTees((teesData as CourseTee[]).filter((t) => t.active));
+        }
+      } catch {
+        // No bloquea la vista de llaves si no se pueden cargar los tees.
+      }
+    })();
+  }, [tournamentAdminId]);
+
+  useEffect(() => {
     setZoomScale(1);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!bracket) return;
+    const bracketId = bracket.bracketId;
+    void loadRoundSessions(bracketId);
+    const interval = window.setInterval(() => {
+      void loadRoundSessions(bracketId);
+    }, 30000);
+    return () => window.clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bracket?.bracketId, bracket?.status]);
+
+  const loadRoundSessions = async (bracketId: number) => {
+    try {
+      const sessions = await tournamentAdminPlayoffMatchService.getRoundSessions(tournamentAdminId, bracketId);
+      setRoundSessionsByBracket((prev) => ({ ...prev, [bracketId]: sessions }));
+    } catch (err) {
+      console.error('Error cargando rondas de partidos', err);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -309,6 +370,87 @@ const TournamentAdminBracketsPage = () => {
     setShowCopyLinkModal(true);
   };
 
+  const getRoundLink = (code: string) => `${window.location.origin}/playoff-match/${code}`;
+
+  const copyRoundLink = (code: string) => {
+    navigator.clipboard.writeText(getRoundLink(code));
+    setShowCopyLinkModal(true);
+  };
+
+  const findMatchForSlot = (slotId: number): PlayoffMatchSummary | undefined => {
+    for (const session of roundSessions) {
+      const match = session.matches.find((m) => m.topSlotId === slotId || m.bottomSlotId === slotId);
+      if (match) return match;
+    }
+    return undefined;
+  };
+
+  const onClickMarkWinner = (bracketId: number, slotId: number) => {
+    const match = findMatchForSlot(slotId);
+    if (match && match.status === 'IN_PROGRESS') {
+      setWinnerOverrideWarning({ bracketId, slotId });
+      return;
+    }
+    void handleMarkWinner(bracketId, slotId);
+  };
+
+  const openStartRoundModal = (bracketId: number, roundNumber: number) => {
+    setStartRoundForm({ teeMasculinoId: '', teeFemeninoId: '', cantidadHoyosJuego: '18' });
+    setStartRoundModal({ bracketId, roundNumber });
+  };
+
+  const submitStartRound = async () => {
+    if (!startRoundModal) return;
+    try {
+      setStartingRound(true);
+      const request: StartPlayoffRoundRequest = {
+        teeMasculinoId: startRoundForm.teeMasculinoId ? Number(startRoundForm.teeMasculinoId) : null,
+        teeFemeninoId: startRoundForm.teeFemeninoId ? Number(startRoundForm.teeFemeninoId) : null,
+        cantidadHoyosJuego: Number(startRoundForm.cantidadHoyosJuego),
+      };
+      const session = await tournamentAdminPlayoffMatchService.startRound(
+        tournamentAdminId,
+        startRoundModal.bracketId,
+        startRoundModal.roundNumber,
+        request
+      );
+      setRoundSessionsByBracket((prev) => ({
+        ...prev,
+        [startRoundModal.bracketId]: [
+          ...(prev[startRoundModal.bracketId] ?? []).filter((s) => s.roundNumber !== session.roundNumber),
+          session,
+        ].sort((a, b) => a.roundNumber - b.roundNumber),
+      }));
+      setStartRoundModal(null);
+      setNewRoundCode(session.code);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error iniciando la ronda de partidos');
+    } finally {
+      setStartingRound(false);
+    }
+  };
+
+  const confirmResetRound = async () => {
+    if (!resetRoundTarget) return;
+    try {
+      await tournamentAdminPlayoffMatchService.resetRound(
+        tournamentAdminId,
+        resetRoundTarget.bracketId,
+        resetRoundTarget.roundNumber
+      );
+      setRoundSessionsByBracket((prev) => ({
+        ...prev,
+        [resetRoundTarget.bracketId]: (prev[resetRoundTarget.bracketId] ?? []).filter(
+          (s) => s.roundNumber !== resetRoundTarget.roundNumber
+        ),
+      }));
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error reiniciando la ronda de partidos');
+    } finally {
+      setResetRoundTarget(null);
+    }
+  };
+
   if (loading) return <div className="loading">Cargando llaves de Playoff...</div>;
   if (!data) return <div className="error-message">No se encontraron datos</div>;
 
@@ -316,8 +458,6 @@ const TournamentAdminBracketsPage = () => {
   if (data.scratchApplicable) {
     tabs.push({ id: 'SCRATCH', label: 'SCRATCH' });
   }
-
-  const bracket = data.brackets.find((b) => b.scoreType === activeTab) ?? null;
 
   const renderSlot = (
     activeBracket: TournamentAdminPlayoffBracket,
@@ -351,7 +491,7 @@ const TournamentAdminBracketsPage = () => {
               <button
                 type="button"
                 className="bracket-slot-btn btn-winner"
-                onClick={() => handleMarkWinner(activeBracket.bracketId, slot.slotId)}
+                onClick={() => onClickMarkWinner(activeBracket.bracketId, slot.slotId)}
               >
                 Vencedor
               </button>
@@ -525,18 +665,75 @@ const TournamentAdminBracketsPage = () => {
                           for (let i = 0; i < round.slots.length; i += 2) {
                             pairs.push(round.slots.slice(i, i + 2));
                           }
+                          const session = roundSessions.find((s) => s.roundNumber === round.roundNumber);
+                          const hasEligiblePair = pairs.some((pair) =>
+                            pair.every((s) => s.playerId !== null)
+                          );
+                          const canStartRound = activeBracket.status === 'CONFIRMED' && !session && hasEligiblePair;
                           return (
                             <div key={round.roundNumber} className="bracket-round">
                               <div className="bracket-round-title">{round.roundName}</div>
-                              <div className="bracket-round-body">
-                                {pairs.map((pair, pairIdx) => (
-                                  <div
-                                    key={pairIdx}
-                                    className={`bracket-match-pair ${!isLast ? 'has-connector' : ''}`}
+                              {canStartRound && (
+                                <button
+                                  type="button"
+                                  className="btn-compact btn-compact-primary bracket-round-action bracket-no-pan"
+                                  onClick={() => openStartRoundModal(activeBracket.bracketId, round.roundNumber)}
+                                >
+                                  ▶ Iniciar Ronda
+                                </button>
+                              )}
+                              {session && (
+                                <div className="bracket-round-session-info bracket-no-pan">
+                                  <span className="bracket-round-code">Código: {session.code}</span>
+                                  <button
+                                    type="button"
+                                    className="btn-zoom btn-zoom-reset"
+                                    onClick={() => copyRoundLink(session.code)}
+                                    title="Copiar link para jugadores"
                                   >
-                                    {pair.map((slot) => renderSlot(activeBracket, slot, pair, isRound1))}
-                                  </div>
-                                ))}
+                                    Copiar link
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn-zoom"
+                                    onClick={() =>
+                                      setResetRoundTarget({
+                                        bracketId: activeBracket.bracketId,
+                                        roundNumber: round.roundNumber,
+                                      })
+                                    }
+                                    title="Reiniciar ronda"
+                                  >
+                                    ↺
+                                  </button>
+                                </div>
+                              )}
+                              <div className="bracket-round-body">
+                                {pairs.map((pair, pairIdx) => {
+                                  const match = session?.matches.find((m) =>
+                                    pair.some((s) => s.slotId === m.topSlotId || s.slotId === m.bottomSlotId)
+                                  );
+                                  return (
+                                    <div key={pairIdx} className="bracket-match-group">
+                                      <div
+                                        className={`bracket-match-pair ${!isLast ? 'has-connector' : ''}`}
+                                      >
+                                        {pair.map((slot) => renderSlot(activeBracket, slot, pair, isRound1))}
+                                      </div>
+                                      {match && (
+                                        <div
+                                          className={`bracket-match-chip bracket-no-pan ${
+                                            match.status === 'FINISHED' ? 'is-finished' : ''
+                                          }`}
+                                        >
+                                          {match.status === 'FINISHED'
+                                            ? `✔ ${match.winnerPlayerId === match.playerAId ? match.playerAName : match.playerBName} — ${match.resultSummary}`
+                                            : match.liveStatusLabel}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
                               </div>
                             </div>
                           );
@@ -621,12 +818,142 @@ const TournamentAdminBracketsPage = () => {
       <Modal isOpen={showCopyLinkModal} onClose={() => setShowCopyLinkModal(false)} title="Link copiado" size="medium">
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '3rem', color: '#27ae60', marginBottom: '1rem' }}>✓</div>
-          <p style={{ marginBottom: '1rem' }}>El link público de las llaves fue copiado al portapapeles</p>
+          <p style={{ marginBottom: '1rem' }}>El link fue copiado al portapapeles</p>
           <button type="button" onClick={() => setShowCopyLinkModal(false)} className="btn btn-primary">
             Cerrar
           </button>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={startRoundModal !== null}
+        onClose={() => (startingRound ? undefined : setStartRoundModal(null))}
+        title="Iniciar Ronda"
+        size="medium"
+      >
+        <div style={{ padding: '0.5rem 0' }}>
+          <p style={{ marginBottom: '1rem', color: '#555' }}>
+            Se va a generar un código único para que los jugadores de esta ronda carguen sus tarjetas de
+            Match Play. Elegí los tees de salida y la cantidad de hoyos a jugar.
+          </p>
+          <div className="form-group">
+            <label>Tee de Salida Masculino</label>
+            <select
+              value={startRoundForm.teeMasculinoId}
+              onChange={(e) => setStartRoundForm({ ...startRoundForm, teeMasculinoId: e.target.value })}
+            >
+              <option value="">Sin definir</option>
+              {tees
+                .filter((t) => (t.genero ?? 'M') === 'M')
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nombre} {t.grupo ? `(${t.grupo})` : ''}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Tee de Salida Femenino</label>
+            <select
+              value={startRoundForm.teeFemeninoId}
+              onChange={(e) => setStartRoundForm({ ...startRoundForm, teeFemeninoId: e.target.value })}
+            >
+              <option value="">Sin definir</option>
+              {tees
+                .filter((t) => t.genero === 'F')
+                .map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nombre} {t.grupo ? `(${t.grupo})` : ''}
+                  </option>
+                ))}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>Cantidad de Hoyos</label>
+            <select
+              value={startRoundForm.cantidadHoyosJuego}
+              onChange={(e) => setStartRoundForm({ ...startRoundForm, cantidadHoyosJuego: e.target.value })}
+            >
+              <option value="9">9 hoyos</option>
+              <option value="18">18 hoyos</option>
+            </select>
+          </div>
+          <div className="form-actions">
+            <button
+              type="button"
+              className="btn btn-cancel"
+              onClick={() => setStartRoundModal(null)}
+              disabled={startingRound}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={submitStartRound}
+              disabled={startingRound}
+            >
+              {startingRound ? 'Iniciando...' : 'Iniciar Ronda'}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={newRoundCode !== null}
+        onClose={() => setNewRoundCode(null)}
+        title="Ronda iniciada"
+        size="medium"
+      >
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', color: '#27ae60', marginBottom: '1rem' }}>✓</div>
+          <p style={{ marginBottom: '0.5rem' }}>Compartí este link con los jugadores para que carguen sus tarjetas:</p>
+          <p style={{ fontSize: '1.1rem', fontWeight: 700, wordBreak: 'break-all', marginBottom: '0.5rem' }}>
+            {newRoundCode && getRoundLink(newRoundCode)}
+          </p>
+          <p style={{ fontSize: '0.85rem', color: '#7f8c8d', marginBottom: '1rem' }}>
+            Código de la ronda: <strong>{newRoundCode}</strong>
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            style={{ marginRight: '0.5rem' }}
+            onClick={() => newRoundCode && copyRoundLink(newRoundCode)}
+          >
+            Copiar link
+          </button>
+          <button type="button" onClick={() => setNewRoundCode(null)} className="btn btn-cancel">
+            Cerrar
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={resetRoundTarget !== null}
+        onClose={() => setResetRoundTarget(null)}
+        onConfirm={confirmResetRound}
+        title="Reiniciar ronda"
+        message="Se va a borrar el código y los partidos de esta ronda. Solo se puede hacer si todavía nadie cargó ningún hoyo. Esta acción no se puede deshacer. ¿Confirmás?"
+        type="confirm"
+        confirmText="Confirmar"
+        cancelText="Cancelar"
+      />
+
+      <Modal
+        isOpen={winnerOverrideWarning !== null}
+        onClose={() => setWinnerOverrideWarning(null)}
+        onConfirm={() => {
+          if (winnerOverrideWarning) {
+            void handleMarkWinner(winnerOverrideWarning.bracketId, winnerOverrideWarning.slotId);
+          }
+          setWinnerOverrideWarning(null);
+        }}
+        title="Hay un partido en curso"
+        message="Hay un partido de Match Play en curso para este cruce. Si marcás el vencedor a mano, el resultado de la tarjeta que se está jugando quedará sin efecto. ¿Confirmás?"
+        type="confirm"
+        confirmText="Confirmar"
+        cancelText="Cancelar"
+      />
     </div>
   );
 };

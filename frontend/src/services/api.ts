@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { isTokenExpired } from '../utils/jwtUtils';
+import { isPublicPage } from '../utils/publicPaths';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
 
@@ -9,21 +10,6 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
-
-// Rutas públicas que no requieren autenticación
-const PUBLIC_PATHS = [
-  /^\/inscribe\//,
-  /^\/play\//,
-  /^\/results\//,
-  /^\/frutales-results\//,
-  /^\/stage-results\//,
-  /^\/playoff-results\//,
-  /^\/playoff-brackets\//,
-  /^\/tournaments\/[^/]+\/scorecard/,
-];
-
-const isPublicPage = () =>
-  PUBLIC_PATHS.some((regex) => regex.test(window.location.pathname));
 
 api.interceptors.request.use(
   (config) => {

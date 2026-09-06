@@ -545,3 +545,116 @@ export interface TournamentAdminPlayoffBracketPlayerRef {
   /** Posición del jugador en la Tabla de Play Off (1 = mejor clasificado). Usada para el sembrado. */
   seed: number;
 }
+
+// ── Match Play de la llave de Playoff ─────────────────────────────────────
+
+export type PlayoffMatchStatus = 'IN_PROGRESS' | 'FINISHED';
+export type PlayoffMatchCardStatus = 'IN_PROGRESS' | 'DELIVERED' | 'CANCELLED';
+
+export interface PlayoffRoundSession {
+  roundSessionId: number;
+  roundNumber: number;
+  code: string;
+  /** OPEN / CLOSED */
+  status: string;
+  teeMasculinoId: number | null;
+  teeMasculinoName: string | null;
+  teeFemeninoId: number | null;
+  teeFemeninoName: string | null;
+  cantidadHoyosJuego: number;
+  matches: PlayoffMatchSummary[];
+}
+
+export interface PlayoffMatchSummary {
+  matchId: number;
+  topSlotId: number;
+  bottomSlotId: number;
+  playerAId: number;
+  playerAName: string;
+  playerBId: number;
+  playerBName: string;
+  status: PlayoffMatchStatus;
+  holesWonA: number | null;
+  holesWonB: number | null;
+  holesPlayed: number | null;
+  resultSummary: string | null;
+  winnerPlayerId: number | null;
+  liveStatusLabel: string | null;
+}
+
+export interface StartPlayoffRoundRequest {
+  teeMasculinoId?: number | null;
+  teeFemeninoId?: number | null;
+  cantidadHoyosJuego: number;
+}
+
+export interface PlayoffMatchAccessResponse {
+  matchId: number;
+  tournamentAdminName: string;
+  scoreType: PlayoffScoreType;
+  roundName: string;
+  playerId: number;
+  playerName: string;
+  opponentId: number;
+  opponentName: string;
+}
+
+export interface PlayoffMatchPlayerSide {
+  playerId: number;
+  playerName: string;
+  /** Inicial del nombre + apellido (ej: "N. Trachta"), para usar como título de fila. */
+  shortName: string;
+  /** Nombre del tee desde el que juega (ej: "Blanco", "Rojo"). Puede ser null. */
+  teeName: string | null;
+  handicapCourse: number | null;
+  cardStatus: PlayoffMatchCardStatus;
+}
+
+export interface PlayoffMatchHoleInfo {
+  holeSequence: number;
+  numeroHoyo: number;
+  par: number;
+  handicapIndex: number;
+  /** Distancia en yardas según el tee de cada jugador (null si no está cargada). */
+  distanceA: number | null;
+  distanceB: number | null;
+  strokesA: number;
+  strokesB: number;
+  golpesPropioA: number | null;
+  golpesRivalA: number | null;
+  validadoA: boolean | null;
+  golpesPropioB: number | null;
+  golpesRivalB: number | null;
+  validadoB: boolean | null;
+  /** "A" / "B" / "HALVED" / null */
+  holeWinner: string | null;
+  /** true si todavía no existe en la BD (próximo hoyo extra a habilitar) */
+  pending: boolean;
+}
+
+export interface PlayoffMatchTally {
+  holesWonA: number;
+  holesWonB: number;
+  holesHalved: number;
+  holesPlayed: number;
+  decided: boolean;
+  leaderPlayerId: number | null;
+  margin: number;
+  holesRemaining: number;
+}
+
+export interface PlayoffMatchState {
+  matchId: number;
+  status: PlayoffMatchStatus;
+  scoreType: PlayoffScoreType;
+  cantidadHoyosJuego: number;
+  resultSummary: string | null;
+  winnerPlayerId: number | null;
+  requestingPlayerId: number;
+  playerA: PlayoffMatchPlayerSide;
+  playerB: PlayoffMatchPlayerSide;
+  holes: PlayoffMatchHoleInfo[];
+  tally: PlayoffMatchTally;
+  canDeliver: boolean;
+  blockedReason: string | null;
+}

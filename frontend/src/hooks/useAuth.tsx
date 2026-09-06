@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { isTokenExpired } from '../utils/jwtUtils';
+import { isPublicPage } from '../utils/publicPaths';
 import { User } from '../types';
 
 interface AuthContextType {
@@ -22,19 +23,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-
-  const PUBLIC_PATHS = [
-    /^\/inscribe\//,
-    /^\/play\//,
-    /^\/results\//,
-    /^\/frutales-results\//,
-    /^\/stage-results\//,
-    /^\/playoff-results\//,
-    /^\/tournaments\/[^/]+\/scorecard/,
-  ];
-
-  const isPublicPage = () =>
-    PUBLIC_PATHS.some((regex) => regex.test(window.location.pathname));
 
   useEffect(() => {
     const token = localStorage.getItem('token');
