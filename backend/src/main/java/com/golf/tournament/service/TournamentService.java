@@ -33,6 +33,7 @@ public class TournamentService {
     private final TournamentPrizeService tournamentPrizeService;
     private final TournamentAdminStageRepository tournamentAdminStageRepository;
     private final TournamentAdminScoringConfigService tournamentAdminScoringConfigService;
+    private final ScorecardService scorecardService;
     private final CurrentUserProvider currentUserProvider;
 
     private static final String CODIGO_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -439,6 +440,10 @@ public class TournamentService {
         if (!"PENDING".equals(tournament.getEstado())) {
             throw new BadRequestException("Tournament can only be started from PENDING status");
         }
+
+        // Recalcular HCP Course con el HCP Index vigente y reasignar categorías
+        scorecardService.recalculateHandicapCoursesForTournament(id);
+        reassignInscriptionCategories(id);
 
         tournament.setEstado("IN_PROGRESS");
         tournament = tournamentRepository.save(tournament);

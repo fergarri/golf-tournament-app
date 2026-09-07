@@ -66,6 +66,54 @@ public class ScorecardService {
         return getOrCreateScorecard(tournamentId, playerId, null, false);
     }
 
+    /**
+     * Recalcula el HCP Course de todas las tarjetas configuradas del torneo usando el
+     * HCP Index vigente de cada jugador. Omite tarjetas sin tee o sin cantidad de hoyos
+     * (PENDING_CONFIG). Si falla la conversión de un jugador, se loguea y se continúa.
+     */
+    @Transactional
+    public void recalculateHandicapCoursesForTournament(Long tournamentId) {
+        List<Scorecard> scorecards = scorecardRepository.findByTournamentId(tournamentId);
+        List<Scorecard> toSave = new ArrayList<>();
+        int skipped = 0;
+        int failed = 0;
+
+        for (Scorecard scorecard : scorecards) {
+            if (scorecard.getTee() == null || scorecard.getCantidadHoyosJuego() == null) {
+                skipped++;
+                continue;
+            }
+
+            Player player = scorecard.getPlayer();
+            try {
+                BigDecimal newHcp = calculateHandicapCourse(
+                        scorecard.getTee(), scorecard.getCantidadHoyosJuego(), player);
+                scorecard.setHandicapCourse(newHcp);
+                toSave.add(scorecard);
+
+                inscriptionRepository.findByTournamentIdAndPlayerId(tournamentId, player.getId())
+                        .ifPresent(inscription -> {
+                            inscription.setHandicapCourse(newHcp);
+                            inscriptionRepository.save(inscription);
+                        });
+            } catch (Exception e) {
+                failed++;
+                Long playerId = player != null ? player.getId() : null;
+                log.warn(
+                        "No se pudo recalcular HCP Course al iniciar torneo {} para scorecard {} (jugador {}): {}",
+                        tournamentId, scorecard.getId(), playerId, e.getMessage());
+            }
+        }
+
+        if (!toSave.isEmpty()) {
+            scorecardRepository.saveAll(toSave);
+        }
+
+        log.info(
+                "Recálculo HCP Course al iniciar torneo {}: actualizados={}, omitidos={}, fallidos={}",
+                tournamentId, toSave.size(), skipped, failed);
+    }
+
     private ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId,
                                                 ConfigureScorecardRequest request, boolean validateStarted) {
         Tournament tournament = tournamentRepository.findById(tournamentId)

@@ -15,6 +15,7 @@ import ManualInscriptionModal from '../components/ManualInscriptionModal';
 import PrintScorecardsModal from '../components/PrintScorecardsModal';
 import Modal from '../components/Modal';
 import ResultsMessageModal from '../components/ResultsMessageModal';
+import HeaderActionDropdown, { HeaderActionItem } from '../components/HeaderActionDropdown';
 import { formatDateSafe } from '../utils/dateUtils';
 import { buildResultsShareMessage } from '../utils/resultsMessage';
 import '../components/Form.css';
@@ -790,6 +791,63 @@ const TournamentLeaderboardPage = () => {
 
   if (loading) return <div className="loading">Cargando leaderboard...</div>;
 
+  const actionItems: HeaderActionItem[] = [
+    ...(tournament && (tournament.estado === 'PENDING' || tournament.estado === 'IN_PROGRESS')
+      ? [{ label: 'Inscribir', onClick: () => setShowInscriptionModal(true), variant: 'success' as const }]
+      : []),
+    ...(tournament
+      ? [{ label: 'Imprimir Tarjetas', onClick: () => setShowPrintModal(true), variant: 'primary' as const }]
+      : []),
+    ...(tournament?.estado === 'FINALIZED'
+      ? [{ label: 'Link Resultados', onClick: copyResultsMessage, variant: 'primary' as const }]
+      : []),
+    ...(tournament?.estado === 'IN_PROGRESS'
+      ? [{ label: 'Finalizar', onClick: openFinalizeConfirm, variant: 'danger' as const }]
+      : []),
+    ...(hasScoringConfig
+      ? [{
+          label: exportingInscriptions ? 'Exportando...' : 'Mover Inscriptos a TA',
+          onClick: handleExportInscriptions,
+          disabled: exportingInscriptions,
+          variant: 'success' as const,
+        }]
+      : []),
+    ...(hasScoringConfig
+      ? [{
+          label: calculating ? 'Calculando...' : 'Calcular Puntos',
+          onClick: handleCalculateScores,
+          disabled: calculating,
+          variant: 'secondary' as const,
+        }]
+      : []),
+    ...(tournament?.estado === 'FINALIZED'
+      ? [{ label: 'Habilitar', onClick: openReopenConfirm, variant: 'success' as const }]
+      : []),
+    {
+      label: savingPayments
+        ? 'Guardando...'
+        : `Guardar Pagos${paymentChanges.size > 0 ? ` (${paymentChanges.size})` : ''}`,
+      onClick: handleSavePayments,
+      disabled: savingPayments || paymentChanges.size === 0,
+      variant: 'primary' as const,
+    },
+  ];
+
+  const exportItems: HeaderActionItem[] = [
+    {
+      label: exportingExcelInscriptions ? 'Descargando...' : 'Inscriptos Excel',
+      onClick: handleExcelExportInscriptions,
+      disabled: exportingExcelInscriptions,
+      variant: 'success',
+    },
+    {
+      label: exportingExcelResults ? 'Descargando...' : 'Resultados Excel',
+      onClick: handleExcelExportResults,
+      disabled: exportingExcelResults,
+      variant: 'success',
+    },
+  ];
+
   return (
     <div className="leaderboard-page">
       <div className="leaderboard-header">
@@ -797,81 +855,8 @@ const TournamentLeaderboardPage = () => {
           <button onClick={() => navigate('/tournaments')} className="btn-back">
             ← Volver a Torneos
           </button>
-          {tournament && (tournament.estado === 'PENDING' || tournament.estado === 'IN_PROGRESS') && (
-            <button onClick={() => setShowInscriptionModal(true)} className="btn-refresh">
-              Inscribir
-            </button>
-          )}
-          {tournament && (
-            <button onClick={() => setShowPrintModal(true)} className="btn-export">
-              Imprimir Tarjetas
-            </button>
-          )}
-          {tournament?.estado === 'FINALIZED' && (
-            <button 
-              onClick={copyResultsMessage} 
-              className="btn-copy-link"
-            >
-              📋 Link Resultados
-            </button>
-          )}
-          {tournament?.estado === 'IN_PROGRESS' && (
-            <button
-              type="button"
-              onClick={openFinalizeConfirm}
-              className="btn-finalize-tournament"
-            >
-              Finalizar
-            </button>
-          )}
-          {hasScoringConfig && (
-            <button
-              onClick={handleExportInscriptions}
-              disabled={exportingInscriptions}
-              className="btn-export"
-            >
-              {exportingInscriptions ? 'Exportando...' : 'Mover Inscriptos a TA'}
-            </button>
-          )}
-          {hasScoringConfig && (
-            <button
-              onClick={handleCalculateScores}
-              disabled={calculating}
-              className="btn-calculate"
-            >
-              {calculating ? 'Calculando...' : 'Calcular Puntos'}
-            </button>
-          )}
-          {tournament?.estado === 'FINALIZED' && (
-            <button
-              type="button"
-              onClick={openReopenConfirm}
-              className="btn-reopen-tournament"
-            >
-              Habilitar
-            </button>
-          )}
-          <button 
-            onClick={handleSavePayments} 
-            className="btn-save-payments" 
-            disabled={savingPayments || paymentChanges.size === 0}
-          >
-            {savingPayments ? 'Guardando...' : `Guardar Pagos ${paymentChanges.size > 0 ? `(${paymentChanges.size})` : ''}`}
-          </button>
-          <button
-            onClick={handleExcelExportInscriptions}
-            disabled={exportingExcelInscriptions}
-            className="btn-export"
-          >
-            {exportingExcelInscriptions ? 'Descargando...' : '⬇ Inscriptos Excel'}
-          </button>
-          <button
-            onClick={handleExcelExportResults}
-            disabled={exportingExcelResults}
-            className="btn-export"
-          >
-            {exportingExcelResults ? 'Descargando...' : '⬇ Resultados Excel'}
-          </button>
+          <HeaderActionDropdown label="Acciones" items={actionItems} />
+          <HeaderActionDropdown label="Exportar" items={exportItems} />
         </div>
         
         <div className="tournament-info">

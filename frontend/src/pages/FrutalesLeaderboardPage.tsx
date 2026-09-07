@@ -12,6 +12,7 @@ import { buildResultsShareMessage } from '../utils/resultsMessage';
 import ResultsMessageModal from '../components/ResultsMessageModal';
 import PrintScorecardsModal from '../components/PrintScorecardsModal';
 import Modal from '../components/Modal';
+import HeaderActionDropdown, { HeaderActionItem } from '../components/HeaderActionDropdown';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
 
@@ -454,6 +455,29 @@ const FrutalesLeaderboardPage = () => {
 
   if (loading) return <div className="loading">Cargando leaderboard...</div>;
 
+  const actionItems: HeaderActionItem[] = [
+    ...(tournament?.estado === 'IN_PROGRESS'
+      ? [{
+          label: finalizing ? 'Finalizando...' : 'Finalizar Torneo',
+          onClick: handleFinalizeTournament,
+          disabled: finalizing,
+          variant: 'danger' as const,
+        }]
+      : []),
+    {
+      label: calculating ? 'Calculando...' : 'Calcular Puntos',
+      onClick: handleCalculateScores,
+      disabled: calculating,
+      variant: 'secondary',
+    },
+    ...(tournament?.estado === 'FINALIZED'
+      ? [{ label: 'Link de Resultados', onClick: copyResultsMessage, variant: 'primary' as const }]
+      : []),
+    ...(tournament
+      ? [{ label: 'Imprimir Tarjetas', onClick: () => setShowPrintModal(true), variant: 'primary' as const }]
+      : []),
+  ];
+
   return (
     <div className="leaderboard-page">
       <div className="leaderboard-header">
@@ -461,36 +485,7 @@ const FrutalesLeaderboardPage = () => {
           <button onClick={() => navigate('/tournaments')} className="btn-back">
             ← Volver a Torneos
           </button>
-          {tournament?.estado === 'IN_PROGRESS' && (
-            <button
-              onClick={handleFinalizeTournament}
-              disabled={finalizing}
-              className="btn-finalize-tournament"
-              style={finalizing ? { opacity: 0.7 } : undefined}
-            >
-              {finalizing ? 'Finalizando...' : 'Finalizar Torneo'}
-            </button>
-          )}
-          <button
-            onClick={handleCalculateScores}
-            disabled={calculating}
-            className="btn-calculate"
-          >
-            {calculating ? 'Calculando...' : 'Calcular Puntos'}
-          </button>
-          {tournament?.estado === 'FINALIZED' && (
-            <button
-              onClick={copyResultsMessage}
-              className="btn-copy-link"
-            >
-              Link de Resultados
-            </button>
-          )}
-          {tournament && (
-            <button onClick={() => setShowPrintModal(true)} className="btn-export">
-              Imprimir Tarjetas
-            </button>
-          )}
+          <HeaderActionDropdown label="Acciones" items={actionItems} />
         </div>
 
         <div className="tournament-info">

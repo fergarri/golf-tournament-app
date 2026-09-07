@@ -6,6 +6,7 @@ import { TournamentAdminStageBoard, TournamentAdminStageBoardRow } from '../type
 import { formatDateSafe } from '../utils/dateUtils';
 import { standardRank, computeRowspans } from '../utils/ranking';
 import Modal from '../components/Modal';
+import HeaderActionDropdown, { HeaderActionItem } from '../components/HeaderActionDropdown';
 import '../components/Form.css';
 import '../components/Table.css';
 import './TournamentLeaderboardPage.css';
@@ -169,22 +170,24 @@ const TournamentAdminStageBoardPage = () => {
           >
             ← Volver a Etapas
           </button>
-          <button onClick={loadData} className="btn-refresh">
-            ⟳ Actualizar
-          </button>
-          <button
-            onClick={copyResultsLink}
-            className="btn-compact btn-compact-primary"
-          >
-            Link Resultados
-          </button>
-          <button
-            onClick={handleExcelExport}
-            disabled={exportingExcel}
-            className="btn-export"
-          >
-            {exportingExcel ? 'Descargando...' : '⬇ Excel'}
-          </button>
+          <HeaderActionDropdown
+            label="Acciones"
+            items={[
+              { label: 'Actualizar', onClick: loadData, variant: 'success' },
+              { label: 'Link Resultados', onClick: copyResultsLink, variant: 'primary' },
+            ] satisfies HeaderActionItem[]}
+          />
+          <HeaderActionDropdown
+            label="Exportar"
+            items={[
+              {
+                label: exportingExcel ? 'Descargando...' : 'Excel',
+                onClick: handleExcelExport,
+                disabled: exportingExcel,
+                variant: 'success',
+              },
+            ] satisfies HeaderActionItem[]}
+          />
         </div>
 
         <div className="tournament-info">
