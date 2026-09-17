@@ -4,6 +4,7 @@ import { tournamentService } from '../services/tournamentService';
 import { leaderboardService } from '../services/leaderboardService';
 import { Tournament, FrutalesScore } from '../types';
 import Table from '../components/Table';
+import PublicScorecardModal, { PublicPlayerName, PublicScorecardOpenRequest } from '../components/PublicScorecardModal';
 import { formatDateSafe } from '../utils/dateUtils';
 import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
 import '../components/Form.css';
@@ -17,6 +18,7 @@ const PublicFrutalesLeaderboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [scorecardRequest, setScorecardRequest] = useState<PublicScorecardOpenRequest | null>(null);
 
   useEffect(() => {
     loadData();
@@ -85,9 +87,29 @@ const PublicFrutalesLeaderboardPage = () => {
         if (row.position) return <span className={`position ${getPositionClass(row.position)}`}>{row.position}</span>;
         return <span>-</span>;
       },
-      width: '60px',
+      width: '70px',
     },
-    { header: 'Jugador', accessor: 'playerName' as keyof FrutalesScore, width: '18%' },
+    {
+      header: 'Jugador',
+      accessor: (row: FrutalesScore) => (
+        <PublicPlayerName
+          name={row.playerName}
+          status={row.status}
+          scorecardId={row.scorecardId}
+          onOpen={() =>
+            setScorecardRequest({
+              scorecardId: row.scorecardId!,
+              playerName: row.playerName,
+              handicapIndex: row.handicapIndex,
+              handicapCourse: row.handicapCourse,
+              tournamentId: tournament?.id,
+            })
+          }
+        />
+      ),
+      sortValue: (row: FrutalesScore) => row.playerName,
+      width: '18%',
+    },
     { header: 'Matrícula', accessor: 'matricula' as keyof FrutalesScore, width: '10%' },
     {
       header: 'HCP Index',
@@ -257,6 +279,8 @@ const PublicFrutalesLeaderboardPage = () => {
           </div>
         </>
       )}
+
+      <PublicScorecardModal request={scorecardRequest} onClose={() => setScorecardRequest(null)} />
     </div>
   );
 };

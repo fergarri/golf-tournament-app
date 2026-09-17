@@ -5,6 +5,7 @@ import { leaderboardService } from '../services/leaderboardService';
 import { Tournament, LeaderboardEntry, TournamentScore } from '../types';
 import Table from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
+import PublicScorecardModal, { PublicPlayerName, PublicScorecardOpenRequest } from '../components/PublicScorecardModal';
 import { formatDateSafe } from '../utils/dateUtils';
 import { standardRank } from '../utils/ranking';
 import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
@@ -21,6 +22,7 @@ const PublicLeaderboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [scorecardRequest, setScorecardRequest] = useState<PublicScorecardOpenRequest | null>(null);
 
   useEffect(() => {
     loadData();
@@ -284,9 +286,29 @@ const PublicLeaderboardPage = () => {
           <span>-</span>
         );
       },
-      width: '60px',
+      width: '70px',
     },
-    { header: 'Jugador', accessor: 'playerName' as keyof LeaderboardEntry, width: '15%' },
+    {
+      header: 'Jugador',
+      accessor: (row: LeaderboardEntry) => (
+        <PublicPlayerName
+          name={row.playerName}
+          status={row.status}
+          scorecardId={row.scorecardId}
+          onOpen={() =>
+            setScorecardRequest({
+              scorecardId: row.scorecardId,
+              playerName: row.playerName,
+              handicapIndex: row.handicapIndex,
+              handicapCourse: row.handicapCourse,
+              tournamentId: tournament?.id,
+            })
+          }
+        />
+      ),
+      sortValue: (row: LeaderboardEntry) => row.playerName,
+      width: '15%',
+    },
     { header: 'Matrícula', accessor: 'matricula' as keyof LeaderboardEntry, width: '10%' },
     {
       header: 'HCP I',
@@ -475,6 +497,8 @@ const PublicLeaderboardPage = () => {
           </div>
         </>
       )}
+
+      <PublicScorecardModal request={scorecardRequest} onClose={() => setScorecardRequest(null)} />
     </div>
   );
 };

@@ -10,6 +10,24 @@ interface Column<T> {
   width?: string;
 }
 
+const isPixelWidth = (width?: string) => Boolean(width && /^\d+(\.\d+)?px$/.test(width));
+
+const columnWidthStyle = (width?: string) => {
+  if (!width) return undefined;
+  if (isPixelWidth(width)) {
+    // 1% hace que el layout automático no le asigne espacio sobrante;
+    // min/max fijan el ancho real (p. ej. columna Pos a 70px).
+    return {
+      width: '1%',
+      minWidth: width,
+      maxWidth: width,
+      boxSizing: 'border-box' as const,
+      whiteSpace: 'nowrap' as const,
+    };
+  }
+  return { width };
+};
+
 export interface TableAction<T> {
   label: string | ((row: T) => string);
   onClick: (row: T) => void;
@@ -121,14 +139,16 @@ function Table<T>({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-slate-50">
-              {columns.map((column, index) => (
+              {columns.map((column, index) => {
+                const compact = isPixelWidth(column.width);
+                return (
                 <th
                   key={index}
-                  style={{ width: column.width }}
-                  className="px-4 py-3 text-left font-semibold text-slate-600 cursor-pointer select-none hover:bg-slate-100 transition-colors"
+                  style={columnWidthStyle(column.width)}
+                  className={`${compact ? 'px-2' : 'px-4'} py-3 text-left font-semibold text-slate-600 cursor-pointer select-none hover:bg-slate-100 transition-colors`}
                   onClick={() => handleSort(index)}
                 >
-                  <div className="flex items-center gap-1.5">
+                  <div className={`flex items-center ${compact ? 'justify-center gap-0.5' : 'gap-1.5'}`}>
                     <span>{column.header}</span>
                     <span className="text-slate-400">
                       {sortColumn === index ? (
@@ -139,7 +159,8 @@ function Table<T>({
                     </span>
                   </div>
                 </th>
-              ))}
+                );
+              })}
               {hasActions && (
                 <th className="px-4 py-3 text-left font-semibold text-slate-600 w-[60px]">
                   Acciones
@@ -163,11 +184,18 @@ function Table<T>({
                   key={getKey(row, index)}
                   className="border-b border-border last:border-0 hover:bg-slate-50 transition-colors"
                 >
-                  {columns.map((column, colIndex) => (
-                    <td key={colIndex} className="px-4 py-3 text-slate-700">
+                  {columns.map((column, colIndex) => {
+                    const compact = isPixelWidth(column.width);
+                    return (
+                    <td
+                      key={colIndex}
+                      style={columnWidthStyle(column.width)}
+                      className={`${compact ? 'px-2 text-center' : 'px-4'} py-3 text-slate-700`}
+                    >
                       {renderCell(row, column)}
                     </td>
-                  ))}
+                    );
+                  })}
                   {hasActions && (
                     <td className="px-4 py-3">
                       {customActions ? customActions(row) : <ActionMenu items={buildMenuItems(row)} />}

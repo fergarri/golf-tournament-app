@@ -639,7 +639,7 @@ const TournamentLeaderboardPage = () => {
           <span>-</span>
         );
       },
-      width: '60px',
+      width: '70px',
     },
     { header: 'Jugador', accessor: 'playerName' as keyof LeaderboardEntry, width: '15%' },
     { header: 'Matrícula', accessor: 'matricula' as keyof LeaderboardEntry, width: '10%' },

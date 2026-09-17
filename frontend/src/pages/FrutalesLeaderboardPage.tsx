@@ -355,7 +355,7 @@ const FrutalesLeaderboardPage = () => {
         if (row.position) return <span className={`position ${getPositionClass(row.position)}`}>{row.position}</span>;
         return <span>-</span>;
       },
-      width: '60px',
+      width: '70px',
     },
     { header: 'Jugador', accessor: 'playerName' as keyof FrutalesScore, width: '15%' },
     { header: 'Matrícula', accessor: 'matricula' as keyof FrutalesScore, width: '8%' },
