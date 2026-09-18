@@ -68,12 +68,15 @@
 
 .public-scorecard-table .sticky-col,
 .public-scorecard-table .label-cell {
-  width: 70px;
-  min-width: 70px;
-  max-width: 70px;
+  width: 80px;
+  min-width: 80px;
+  max-width: 80px;
   text-align: left;
   padding-left: 0.5rem !important;
   padding-right: 0.35rem !important;
+  white-space: nowrap;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 
 .public-scorecard-table .player-row .sticky-col {

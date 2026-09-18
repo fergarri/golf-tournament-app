@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { scorecardService } from '../services/scorecardService';
 import { HoleScore, Scorecard } from '../types';
 import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
+import { getScoreShapeClassName, getScoreShapeKind } from '../utils/scoreShape';
 import {
   canViewPublicScorecard,
   formatNeto,
@@ -26,6 +27,13 @@ interface PublicScorecardModalProps {
 
 const sumGolpes = (holes: HoleScore[]) => holes.reduce((s, h) => s + (h.golpesPropio ?? 0), 0);
 const sumPar = (holes: HoleScore[]) => holes.reduce((s, h) => s + h.par, 0);
+
+const renderGolpeValue = (golpes: number | null | undefined, par: number) => {
+  if (golpes === null || golpes === undefined) return '-';
+  const shapeClass = getScoreShapeClassName(getScoreShapeKind(golpes, par), 'semantic');
+  if (!shapeClass) return golpes;
+  return <span className={`score-shape-value ${shapeClass}`}>{golpes}</span>;
+};
 
 const PublicScorecardModal = ({ request, onClose }: PublicScorecardModalProps) => {
   const [scorecard, setScorecard] = useState<Scorecard | null>(null);
@@ -213,11 +221,11 @@ const PublicScorecardModal = ({ request, onClose }: PublicScorecardModalProps) =
                         <tr className="score-row player-row">
                           <td className="sticky-col label-cell">GOLPES</td>
                           {layout.frontNine.map((hole) => (
-                            <td key={hole.id}>{hole.golpesPropio ?? '-'}</td>
+                            <td key={hole.id}>{renderGolpeValue(hole.golpesPropio, hole.par)}</td>
                           ))}
                           <td className="subtotal-cell score-total">{layout.frontGross || '-'}</td>
                           {layout.backNine.map((hole) => (
-                            <td key={hole.id}>{hole.golpesPropio ?? '-'}</td>
+                            <td key={hole.id}>{renderGolpeValue(hole.golpesPropio, hole.par)}</td>
                           ))}
                           <td className="subtotal-cell score-total">{layout.backGross || '-'}</td>
                           <td className="total-cell score-total">{layout.totalGross || '-'}</td>
@@ -247,7 +255,7 @@ const PublicScorecardModal = ({ request, onClose }: PublicScorecardModalProps) =
                         <tr className="score-row player-row">
                           <td className="sticky-col label-cell">GOLPES</td>
                           {layout.holes.map((hole) => (
-                            <td key={hole.id}>{hole.golpesPropio ?? '-'}</td>
+                            <td key={hole.id}>{renderGolpeValue(hole.golpesPropio, hole.par)}</td>
                           ))}
                           <td className="total-cell score-total">{layout.totalGross || '-'}</td>
                           <td className="total-cell score-total">

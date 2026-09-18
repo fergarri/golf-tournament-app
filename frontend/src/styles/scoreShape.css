@@ -1,0 +1,65 @@
+/* ===== Formas de golpe respecto al par (Eagle/Birdie/Bogey/Doble bogey) ===== */
+/* Compartido entre TournamentScorecardPage, PublicScorecardModal y los modales
+   de edición de tarjeta en los leaderboards (Tournament y Frutales). */
+
+/* Colores de la forma: se definen vía variable CSS para reutilizar la misma
+   geometría (círculo/recuadro, simple/doble) con distintos colores según el
+   contexto (semántico verde/rojo o neutro gris). */
+.score-shape-under-color {
+  --score-shape-color: #27ae60;
+}
+
+.score-shape-over-color {
+  --score-shape-color: #e74c3c;
+}
+
+.score-shape-neutral-color {
+  --score-shape-color: #5a6b7a;
+}
+
+/* Círculo simple (Birdie) */
+.score-shape-circle {
+  border-radius: 50% !important;
+  border-color: var(--score-shape-color) !important;
+}
+
+/* Círculo doble (Eagle / Albatros) */
+.score-shape-double-circle {
+  border-radius: 50% !important;
+  border-color: var(--score-shape-color) !important;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--score-shape-color);
+}
+
+/* Recuadro simple (Bogey) */
+.score-shape-square {
+  border-radius: 3px !important;
+  border-color: var(--score-shape-color) !important;
+}
+
+/* Recuadro doble (Doble bogey o peor) */
+.score-shape-double-square {
+  border-radius: 3px !important;
+  border-color: var(--score-shape-color) !important;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--score-shape-color);
+}
+
+.score-shape-circle:focus,
+.score-shape-double-circle:focus,
+.score-shape-square:focus,
+.score-shape-double-square:focus {
+  border-color: var(--score-shape-color) !important;
+}
+
+/* Valor de solo lectura (usado en la tarjeta pública) con la misma geometría
+   que los inputs, para que ambas vistas se vean consistentes. */
+.score-shape-value {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0 0.2rem;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  font-weight: 700;
+}

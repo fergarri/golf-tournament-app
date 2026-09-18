@@ -8,13 +8,16 @@ import { Tournament, FrutalesScore, Scorecard, LeaderboardEntry, InscriptionResp
 import Table, { TableAction } from '../components/Table';
 import { formatDateSafe } from '../utils/dateUtils';
 import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
+import { getScoreShapeClassName, getScoreShapeKind } from '../utils/scoreShape';
 import { buildResultsShareMessage } from '../utils/resultsMessage';
 import ResultsMessageModal from '../components/ResultsMessageModal';
 import PrintScorecardsModal from '../components/PrintScorecardsModal';
 import Modal from '../components/Modal';
 import HeaderActionDropdown, { HeaderActionItem } from '../components/HeaderActionDropdown';
+import PublicScorecardModal, { PublicPlayerName, PublicScorecardOpenRequest } from '../components/PublicScorecardModal';
 import '../components/Form.css';
 import './TournamentLeaderboardPage.css';
+import '../styles/scoreShape.css';
 
 const FrutalesLeaderboardPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +33,7 @@ const FrutalesLeaderboardPage = () => {
   const [error, setError] = useState('');
   const [editingScorecardId, setEditingScorecardId] = useState<number | null>(null);
   const [editingScorecard, setEditingScorecard] = useState<Scorecard | null>(null);
+  const [scorecardRequest, setScorecardRequest] = useState<PublicScorecardOpenRequest | null>(null);
   const [savingScorecard, setSavingScorecard] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [resultsMessageModal, setResultsMessageModal] = useState<string | null>(null);
@@ -357,7 +361,27 @@ const FrutalesLeaderboardPage = () => {
       },
       width: '70px',
     },
-    { header: 'Jugador', accessor: 'playerName' as keyof FrutalesScore, width: '15%' },
+    {
+      header: 'Jugador',
+      accessor: (row: FrutalesScore) => (
+        <PublicPlayerName
+          name={row.playerName}
+          status={row.status}
+          scorecardId={row.scorecardId}
+          onOpen={() =>
+            setScorecardRequest({
+              scorecardId: row.scorecardId!,
+              playerName: row.playerName,
+              handicapIndex: row.handicapIndex,
+              handicapCourse: row.handicapCourse,
+              tournamentId: tournament?.id,
+            })
+          }
+        />
+      ),
+      sortValue: (row: FrutalesScore) => row.playerName,
+      width: '15%',
+    },
     { header: 'Matrícula', accessor: 'matricula' as keyof FrutalesScore, width: '8%' },
     {
       header: 'HCP I.',
@@ -683,7 +707,7 @@ const FrutalesLeaderboardPage = () => {
                               max="15"
                               value={holeScore.golpesPropio || ''}
                               onChange={(e) => handleScoreChange(holeScore.id, parseInt(e.target.value))}
-                              className="scorecard-score-input"
+                              className={`scorecard-score-input ${getScoreShapeClassName(getScoreShapeKind(holeScore.golpesPropio, holeScore.par), 'semantic')}`}
                             />
                           </td>
                         ))}
@@ -719,6 +743,8 @@ const FrutalesLeaderboardPage = () => {
           </div>
         </div>
       )}
+
+      <PublicScorecardModal request={scorecardRequest} onClose={() => setScorecardRequest(null)} />
     </div>
   );
 };

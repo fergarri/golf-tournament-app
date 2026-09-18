@@ -9,6 +9,7 @@ import { excelExportService } from '../services/excelExportService';
 import { Tournament, LeaderboardEntry, Scorecard, TournamentScore, ExportTournamentInscriptionsResult } from '../types';
 import { standardRank } from '../utils/ranking';
 import { getScorecardStatusLabel } from '../utils/scorecardStatusLabel';
+import { getScoreShapeClassName, getScoreShapeKind } from '../utils/scoreShape';
 import Table, { TableAction } from '../components/Table';
 import Tabs, { Tab } from '../components/Tabs';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
@@ -16,6 +17,7 @@ import PrintScorecardsModal from '../components/PrintScorecardsModal';
 import Modal from '../components/Modal';
 import ResultsMessageModal from '../components/ResultsMessageModal';
 import HeaderActionDropdown, { HeaderActionItem } from '../components/HeaderActionDropdown';
+import PublicScorecardModal, { PublicPlayerName, PublicScorecardOpenRequest } from '../components/PublicScorecardModal';
 import { formatDateSafe } from '../utils/dateUtils';
 import { buildResultsShareMessage } from '../utils/resultsMessage';
 import '../components/Form.css';
@@ -37,6 +39,7 @@ const TournamentLeaderboardPage = () => {
   const [error, setError] = useState('');
   const [editingScorecardId, setEditingScorecardId] = useState<number | null>(null);
   const [editingScorecard, setEditingScorecard] = useState<Scorecard | null>(null);
+  const [scorecardRequest, setScorecardRequest] = useState<PublicScorecardOpenRequest | null>(null);
   const [savingScorecard, setSavingScorecard] = useState(false);
   const [paymentChanges, setPaymentChanges] = useState<Map<number, boolean>>(new Map());
   const [savingPayments, setSavingPayments] = useState(false);
@@ -641,7 +644,27 @@ const TournamentLeaderboardPage = () => {
       },
       width: '70px',
     },
-    { header: 'Jugador', accessor: 'playerName' as keyof LeaderboardEntry, width: '15%' },
+    {
+      header: 'Jugador',
+      accessor: (row: LeaderboardEntry) => (
+        <PublicPlayerName
+          name={row.playerName}
+          status={row.status}
+          scorecardId={row.scorecardId}
+          onOpen={() =>
+            setScorecardRequest({
+              scorecardId: row.scorecardId,
+              playerName: row.playerName,
+              handicapIndex: row.handicapIndex,
+              handicapCourse: row.handicapCourse,
+              tournamentId: tournament?.id,
+            })
+          }
+        />
+      ),
+      sortValue: (row: LeaderboardEntry) => row.playerName,
+      width: '15%',
+    },
     { header: 'Matrícula', accessor: 'matricula' as keyof LeaderboardEntry, width: '10%' },
     {
       header: 'HCP I',
@@ -1278,7 +1301,7 @@ const TournamentLeaderboardPage = () => {
                                     max="15"
                                     value={holeScore.golpesPropio ?? ''}
                                     onChange={(e) => handleScoreChange(holeScore.id, e.target.value)}
-                                    className="score-input"
+                                    className={`score-input ${getScoreShapeClassName(getScoreShapeKind(holeScore.golpesPropio, holeScore.par), 'semantic')}`}
                                   />
                                 </td>
                               ))}
@@ -1293,7 +1316,7 @@ const TournamentLeaderboardPage = () => {
                                     max="15"
                                     value={holeScore.golpesPropio ?? ''}
                                     onChange={(e) => handleScoreChange(holeScore.id, e.target.value)}
-                                    className="score-input"
+                                    className={`score-input ${getScoreShapeClassName(getScoreShapeKind(holeScore.golpesPropio, holeScore.par), 'semantic')}`}
                                   />
                                 </td>
                               ))}
@@ -1340,7 +1363,7 @@ const TournamentLeaderboardPage = () => {
                                     max="15"
                                     value={holeScore.golpesPropio ?? ''}
                                     onChange={(e) => handleScoreChange(holeScore.id, e.target.value)}
-                                    className="score-input"
+                                    className={`score-input ${getScoreShapeClassName(getScoreShapeKind(holeScore.golpesPropio, holeScore.par), 'semantic')}`}
                                   />
                                 </td>
                               ))}
@@ -1390,6 +1413,7 @@ const TournamentLeaderboardPage = () => {
         </div>
       )}
 
+      <PublicScorecardModal request={scorecardRequest} onClose={() => setScorecardRequest(null)} />
     </div>
   );
 };

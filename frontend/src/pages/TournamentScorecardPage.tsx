@@ -7,6 +7,7 @@ import { playerService } from '../services/playerService';
 import { Tournament, Hole, Scorecard, Player } from '../types';
 import Modal from '../components/Modal';
 import { formatDateSafe } from '../utils/dateUtils';
+import { getScoreShapeClassName, getScoreShapeKind } from '../utils/scoreShape';
 import './TournamentScorecardPage.css';
 
 const TournamentScorecardPage = () => {
@@ -752,7 +753,7 @@ const TournamentScorecardPage = () => {
                       value={scores[hole.numeroHoyo]?.propio || ''}
                       onChange={(e) => updateScore(hole.numeroHoyo, 'propio', e.target.value)}
                       onBlur={() => { if (scorecard && scorecard.status !== 'DELIVERED') void saveAllScoresToBackend(); }}
-                      className="score-input"
+                      className={`score-input ${getScoreShapeClassName(getScoreShapeKind(scores[hole.numeroHoyo]?.propio, hole.par), 'semantic')}`}
                       placeholder="-"
                       disabled={scorecard?.status === 'DELIVERED' || false}
                     />
@@ -768,7 +769,7 @@ const TournamentScorecardPage = () => {
                       value={scores[hole.numeroHoyo]?.propio || ''}
                       onChange={(e) => updateScore(hole.numeroHoyo, 'propio', e.target.value)}
                       onBlur={() => { if (scorecard && scorecard.status !== 'DELIVERED') void saveAllScoresToBackend(); }}
-                      className="score-input"
+                      className={`score-input ${getScoreShapeClassName(getScoreShapeKind(scores[hole.numeroHoyo]?.propio, hole.par), 'semantic')}`}
                       placeholder="-"
                       disabled={scorecard?.status === 'DELIVERED' || false}
                     />
@@ -799,7 +800,7 @@ const TournamentScorecardPage = () => {
                       value={scores[hole.numeroHoyo]?.marcador || ''}
                       onChange={(e) => updateScore(hole.numeroHoyo, 'marcador', e.target.value)}
                       onBlur={() => { if (scorecard && scorecard.status !== 'DELIVERED') void saveAllScoresToBackend(); }}
-                      className="score-input"
+                      className={`score-input ${getScoreShapeClassName(getScoreShapeKind(scores[hole.numeroHoyo]?.marcador, hole.par), 'neutral')}`}
                       placeholder="-"
                       disabled={scorecard?.status === 'DELIVERED' || false}
                     />
@@ -815,7 +816,7 @@ const TournamentScorecardPage = () => {
                       value={scores[hole.numeroHoyo]?.marcador || ''}
                       onChange={(e) => updateScore(hole.numeroHoyo, 'marcador', e.target.value)}
                       onBlur={() => { if (scorecard && scorecard.status !== 'DELIVERED') void saveAllScoresToBackend(); }}
-                      className="score-input"
+                      className={`score-input ${getScoreShapeClassName(getScoreShapeKind(scores[hole.numeroHoyo]?.marcador, hole.par), 'neutral')}`}
                       placeholder="-"
                       disabled={scorecard?.status === 'DELIVERED' || false}
                     />
