@@ -6,11 +6,13 @@ import com.golf.tournament.model.CourseTee;
 import com.golf.tournament.model.Hole;
 import com.golf.tournament.model.HoleDistance;
 import com.golf.tournament.model.Player;
+import com.golf.tournament.model.Scorecard;
 import com.golf.tournament.model.Tournament;
 import com.golf.tournament.model.TournamentCategory;
 import com.golf.tournament.repository.HandicapConversionRepository;
 import com.golf.tournament.repository.HoleRepository;
 import com.golf.tournament.repository.PlayerRepository;
+import com.golf.tournament.repository.ScorecardRepository;
 import com.golf.tournament.repository.TournamentCategoryRepository;
 import com.golf.tournament.repository.TournamentRepository;
 import com.golf.tournament.util.NineHoleCourseHandicapCalculator;
@@ -69,6 +71,8 @@ public class ScorecardPrintService {
     private final HoleRepository holeRepository;
     private final TournamentCategoryRepository categoryRepository;
     private final HandicapConversionRepository handicapConversionRepository;
+    private final ScorecardRepository scorecardRepository;
+    private final UnderParDiscountService underParDiscountService;
 
     @Transactional(readOnly = true)
     public byte[] generatePrintablePdf(Long tournamentId, List<Long> playerIds) {
@@ -99,8 +103,20 @@ public class ScorecardPrintService {
                 .sorted(Comparator.comparing(Hole::getNumeroHoyo))
                 .collect(Collectors.toList());
 
+        boolean started = !"PENDING".equals(tournament.getEstado());
+        Map<Long, Scorecard> scorecardsByPlayer = started
+                ? scorecardRepository.findByTournamentId(tournamentId).stream()
+                    .filter(sc -> sc.getPlayer() != null)
+                    .collect(Collectors.toMap(sc -> sc.getPlayer().getId(), sc -> sc, (left, right) -> left))
+                : Map.of();
+        Map<Long, BigDecimal> underParDiscounts = started
+                ? underParDiscountService.discountByPlayerId(tournamentId)
+                : Map.of();
+
         List<PlayerCardData> cards = orderedPlayers.stream()
-                .map(player -> buildCardData(tournament, player, holesToPrint, categories, cantidadHoyos))
+                .map(player -> buildCardData(
+                        tournament, player, holesToPrint, categories, cantidadHoyos,
+                        scorecardsByPlayer.get(player.getId()), underParDiscounts))
                 .collect(Collectors.toList());
 
         boolean landscape = cantidadHoyos == 18;
@@ -134,7 +150,9 @@ public class ScorecardPrintService {
                                           Player player,
                                           List<Hole> holes,
                                           List<TournamentCategory> categories,
-                                          int cantidadHoyos) {
+                                          int cantidadHoyos,
+                                          Scorecard existingScorecard,
+                                          Map<Long, BigDecimal> underParDiscounts) {
         String sexo = player.getSexo() != null ? player.getSexo().trim().toUpperCase() : null;
         CourseTee tee = SEX_FEMALE.equals(sexo) ? tournament.getTeeFemenino() : tournament.getTeeMasculino();
 
@@ -157,6 +175,14 @@ public class ScorecardPrintService {
                                 .setScale(1, RoundingMode.HALF_UP))
                         .orElse(null);
             }
+        }
+
+        // Antes del inicio se imprime el HCP de tabla. Con la fecha ya iniciada se usa el HCP
+        // guardado en la tarjeta (incluye el descuento bajo par y cualquier ajuste manual).
+        if (existingScorecard != null && existingScorecard.getHandicapCourse() != null) {
+            handicapCourse = existingScorecard.getHandicapCourse();
+        } else if (handicapCourse != null && underParDiscounts != null && !underParDiscounts.isEmpty()) {
+            handicapCourse = underParDiscountService.apply(underParDiscounts, player.getId(), handicapCourse);
         }
 
         TournamentCategory category = findCategoryForHandicap(player.getHandicapIndex(), sexo, categories);

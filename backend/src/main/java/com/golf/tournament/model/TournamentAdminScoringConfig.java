@@ -65,6 +65,18 @@ public class TournamentAdminScoringConfig {
     @Builder.Default
     private String tieBreakMode = "NETO_HCP_HOLE";
 
+    /**
+     * Si es true, al iniciar una fecha se descuentan del HCP Course los golpes bajo par
+     * de la fecha inmediatamente anterior del mismo Torneo Administrativo.
+     */
+    @Column(name = "discount_under_par", nullable = false)
+    @Builder.Default
+    private Boolean discountUnderPar = false;
+
+    /** FIRST_PLACE o ALL_UNDER_PAR. Solo se usa cuando discountUnderPar es true. */
+    @Column(name = "under_par_discount_mode", length = 30)
+    private String underParDiscountMode;
+
     @OneToMany(mappedBy = "scoringConfig", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<TournamentAdminScoringPositionPoints> positionPoints = new ArrayList<>();

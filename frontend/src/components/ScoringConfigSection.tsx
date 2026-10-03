@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, RefObject } from 'react';
+import { createPortal } from 'react-dom';
 import { ScoringConfig, ScoringPositionPoints } from '../types';
 import { tournamentAdminService } from '../services/tournamentAdminService';
 import Modal from './Modal';
@@ -8,6 +9,8 @@ interface ScoringConfigSectionProps {
   /** CLASICO o FRUTALES */
   tipo?: string;
   onSaved?: () => void;
+  /** Si se indica, el botón Guardar se renderiza dentro de este nodo (pie del modal). */
+  saveSlotRef?: RefObject<HTMLDivElement | null>;
 }
 
 const TIE_BREAK_OPTIONS = [
@@ -25,7 +28,7 @@ const TIE_BREAK_OPTIONS = [
   },
 ];
 
-const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved }: ScoringConfigSectionProps) => {
+const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved, saveSlotRef }: ScoringConfigSectionProps) => {
   const [config, setConfig] = useState<ScoringConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -36,6 +39,12 @@ const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved }: ScoringConfi
     message: '',
   });
   const [tooltipVisible, setTooltipVisible] = useState(false);
+  const [underParTooltipVisible, setUnderParTooltipVisible] = useState(false);
+  const [saveHost, setSaveHost] = useState<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setSaveHost(saveSlotRef?.current ?? null);
+  }, [saveSlotRef]);
 
   useEffect(() => {
     loadConfig();
@@ -54,7 +63,7 @@ const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved }: ScoringConfi
     }
   };
 
-  const handleFieldChange = (field: keyof ScoringConfig, value: number | string) => {
+  const handleFieldChange = (field: keyof ScoringConfig, value: number | string | boolean | null) => {
     if (!config) return;
     setConfig({ ...config, [field]: value });
   };
@@ -101,6 +110,8 @@ const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved }: ScoringConfi
         qualifiedPlayoffPositionsScratch: config.qualifiedPlayoffPositionsScratch ?? 0,
         hcpQualifiedMode: config.hcpQualifiedMode ?? 'GLOBAL',
         tieBreakMode: config.tieBreakMode,
+        discountUnderPar: config.discountUnderPar ?? false,
+        underParDiscountMode: config.discountUnderPar ? (config.underParDiscountMode ?? 'FIRST_PLACE') : null,
         positionPoints: config.positionPoints,
       });
       setConfig(saved);
@@ -117,6 +128,17 @@ const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved }: ScoringConfi
   };
 
   const selectedTieBreak = TIE_BREAK_OPTIONS.find((o) => o.value === config?.tieBreakMode);
+
+  const saveButton = (
+    <button
+      type="button"
+      onClick={handleSave}
+      disabled={saving || !config}
+      className="btn btn-primary"
+    >
+      {saving ? 'Guardando...' : 'Guardar configuración'}
+    </button>
+  );
 
   if (loading) return <div style={{ padding: '1rem', color: '#7f8c8d' }}>Cargando configuración...</div>;
   if (!config) return <div style={{ padding: '1rem', color: '#e74c3c' }}>{error}</div>;
@@ -255,6 +277,108 @@ const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved }: ScoringConfi
                     style={inputStyle}
                   />
                   <span style={{ fontSize: '0.85rem', color: '#7f8c8d', minWidth: '30px' }}>pts</span>
+                </div>
+
+                <div style={{ marginTop: '0.35rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={config.discountUnderPar ?? false}
+                        onChange={(e) => {
+                          const checked = e.target.checked;
+                          setConfig({
+                            ...config,
+                            discountUnderPar: checked,
+                            underParDiscountMode: checked
+                              ? (config.underParDiscountMode ?? 'FIRST_PLACE')
+                              : config.underParDiscountMode,
+                          });
+                        }}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: '0.9rem', color: '#34495e', fontWeight: 600 }}>
+                        Descontar golpes bajo Par
+                      </span>
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <button
+                        type="button"
+                        onMouseEnter={() => setUnderParTooltipVisible(true)}
+                        onMouseLeave={() => setUnderParTooltipVisible(false)}
+                        style={{
+                          background: '#3498db',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '22px',
+                          height: '22px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          cursor: 'default',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        ?
+                      </button>
+                      {underParTooltipVisible && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            bottom: '130%',
+                            left: 0,
+                            background: '#2c3e50',
+                            color: '#fff',
+                            borderRadius: '6px',
+                            padding: '0.6rem 0.8rem',
+                            fontSize: '0.8rem',
+                            lineHeight: '1.4',
+                            width: '280px',
+                            zIndex: 100,
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                          }}
+                        >
+                          Con esta opcion activa, en la fecha inmediata siguiente se descontarán el total de golpes Bajo Par
+                          que el o los jugadores hayan hecho en la fecha previa. Por ejemplo: Fecha 1, Jugador A
+                          (HCP Course 5) hizo -3 (3 Bajo Par), en la fecha inmediata siguiente, su HCP Course descontara 3
+                          golpes (HCP Course 2). 
+                          Esta regla no se arrastra a las fechas posteriores, es decir, si Jugador A no
+                          participa en la fecha 2, en la fecha 3, su HCP Course no descontará ningún golpe.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {config.discountUnderPar && (
+                    <div style={{ marginTop: '0.75rem', paddingLeft: '1.7rem' }}>
+                      <span style={{ display: 'block', fontSize: '0.85rem', color: '#555', marginBottom: '0.4rem' }}>
+                        Descuenta:
+                      </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                        {[
+                          { value: 'FIRST_PLACE', label: 'Primer puesto con Bajo Par' },
+                          { value: 'ALL_UNDER_PAR', label: 'Todos los Bajo Par' },
+                        ].map((opt) => (
+                          <label
+                            key={opt.value}
+                            style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', cursor: 'pointer' }}
+                          >
+                            <input
+                              type="radio"
+                              name="underParDiscountMode"
+                              value={opt.value}
+                              checked={(config.underParDiscountMode ?? 'FIRST_PLACE') === opt.value}
+                              onChange={() => handleFieldChange('underParDiscountMode', opt.value)}
+                            />
+                            <span style={{ fontSize: '0.88rem', color: '#34495e' }}>{opt.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -438,24 +562,11 @@ const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved }: ScoringConfi
           </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            style={{
-              background: saving ? '#bdc3c7' : '#27ae60',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              padding: '0.6rem 1.5rem',
-              fontWeight: 600,
-              cursor: saving ? 'not-allowed' : 'pointer',
-              fontSize: '0.95rem',
-            }}
-          >
-            {saving ? 'Guardando...' : 'Guardar configuración'}
-          </button>
-        </div>
+        {saveHost ? createPortal(saveButton, saveHost) : (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.5rem' }}>
+            {saveButton}
+          </div>
+        )}
 
       <Modal
         isOpen={modalState.open}

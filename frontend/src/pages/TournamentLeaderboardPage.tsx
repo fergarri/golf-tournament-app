@@ -61,6 +61,7 @@ const TournamentLeaderboardPage = () => {
   const [confirmDialog, setConfirmDialog] = useState<
     | null
     | { kind: 'finalize' }
+    | { kind: 'pause' }
     | { kind: 'reopen' }
     | { kind: 'removeInscription'; entry: LeaderboardEntry }
     | { kind: 'disqualify'; entry: LeaderboardEntry }
@@ -173,6 +174,11 @@ const TournamentLeaderboardPage = () => {
     setConfirmDialog({ kind: 'finalize' });
   };
 
+  const openPauseConfirm = () => {
+    if (!tournament || !id) return;
+    setConfirmDialog({ kind: 'pause' });
+  };
+
   const openReopenConfirm = () => {
     if (!tournament || !id) return;
     setConfirmDialog({ kind: 'reopen' });
@@ -186,6 +192,9 @@ const TournamentLeaderboardPage = () => {
         await tournamentService.finalize(parseInt(id, 10));
         await loadData({ silent: true });
         navigate(`/tournaments/${id}/leaderboard?final=true`, { replace: true });
+      } else if (confirmDialog.kind === 'pause') {
+        await tournamentService.pause(parseInt(id, 10));
+        await loadData({ silent: true });
       } else if (confirmDialog.kind === 'reopen') {
         await tournamentService.reopen(parseInt(id, 10));
         await loadData({ silent: true });
@@ -227,7 +236,9 @@ const TournamentLeaderboardPage = () => {
           ? 'Error al finalizar el torneo'
           : confirmDialog.kind === 'reopen'
             ? 'Error al habilitar el torneo'
-            : confirmDialog.kind === 'removeInscription'
+            : confirmDialog.kind === 'pause'
+              ? 'Error al pausar el torneo'
+              : confirmDialog.kind === 'removeInscription'
               ? 'Error dando de baja al jugador'
               : confirmDialog.kind === 'disqualify'
                 ? 'Error al descalificar'
@@ -825,6 +836,9 @@ const TournamentLeaderboardPage = () => {
       ? [{ label: 'Link Resultados', onClick: copyResultsMessage, variant: 'primary' as const }]
       : []),
     ...(tournament?.estado === 'IN_PROGRESS'
+      ? [{ label: 'Pausar Torneo', onClick: openPauseConfirm, variant: 'secondary' as const }]
+      : []),
+    ...(tournament?.estado === 'IN_PROGRESS'
       ? [{ label: 'Finalizar', onClick: openFinalizeConfirm, variant: 'danger' as const }]
       : []),
     ...(hasScoringConfig
@@ -1068,7 +1082,9 @@ const TournamentLeaderboardPage = () => {
             ? 'Finalizar torneo'
             : confirmDialog?.kind === 'reopen'
               ? 'Habilitar torneo'
-              : confirmDialog?.kind === 'removeInscription'
+              : confirmDialog?.kind === 'pause'
+                ? 'Pausar torneo'
+                : confirmDialog?.kind === 'removeInscription'
                 ? 'Dar de baja'
                 : confirmDialog?.kind === 'disqualify'
                   ? 'Descalificar tarjeta'
@@ -1124,6 +1140,11 @@ const TournamentLeaderboardPage = () => {
             <>
               ¿Finalizar «{tournament.nombre}»? Se cancelarán las tarjetas aún en curso y el torneo
               quedará cerrado.
+            </>
+          )}
+          {confirmDialog?.kind === 'pause' && tournament && (
+            <>
+              ¿Pausar «{tournament.nombre}»? El torneo pasará a Pendiente.
             </>
           )}
           {confirmDialog?.kind === 'reopen' && tournament && (

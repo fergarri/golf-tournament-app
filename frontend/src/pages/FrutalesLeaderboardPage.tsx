@@ -42,6 +42,7 @@ const FrutalesLeaderboardPage = () => {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<
     | null
+    | { kind: 'pause' }
     | { kind: 'disqualify'; entry: FrutalesScore }
     | { kind: 'undoDisqualify'; entry: FrutalesScore }
     | { kind: 'cancelScorecard'; entry: FrutalesScore }
@@ -205,7 +206,11 @@ const FrutalesLeaderboardPage = () => {
     if (!confirmDialog) return;
     try {
       setConfirmActionLoading(true);
-      if (confirmDialog.kind === 'disqualify' && confirmDialog.entry.scorecardId) {
+      if (confirmDialog.kind === 'pause') {
+        if (id) {
+          await tournamentService.pause(parseInt(id, 10));
+        }
+      } else if (confirmDialog.kind === 'disqualify' && confirmDialog.entry.scorecardId) {
         await scorecardService.disqualifyScorecard(confirmDialog.entry.scorecardId);
       } else if (confirmDialog.kind === 'undoDisqualify' && confirmDialog.entry.scorecardId) {
         await scorecardService.undoDisqualifyScorecard(confirmDialog.entry.scorecardId);
@@ -220,7 +225,9 @@ const FrutalesLeaderboardPage = () => {
     } catch (err: any) {
       const msg =
         err.response?.data?.message ||
-        (confirmDialog.kind === 'disqualify'
+        (confirmDialog.kind === 'pause'
+          ? 'Error al pausar el torneo'
+          : confirmDialog.kind === 'disqualify'
           ? 'Error al descalificar'
           : confirmDialog.kind === 'undoDisqualify'
             ? 'Error al quitar la descalificación'
@@ -482,6 +489,13 @@ const FrutalesLeaderboardPage = () => {
   const actionItems: HeaderActionItem[] = [
     ...(tournament?.estado === 'IN_PROGRESS'
       ? [{
+          label: 'Pausar Torneo',
+          onClick: () => setConfirmDialog({ kind: 'pause' }),
+          variant: 'secondary' as const,
+        }]
+      : []),
+    ...(tournament?.estado === 'IN_PROGRESS'
+      ? [{
           label: finalizing ? 'Finalizando...' : 'Finalizar Torneo',
           onClick: handleFinalizeTournament,
           disabled: finalizing,
@@ -611,7 +625,9 @@ const FrutalesLeaderboardPage = () => {
         }}
         onConfirm={executeConfirmDialog}
         title={
-          confirmDialog?.kind === 'disqualify'
+          confirmDialog?.kind === 'pause'
+            ? 'Pausar torneo'
+            : confirmDialog?.kind === 'disqualify'
             ? 'Descalificar tarjeta'
             : confirmDialog?.kind === 'undoDisqualify'
               ? 'Quitar descalificación'
@@ -620,7 +636,9 @@ const FrutalesLeaderboardPage = () => {
                 : 'Habilitar tarjeta'
         }
         message={
-          confirmDialog?.kind === 'disqualify'
+          confirmDialog?.kind === 'pause'
+            ? `¿Pausar «${tournament?.nombre ?? ''}»? El torneo pasará a Pendiente.`
+            : confirmDialog?.kind === 'disqualify'
             ? `¿Descalificar la tarjeta de ${confirmDialog.entry.playerName}?`
             : confirmDialog?.kind === 'undoDisqualify'
               ? `¿Quitar la descalificación de ${confirmDialog.entry.playerName}?`

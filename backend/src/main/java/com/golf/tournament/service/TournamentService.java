@@ -578,6 +578,25 @@ public class TournamentService {
         return convertToDTO(tournament);
     }
 
+    /**
+     * Pasa un torneo en curso a pendiente. No modifica tarjetas ni handicap.
+     */
+    @Transactional
+    public TournamentDTO pauseTournament(Long id) {
+        Tournament tournament = tournamentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", id));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
+
+        if (!"IN_PROGRESS".equals(tournament.getEstado())) {
+            throw new BadRequestException("Solo se puede pausar un torneo que esté en proceso");
+        }
+
+        tournament.setEstado("PENDING");
+        tournament = tournamentRepository.save(tournament);
+        log.debug("Tournament {} set back to PENDING", id);
+        return convertToDTO(tournament);
+    }
+
     private TournamentCategoryDTO convertCategoryToDTO(TournamentCategory category) {
         return TournamentCategoryDTO.builder()
                 .id(category.getId())

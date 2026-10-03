@@ -26,6 +26,10 @@ public class ScoringConfigDTO {
     /** GLOBAL o PER_CATEGORY. Solo relevante para torneos CLASICO. */
     private String hcpQualifiedMode;
     private String tieBreakMode;
+    /** Si es true, la fecha siguiente descuenta los golpes bajo par de la fecha previa. */
+    private Boolean discountUnderPar;
+    /** FIRST_PLACE o ALL_UNDER_PAR. */
+    private String underParDiscountMode;
     private List<PositionPointsDTO> positionPoints;
 
     @Data

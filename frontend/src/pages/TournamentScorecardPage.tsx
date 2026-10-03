@@ -741,9 +741,11 @@ const TournamentScorecardPage = () => {
                 <td className="total-cell final-total-cell">GROSS</td>
                 <td className="total-cell final-total-cell">NETO</td>
               </tr>
-              {/* Fila 4: TU (jugador) */}
+              {/* Fila 4: golpes del jugador */}
               <tr className="score-row player-row">
-                <td className="sticky-col label-cell player-label">TU</td>
+                <td className="sticky-col label-cell player-label">
+                  {scorecard?.playerName || (player ? `${player.nombre} ${player.apellido}` : 'Jugador')}
+                </td>
                 {holes.filter(h => h.numeroHoyo <= 9).map((hole) => (
                   <td key={hole.numeroHoyo}>
                     <input

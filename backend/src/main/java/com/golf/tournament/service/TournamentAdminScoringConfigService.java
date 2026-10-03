@@ -32,6 +32,8 @@ public class TournamentAdminScoringConfigService {
     private static final int DEFAULT_QUALIFIED_PLAYOFF_POSITIONS_SCRATCH = 0;
     private static final String DEFAULT_HCP_QUALIFIED_MODE = "GLOBAL";
     private static final String DEFAULT_TIE_BREAK_MODE = "NETO_HCP_HOLE";
+    private static final boolean DEFAULT_DISCOUNT_UNDER_PAR = false;
+    static final String UNDER_PAR_MODE_FIRST_PLACE = "FIRST_PLACE";
 
     private final TournamentAdminRepository tournamentAdminRepository;
     private final TournamentAdminScoringConfigRepository scoringConfigRepository;
@@ -69,6 +71,11 @@ public class TournamentAdminScoringConfigService {
         config.setQualifiedPlayoffPositionsScratch(request.getQualifiedPlayoffPositionsScratch() != null ? request.getQualifiedPlayoffPositionsScratch() : DEFAULT_QUALIFIED_PLAYOFF_POSITIONS_SCRATCH);
         config.setHcpQualifiedMode(request.getHcpQualifiedMode() != null ? request.getHcpQualifiedMode() : DEFAULT_HCP_QUALIFIED_MODE);
         config.setTieBreakMode(request.getTieBreakMode());
+        boolean discountUnderPar = Boolean.TRUE.equals(request.getDiscountUnderPar());
+        config.setDiscountUnderPar(discountUnderPar);
+        config.setUnderParDiscountMode(discountUnderPar
+                ? normalizeUnderParMode(request.getUnderParDiscountMode())
+                : null);
 
         // Forzar el flush de los DELETEs antes de insertar las nuevas posiciones
         // para evitar conflicto de clave única con orphanRemoval en Hibernate
@@ -112,6 +119,10 @@ public class TournamentAdminScoringConfigService {
                 .qualifiedPlayoffPositionsScratch(config.getQualifiedPlayoffPositionsScratch() != null ? config.getQualifiedPlayoffPositionsScratch() : DEFAULT_QUALIFIED_PLAYOFF_POSITIONS_SCRATCH)
                 .hcpQualifiedMode(config.getHcpQualifiedMode() != null ? config.getHcpQualifiedMode() : DEFAULT_HCP_QUALIFIED_MODE)
                 .tieBreakMode(config.getTieBreakMode())
+                .discountUnderPar(Boolean.TRUE.equals(config.getDiscountUnderPar()))
+                .underParDiscountMode(Boolean.TRUE.equals(config.getDiscountUnderPar())
+                        ? normalizeUnderParMode(config.getUnderParDiscountMode())
+                        : null)
                 .positionPoints(positions)
                 .build();
     }
@@ -128,6 +139,8 @@ public class TournamentAdminScoringConfigService {
                 .qualifiedPlayoffPositionsScratch(DEFAULT_QUALIFIED_PLAYOFF_POSITIONS_SCRATCH)
                 .hcpQualifiedMode(DEFAULT_HCP_QUALIFIED_MODE)
                 .tieBreakMode(DEFAULT_TIE_BREAK_MODE)
+                .discountUnderPar(DEFAULT_DISCOUNT_UNDER_PAR)
+                .underParDiscountMode(null)
                 .positionPoints(List.of(
                         new ScoringConfigDTO.PositionPointsDTO(1, 12),
                         new ScoringConfigDTO.PositionPointsDTO(2, 10),
@@ -137,5 +150,12 @@ public class TournamentAdminScoringConfigService {
                         new ScoringConfigDTO.PositionPointsDTO(6, 2)
                 ))
                 .build();
+    }
+
+    private String normalizeUnderParMode(String mode) {
+        if ("ALL_UNDER_PAR".equals(mode)) {
+            return mode;
+        }
+        return UNDER_PAR_MODE_FIRST_PLACE;
     }
 }

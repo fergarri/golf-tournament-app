@@ -89,6 +89,24 @@ const DashboardPage = () => {
     }
   };
 
+  const pauseTournamentAction = async (tournament: Tournament) => {
+    try {
+      await tournamentService.pause(tournament.id);
+      loadTournaments();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error pausando torneo');
+    }
+  };
+
+  const handlePauseTournament = (tournament: Tournament) => {
+    showModal(
+      'Pausar Torneo',
+      `¿Pausar ${tournament.nombre}? El torneo pasará a Pendiente.`,
+      'confirm',
+      () => pauseTournamentAction(tournament)
+    );
+  };
+
   const handleFinalizeTournament = (tournament: Tournament) => {
     showModal(
       'Finalizar Torneo',
@@ -172,6 +190,7 @@ const DashboardPage = () => {
     { label: 'Iniciar', onClick: handleStartTournament, variant: 'primary', show: (t) => t.estado === 'PENDING' },
     { label: 'Copiar Link', onClick: (t) => copyLink(getPlayLink(t.codigo)), variant: 'secondary', show: (t) => t.estado === 'IN_PROGRESS' },
     { label: 'Tabla de Líderes', onClick: handleViewLeaderboard, variant: 'primary', show: (t) => t.estado === 'IN_PROGRESS' },
+    { label: 'Pausar Torneo', onClick: handlePauseTournament, variant: 'default', show: (t) => t.estado === 'IN_PROGRESS' },
     { label: 'Finalizar', onClick: handleFinalizeTournament, variant: 'danger', show: (t) => t.estado === 'IN_PROGRESS' },
     { label: 'Ver Resultados', onClick: handleViewLeaderboard, variant: 'primary', show: (t) => t.estado === 'FINALIZED' },
   ];

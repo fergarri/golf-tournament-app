@@ -32,7 +32,7 @@ const TournamentsPage = () => {
   const [createdTournament, setCreatedTournament] = useState<Tournament | null>(null);
   const [editingTournament, setEditingTournament] = useState<Tournament | null>(null);
   const [tournamentConfirm, setTournamentConfirm] = useState<
-    null | { type: 'finalize' | 'reopen' | 'delete'; tournament: Tournament }
+    null | { type: 'finalize' | 'reopen' | 'pause' | 'delete'; tournament: Tournament }
   >(null);
   const [tournamentConfirmLoading, setTournamentConfirmLoading] = useState(false);
   const [formData, setFormData] = useState<any>({
@@ -238,6 +238,10 @@ const TournamentsPage = () => {
     setTournamentConfirm({ type: 'reopen', tournament });
   };
 
+  const requestPauseTournament = (tournament: Tournament) => {
+    setTournamentConfirm({ type: 'pause', tournament });
+  };
+
   const requestDeleteTournament = (tournament: Tournament) => {
     setTournamentConfirm({ type: 'delete', tournament });
   };
@@ -258,6 +262,9 @@ const TournamentsPage = () => {
       } else if (tournamentConfirm.type === 'reopen') {
         await tournamentService.reopen(t.id);
         await loadTournaments();
+      } else if (tournamentConfirm.type === 'pause') {
+        await tournamentService.pause(t.id);
+        await loadData();
       } else {
         await tournamentService.delete(t.id);
         loadData();
@@ -442,6 +449,12 @@ const TournamentsPage = () => {
       variant: 'default',
     },
     {
+      label: 'Pausar Torneo',
+      onClick: requestPauseTournament,
+      variant: 'default',
+      show: (tournament) => tournament.estado === 'IN_PROGRESS',
+    },
+    {
       label: 'Finalizar',
       onClick: requestFinalizeTournament,
       variant: 'danger',
@@ -486,7 +499,9 @@ const TournamentsPage = () => {
             ? 'Finalizar torneo'
             : tournamentConfirm?.type === 'reopen'
               ? 'Habilitar torneo'
-              : 'Eliminar torneo'
+              : tournamentConfirm?.type === 'pause'
+                ? 'Pausar torneo'
+                : 'Eliminar torneo'
         }
         size="medium"
         footer={
@@ -537,6 +552,11 @@ const TournamentsPage = () => {
             <>
               ¿Habilitar «{tournamentConfirm.tournament.nombre}»? El torneo volverá al estado En Proceso y se
               podrán cargar o corregir tarjetas.
+            </>
+          )}
+          {tournamentConfirm?.type === 'pause' && (
+            <>
+              ¿Pausar «{tournamentConfirm.tournament.nombre}»? El torneo pasará a Pendiente.
             </>
           )}
           {tournamentConfirm?.type === 'delete' && (

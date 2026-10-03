@@ -20,6 +20,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.math.BigDecimal;
@@ -45,6 +46,7 @@ public class ScorecardService {
     private final TournamentCategoryRepository categoryRepository;
     private final HandicapConversionRepository handicapConversionRepository;
     private final ScorecardEventService scorecardEventService;
+    private final UnderParDiscountService underParDiscountService;
 
     @Transactional
     public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId) {
@@ -74,6 +76,7 @@ public class ScorecardService {
     @Transactional
     public void recalculateHandicapCoursesForTournament(Long tournamentId) {
         List<Scorecard> scorecards = scorecardRepository.findByTournamentId(tournamentId);
+        Map<Long, BigDecimal> underParDiscounts = underParDiscountService.discountByPlayerId(tournamentId);
         List<Scorecard> toSave = new ArrayList<>();
         int skipped = 0;
         int failed = 0;
@@ -86,8 +89,10 @@ public class ScorecardService {
 
             Player player = scorecard.getPlayer();
             try {
-                BigDecimal newHcp = calculateHandicapCourse(
-                        scorecard.getTee(), scorecard.getCantidadHoyosJuego(), player);
+                BigDecimal newHcp = underParDiscountService.apply(
+                        underParDiscounts,
+                        player.getId(),
+                        calculateHandicapCourse(scorecard.getTee(), scorecard.getCantidadHoyosJuego(), player));
                 scorecard.setHandicapCourse(newHcp);
                 toSave.add(scorecard);
 
@@ -710,7 +715,7 @@ public class ScorecardService {
                 .build();
 
         if (canConfigure) {
-            scorecard.setHandicapCourse(calculateHandicapCourse(selectedTee, cantidadHoyosJuego, player));
+            scorecard.setHandicapCourse(handicapForCard(tournament, player, selectedTee, cantidadHoyosJuego));
         }
         scorecard = scorecardRepository.save(scorecard);
         if (canConfigure) {
@@ -737,7 +742,7 @@ public class ScorecardService {
 
         scorecard.setCantidadHoyosJuego(cantidadHoyosJuego);
         scorecard.setTee(selectedTee);
-        scorecard.setHandicapCourse(calculateHandicapCourse(selectedTee, cantidadHoyosJuego, player));
+        scorecard.setHandicapCourse(handicapForCard(tournament, player, selectedTee, cantidadHoyosJuego));
         scorecard.setStatus(ScorecardStatus.IN_PROGRESS);
         scorecard = scorecardRepository.save(scorecard);
         initializeHoleScores(scorecard);
@@ -781,6 +786,27 @@ public class ScorecardService {
             throw new BadRequestException("El tee seleccionado no pertenece al campo del torneo.");
         }
         return tee;
+    }
+
+    /**
+     * HCP Course de tabla. Si la fecha ya está en proceso, resta los golpes bajo par de la fecha previa.
+     * Antes del inicio se deja el valor de tabla: el descuento se aplica al arrancar.
+     */
+    private BigDecimal handicapForCard(Tournament tournament, Player player, CourseTee tee, Integer cantidadHoyosJuego) {
+        BigDecimal handicap = calculateHandicapCourse(tee, cantidadHoyosJuego, player);
+        if (!"IN_PROGRESS".equals(tournament.getEstado())) {
+            return handicap;
+        }
+        BigDecimal discounted = underParDiscountService.apply(
+                underParDiscountService.discountByPlayerId(tournament.getId()),
+                player.getId(),
+                handicap);
+        inscriptionRepository.findByTournamentIdAndPlayerId(tournament.getId(), player.getId())
+                .ifPresent(inscription -> {
+                    inscription.setHandicapCourse(discounted);
+                    inscriptionRepository.save(inscription);
+                });
+        return discounted;
     }
 
     private BigDecimal calculateHandicapCourse(CourseTee tee, Integer cantidadHoyosJuego, Player player) {

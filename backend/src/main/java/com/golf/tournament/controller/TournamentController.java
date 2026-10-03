@@ -70,6 +70,12 @@ public class TournamentController {
         return ResponseEntity.ok(tournamentService.finalizeTournament(id));
     }
 
+    @PostMapping("/{id}/pause")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    public ResponseEntity<TournamentDTO> pauseTournament(@PathVariable Long id) {
+        return ResponseEntity.ok(tournamentService.pauseTournament(id));
+    }
+
     @PostMapping("/{id}/reopen")
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<TournamentDTO> reopenTournament(@PathVariable Long id) {

@@ -44,6 +44,11 @@ public interface TournamentRepository extends JpaRepository<Tournament, Long> {
             ") ORDER BY t.fechaInicio DESC")
     List<Tournament> findAvailableForStageByTipoExcludingStage(@Param("tipo") String tipo, @Param("stageId") Long stageId);
 
+    @Query("SELECT t FROM Tournament t WHERE t.id IN (" +
+           "SELECT st.id FROM TournamentAdminStage s JOIN s.tournaments st " +
+           "WHERE s.tournamentAdmin.id = :tournamentAdminId)")
+    List<Tournament> findByTournamentAdminId(@Param("tournamentAdminId") Long tournamentAdminId);
+
     /** Torneos asociados a una etapa administrativa, ordenados por fechaInicio desc. */
     @Query("SELECT t FROM TournamentAdminStage stage JOIN stage.tournaments t WHERE stage.id = :stageId ORDER BY t.fechaInicio DESC")
     List<Tournament> findByStageIdOrderByFechaInicioDesc(@Param("stageId") Long stageId);

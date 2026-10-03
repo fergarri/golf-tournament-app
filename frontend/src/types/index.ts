@@ -407,6 +407,10 @@ export interface ScoringConfig {
   /** GLOBAL o PER_CATEGORY. Solo relevante para torneos CLASICO. */
   hcpQualifiedMode: string;
   tieBreakMode: string;
+  /** Si es true, la fecha siguiente descuenta los golpes bajo par de la fecha previa. */
+  discountUnderPar?: boolean;
+  /** FIRST_PLACE o ALL_UNDER_PAR. */
+  underParDiscountMode?: string | null;
   positionPoints: ScoringPositionPoints[];
 }
 
@@ -422,6 +426,9 @@ export interface SaveScoringConfigRequest {
   /** GLOBAL o PER_CATEGORY. */
   hcpQualifiedMode: string;
   tieBreakMode: string;
+  discountUnderPar?: boolean;
+  /** FIRST_PLACE o ALL_UNDER_PAR. */
+  underParDiscountMode?: string | null;
   positionPoints: ScoringPositionPoints[];
 }
 

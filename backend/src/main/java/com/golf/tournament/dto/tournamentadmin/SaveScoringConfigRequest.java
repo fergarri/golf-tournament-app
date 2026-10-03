@@ -52,6 +52,12 @@ public class SaveScoringConfigRequest {
     @NotBlank
     private String tieBreakMode;
 
+    /** Si es null, se conserva false. */
+    private Boolean discountUnderPar;
+
+    /** FIRST_PLACE o ALL_UNDER_PAR. Si el descuento está activo y llega vacío, se usa FIRST_PLACE. */
+    private String underParDiscountMode;
+
     @NotNull
     private List<PositionPointsRequest> positionPoints;
 
