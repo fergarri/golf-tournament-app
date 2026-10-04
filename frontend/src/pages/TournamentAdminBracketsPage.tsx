@@ -325,6 +325,7 @@ const TournamentAdminBracketsPage = () => {
   };
 
   const handleDragEnd = (bracket: TournamentAdminPlayoffBracket) => (event: DragEndEvent) => {
+    if (bracket.status !== 'DRAFT' || roundSessions.length > 0) return;
     const { active, over } = event;
     if (!over) return;
     const activeData = active.data.current as DragSourceData | undefined;
@@ -463,16 +464,21 @@ const TournamentAdminBracketsPage = () => {
     activeBracket: TournamentAdminPlayoffBracket,
     slot: TournamentAdminPlayoffBracketSlot,
     pair: TournamentAdminPlayoffBracketSlot[],
+    roundNumber: number,
     isRound1: boolean
   ) => {
     const opponent = pair.find((s) => s.slotId !== slot.slotId);
     const isLoser = Boolean(opponent?.isWinner);
     const statusClass = slot.isWinner ? 'winner' : isLoser ? 'loser' : slot.playerId === null ? 'empty' : '';
     const canShowActions = activeBracket.status === 'CONFIRMED' && slot.playerId !== null;
+    const canDragPositions = activeBracket.status === 'DRAFT' && roundSessions.length === 0;
+    const laterRoundLocked = roundSessions.some((session) => session.roundNumber > roundNumber);
+    const laterRoundLockTitle =
+      'La etapa siguiente ya tiene código. Reiniciá esa ronda para cambiar el vencedor.';
 
     const inner = (
       <>
-        {isRound1 && slot.playerId !== null ? (
+        {canDragPositions && isRound1 && slot.playerId !== null ? (
           <DraggablePlayerChip
             dragId={`drag-slot-${slot.slotId}`}
             data={{ type: 'slot', slotId: slot.slotId, playerId: slot.playerId }}
@@ -491,6 +497,8 @@ const TournamentAdminBracketsPage = () => {
               <button
                 type="button"
                 className="bracket-slot-btn btn-winner"
+                disabled={laterRoundLocked}
+                title={laterRoundLocked ? laterRoundLockTitle : undefined}
                 onClick={() => onClickMarkWinner(activeBracket.bracketId, slot.slotId)}
               >
                 Vencedor
@@ -499,6 +507,8 @@ const TournamentAdminBracketsPage = () => {
               <button
                 type="button"
                 className="bracket-slot-btn btn-undo"
+                disabled={laterRoundLocked}
+                title={laterRoundLocked ? laterRoundLockTitle : undefined}
                 onClick={() => handleUndoWinner(activeBracket.bracketId, slot.slotId)}
               >
                 Deshacer
@@ -509,7 +519,7 @@ const TournamentAdminBracketsPage = () => {
       </>
     );
 
-    if (isRound1) {
+    if (canDragPositions && isRound1) {
       return (
         <DroppableArea
           key={slot.slotId}
@@ -549,6 +559,13 @@ const TournamentAdminBracketsPage = () => {
             <span className={`bracket-status-badge status-${activeBracket.status.toLowerCase()}`}>
               {activeBracket.status === 'DRAFT' ? 'Armando' : 'Confirmada'}
             </span>
+            {activeBracket.status === 'CONFIRMED' && (
+              <span className="bracket-lock-hint">
+                {roundSessions.length > 0
+                  ? 'Las posiciones de las etapas con código no se pueden cambiar. Reiniciá la ronda (↺) para volver a editarlas.'
+                  : 'Las posiciones quedan fijas al confirmar. Usá Revertir a edición para volver a ubicar jugadores.'}
+              </span>
+            )}
             {activeBracket.status === 'DRAFT' && (
               <button
                 type="button"
@@ -607,15 +624,21 @@ const TournamentAdminBracketsPage = () => {
               {unassigned.length === 0 ? (
                 <div className="unassigned-panel-empty">Todos los clasificados están ubicados</div>
               ) : (
-                unassigned.map((p) => (
-                  <DraggablePlayerChip
-                    key={p.playerId}
-                    dragId={`drag-unassigned-${p.playerId}`}
-                    data={{ type: 'unassigned', playerId: p.playerId }}
-                    playerName={p.playerName}
-                    handicapIndex={p.playerHandicapIndex}
-                  />
-                ))
+                unassigned.map((p) =>
+                  activeBracket.status === 'DRAFT' && roundSessions.length === 0 ? (
+                    <DraggablePlayerChip
+                      key={p.playerId}
+                      dragId={`drag-unassigned-${p.playerId}`}
+                      data={{ type: 'unassigned', playerId: p.playerId }}
+                      playerName={p.playerName}
+                      handicapIndex={p.playerHandicapIndex}
+                    />
+                  ) : (
+                    <span key={p.playerId} className="bracket-slot-player-name">
+                      {formatPlayerLabel(p.playerName, p.playerHandicapIndex)}
+                    </span>
+                  )
+                )
               )}
             </DroppableArea>
 
@@ -702,7 +725,7 @@ const TournamentAdminBracketsPage = () => {
                                         roundNumber: round.roundNumber,
                                       })
                                     }
-                                    title="Reiniciar ronda"
+                                    title="Reiniciar ronda. Quita el código y permite volver a editar las posiciones."
                                   >
                                     ↺
                                   </button>
@@ -718,7 +741,9 @@ const TournamentAdminBracketsPage = () => {
                                       <div
                                         className={`bracket-match-pair ${!isLast ? 'has-connector' : ''}`}
                                       >
-                                        {pair.map((slot) => renderSlot(activeBracket, slot, pair, isRound1))}
+                                        {pair.map((slot) =>
+                                          renderSlot(activeBracket, slot, pair, round.roundNumber, isRound1)
+                                        )}
                                       </div>
                                       {match && (
                                         <div
@@ -933,7 +958,7 @@ const TournamentAdminBracketsPage = () => {
         onClose={() => setResetRoundTarget(null)}
         onConfirm={confirmResetRound}
         title="Reiniciar ronda"
-        message="Se va a borrar el código y los partidos de esta ronda. Solo se puede hacer si todavía nadie cargó ningún hoyo. Esta acción no se puede deshacer. ¿Confirmás?"
+        message="Se va a borrar el código y los partidos de esta ronda. Después vas a poder volver a editar las posiciones. Solo se puede hacer si todavía nadie cargó ningún hoyo. Esta acción no se puede deshacer. ¿Confirmás?"
         type="confirm"
         confirmText="Confirmar"
         cancelText="Cancelar"

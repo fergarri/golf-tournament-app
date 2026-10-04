@@ -157,6 +157,11 @@ public class TournamentAdminPlayoffBracketService {
     @Transactional
     public TournamentAdminPlayoffBracketsDTO saveSlots(Long tournamentAdminId, Long bracketId, SaveBracketSlotsRequest request) {
         TournamentAdminPlayoffBracket bracket = getBracketOrThrow(tournamentAdminId, bracketId);
+        if (!"DRAFT".equals(bracket.getStatus())) {
+            throw new BadRequestException(
+                    "La llave está confirmada. Para cambiar las posiciones, reiniciá la ronda si ya tiene código y revertí a edición.");
+        }
+        assertDescendantsUnlocked(bracketId, 1);
 
         List<TournamentAdminPlayoffBracketSlot> round1Slots = slotRepository
                 .findByBracketIdOrderByRoundNumberAscSlotIndexAsc(bracketId)
@@ -244,6 +249,10 @@ public class TournamentAdminPlayoffBracketService {
             throw new BadRequestException(
                     "No se puede revertir la llave a edición: ya hay partidos jugados (Vencedores marcados)");
         }
+        if (hasRoundSessionFrom(bracketId, 1)) {
+            throw new BadRequestException(
+                    "No se puede volver a edición: hay una ronda con código. Reiniciá esa ronda primero.");
+        }
         bracket.setStatus("DRAFT");
         bracketRepository.save(bracket);
         return getBrackets(tournamentAdminId);
@@ -271,6 +280,7 @@ public class TournamentAdminPlayoffBracketService {
         if (slot.getPlayer() == null) {
             throw new BadRequestException("El casillero no tiene un jugador asignado");
         }
+        assertDescendantsUnlocked(bracketId, slot.getRoundNumber() + 1);
 
         int siblingIndex = slot.getSlotIndex() % 2 == 0 ? slot.getSlotIndex() + 1 : slot.getSlotIndex() - 1;
         Optional<TournamentAdminPlayoffBracketSlot> siblingOpt = slotRepository
@@ -302,6 +312,7 @@ public class TournamentAdminPlayoffBracketService {
         if (!Boolean.TRUE.equals(slot.getIsWinner())) {
             throw new BadRequestException("Este casillero no tiene un Vencedor marcado");
         }
+        assertDescendantsUnlocked(bracketId, slot.getRoundNumber() + 1);
 
         resetDescendantsFrom(bracketId, slot.getRoundNumber() + 1, slot.getSlotIndex() / 2);
         slot.setIsWinner(false);
@@ -316,6 +327,18 @@ public class TournamentAdminPlayoffBracketService {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private void assertDescendantsUnlocked(Long bracketId, int fromRound) {
+        if (hasRoundSessionFrom(bracketId, fromRound)) {
+            throw new BadRequestException(
+                    "Hay una etapa con código generado. Reiniciá esa ronda para poder cambiar las posiciones.");
+        }
+    }
+
+    private boolean hasRoundSessionFrom(Long bracketId, int fromRound) {
+        return roundSessionRepository.findByBracketIdOrderByRoundNumberAsc(bracketId).stream()
+                .anyMatch(session -> session.getRoundNumber() != null && session.getRoundNumber() >= fromRound);
+    }
 
     private void propagateWinner(Long bracketId, TournamentAdminPlayoffBracketSlot slot) {
         int nextRound = slot.getRoundNumber() + 1;
@@ -402,7 +425,8 @@ public class TournamentAdminPlayoffBracketService {
                 .collect(Collectors.toList());
 
         boolean canRevertToDraft = "CONFIRMED".equals(bracket.getStatus())
-                && !slotRepository.existsByBracketIdAndIsWinnerTrue(bracket.getId());
+                && !slotRepository.existsByBracketIdAndIsWinnerTrue(bracket.getId())
+                && !hasRoundSessionFrom(bracket.getId(), 1);
 
         return TournamentAdminPlayoffBracketsDTO.BracketDTO.builder()
                 .bracketId(bracket.getId())
