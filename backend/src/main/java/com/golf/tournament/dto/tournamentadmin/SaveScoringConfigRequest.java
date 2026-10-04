@@ -59,7 +59,7 @@ public class SaveScoringConfigRequest {
     /** FIRST_PLACE o ALL_UNDER_PAR. Si el descuento está activo y llega vacío, se usa FIRST_PLACE. */
     private String underParDiscountMode;
 
-    /** Porcentaje de HCP Course del Match Play. Si es null, se usa 100. Entre 0 y 100, un decimal. */
+    /** Porcentaje de HCP Course del Match Play. Si es null, se usa 100. Entero entre 0 y 100. */
     private BigDecimal matchPlayHcpPercent;
 
     @NotNull

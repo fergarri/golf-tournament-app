@@ -226,13 +226,12 @@ const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved, saveSlotRef }:
                     type="number"
                     min={0}
                     max={100}
-                    step={0.1}
+                    step={1}
                     value={config.matchPlayHcpPercent ?? 100}
                     onChange={(e) => {
-                      const parsed = e.target.value === '' ? 0 : Number(e.target.value);
+                      const parsed = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
                       if (!Number.isFinite(parsed)) return;
-                      const clamped = Math.min(100, Math.max(0, parsed));
-                      handleFieldChange('matchPlayHcpPercent', Math.round(clamped * 10) / 10);
+                      handleFieldChange('matchPlayHcpPercent', Math.min(100, Math.max(0, parsed)));
                     }}
                     style={inputStyle}
                   />

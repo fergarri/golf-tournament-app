@@ -36,7 +36,7 @@ public class TournamentAdminScoringConfigService {
     private static final String DEFAULT_HCP_QUALIFIED_MODE = "GLOBAL";
     private static final String DEFAULT_TIE_BREAK_MODE = "NETO_HCP_HOLE";
     private static final boolean DEFAULT_DISCOUNT_UNDER_PAR = false;
-    private static final BigDecimal DEFAULT_MATCH_PLAY_HCP_PERCENT = new BigDecimal("100.0");
+    private static final BigDecimal DEFAULT_MATCH_PLAY_HCP_PERCENT = new BigDecimal("100");
     static final String UNDER_PAR_MODE_FIRST_PLACE = "FIRST_PLACE";
 
     private final TournamentAdminRepository tournamentAdminRepository;
@@ -163,11 +163,17 @@ public class TournamentAdminScoringConfigService {
 
     private BigDecimal normalizeMatchPlayPercent(BigDecimal raw) {
         BigDecimal percent = raw == null ? DEFAULT_MATCH_PLAY_HCP_PERCENT : raw;
-        BigDecimal scaled = percent.setScale(1, RoundingMode.HALF_UP);
-        if (scaled.compareTo(BigDecimal.ZERO) < 0 || scaled.compareTo(DEFAULT_MATCH_PLAY_HCP_PERCENT) > 0) {
-            throw new BadRequestException("El porcentaje de HCP Course del Match Play debe estar entre 0 y 100");
+        try {
+            percent = percent.setScale(0, RoundingMode.UNNECESSARY);
+        } catch (ArithmeticException ex) {
+            throw new BadRequestException(
+                    "El porcentaje de HCP Course del Match Play debe ser un número entero entre 0 y 100");
         }
-        return scaled;
+        if (percent.compareTo(BigDecimal.ZERO) < 0 || percent.compareTo(DEFAULT_MATCH_PLAY_HCP_PERCENT) > 0) {
+            throw new BadRequestException(
+                    "El porcentaje de HCP Course del Match Play debe ser un número entero entre 0 y 100");
+        }
+        return percent;
     }
 
     private String normalizeUnderParMode(String mode) {

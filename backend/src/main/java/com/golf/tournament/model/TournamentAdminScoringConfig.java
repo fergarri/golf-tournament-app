@@ -82,9 +82,9 @@ public class TournamentAdminScoringConfig {
      * Porcentaje del HCP Course que se usa para repartir golpes en el Match Play Con HCP.
      * 100 = handicap de cancha completo.
      */
-    @Column(name = "match_play_hcp_percent", nullable = false, precision = 5, scale = 1)
+    @Column(name = "match_play_hcp_percent", nullable = false, precision = 5, scale = 0)
     @Builder.Default
-    private BigDecimal matchPlayHcpPercent = new BigDecimal("100.0");
+    private BigDecimal matchPlayHcpPercent = new BigDecimal("100");
 
     @OneToMany(mappedBy = "scoringConfig", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
