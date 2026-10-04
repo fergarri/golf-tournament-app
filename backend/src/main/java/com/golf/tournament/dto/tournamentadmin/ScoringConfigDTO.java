@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Data
@@ -30,6 +31,8 @@ public class ScoringConfigDTO {
     private Boolean discountUnderPar;
     /** FIRST_PLACE o ALL_UNDER_PAR. */
     private String underParDiscountMode;
+    /** Porcentaje de HCP Course para el Match Play Con HCP. 100 = completo. */
+    private BigDecimal matchPlayHcpPercent;
     private List<PositionPointsDTO> positionPoints;
 
     @Data

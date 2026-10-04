@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -22,6 +23,10 @@ public class PlayoffMatchStateDTO {
     private String status;
     /** HCP / SCRATCH */
     private String scoreType;
+    /** STROKES (golpes) o WINNER (ganador del hoyo). */
+    private String entryMode;
+    /** Porcentaje de HCP Course congelado en el partido. Null en Scratch o si todavía no se abrió. */
+    private BigDecimal hcpAllowancePercent;
     private Integer cantidadHoyosJuego;
     private String resultSummary;
     private Long winnerPlayerId;
@@ -49,8 +54,10 @@ public class PlayoffMatchStateDTO {
         private String shortName;
         /** Nombre del tee desde el que juega (ej: "Blanco", "Rojo"). Puede ser null. */
         private String teeName;
-        /** null si la llave es SCRATCH */
+        /** null si la llave es SCRATCH. HCP Course al 100%. */
         private Integer handicapCourse;
+        /** HCP Course al porcentaje del partido. Null en Scratch. */
+        private Integer playingHandicap;
         /** IN_PROGRESS / DELIVERED / CANCELLED */
         private String cardStatus;
     }
@@ -76,8 +83,12 @@ public class PlayoffMatchStateDTO {
         private Integer golpesPropioB;
         private Integer golpesRivalB;
         private Boolean validadoB;
-        /** "A" / "B" / "HALVED" / null si todavía no está definido */
+        /** "A" / "B" / "HALVED" / null si todavía no está definido (solo cuando ambos coinciden). */
         private String holeWinner;
+        /** Marca del jugador A: "A" / "B" / "HALVED" / null. */
+        private String markedByA;
+        /** Marca del jugador B: "A" / "B" / "HALVED" / null. */
+        private String markedByB;
         /** true si este hoyo todavía no existe en la BD (próximo hoyo de muerte súbita a habilitar) */
         private Boolean pending;
     }

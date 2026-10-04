@@ -22,5 +22,7 @@ public class UpdatePlayoffMatchHolesRequest {
         private Integer holeSequence;
         private Integer golpesPropio;
         private Integer golpesRival;
+        /** ME, OPPONENT, HALVED, o null para desmarcar. Solo en partidos de ganador del hoyo. */
+        private String holeResult;
     }
 }

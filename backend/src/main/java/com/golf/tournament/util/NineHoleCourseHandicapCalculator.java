@@ -57,6 +57,30 @@ public final class NineHoleCourseHandicapCalculator {
                             "tengan el par cargado.");
         }
 
+        return roundHalfTowardPositiveInfinity(calculateUnrounded(
+                handicapIndex, courseRatingIda, slopeRatingIda, parIda));
+    }
+
+    /**
+     * Mismo cálculo que {@link #calculate} pero sin el redondeo final al entero.
+     * Sirve para aplicar un porcentaje de juego distinto del 100% sin redondear dos veces.
+     */
+    public static BigDecimal calculateUnrounded(BigDecimal handicapIndex, BigDecimal courseRatingIda,
+                                                Integer slopeRatingIda, int parIda) {
+        if (handicapIndex == null) {
+            throw new BadRequestException("El jugador no tiene handicap index asignado.");
+        }
+        if (courseRatingIda == null || slopeRatingIda == null) {
+            throw new BadRequestException(
+                    "El tee seleccionado no tiene cargada la Calificación/Slope de Ida (9 hoyos). " +
+                            "Importe la planilla de calificación de 9 hoyos del campo antes de continuar.");
+        }
+        if (parIda <= 0) {
+            throw new BadRequestException(
+                    "No se pudo determinar el Par de Ida (9 hoyos) de la cancha. Verifique que los hoyos 1 a 9 " +
+                            "tengan el par cargado.");
+        }
+
         BigDecimal halfIndex = roundHalfUp(handicapIndex.multiply(HALF), 1);
 
         // IMPORTANTE: multiplicar primero (halfIndex x slope) y dividir por 113 una sola vez,
@@ -66,11 +90,16 @@ public final class NineHoleCourseHandicapCalculator {
         // que en realidad es un empate ".5" exacto, haciendo que el redondeo final caiga del lado
         // equivocado (ver caso real: HI 22.5, CR Ida 35.1, Slope Ida 114, Par Ida 36 -> debe ser 11,
         // no 10).
-        BigDecimal raw = halfIndex.multiply(BigDecimal.valueOf(slopeRatingIda))
+        return halfIndex.multiply(BigDecimal.valueOf(slopeRatingIda))
                 .divide(SLOPE_BASE, 20, RoundingMode.HALF_UP)
                 .add(courseRatingIda.subtract(BigDecimal.valueOf(parIda)));
+    }
 
-        return roundHalfUp(raw, 0).intValue();
+    /**
+     * Redondeo al entero con ".5 hacia arriba" (hacia +infinito), el mismo de la Regla 6.1/6.2.
+     */
+    public static int roundHalfTowardPositiveInfinity(BigDecimal value) {
+        return roundHalfUp(value, 0).intValue();
     }
 
     /**

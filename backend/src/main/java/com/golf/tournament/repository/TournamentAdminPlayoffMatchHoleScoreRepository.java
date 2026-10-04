@@ -15,4 +15,6 @@ public interface TournamentAdminPlayoffMatchHoleScoreRepository extends JpaRepos
     Optional<TournamentAdminPlayoffMatchHoleScore> findByCardIdAndHoleSequence(Long cardId, Integer holeSequence);
 
     boolean existsByCardIdInAndGolpesPropioIsNotNull(List<Long> cardIds);
+
+    boolean existsByCardIdInAndHoleResultIsNotNull(List<Long> cardIds);
 }

@@ -112,6 +112,7 @@ const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved, saveSlotRef }:
         tieBreakMode: config.tieBreakMode,
         discountUnderPar: config.discountUnderPar ?? false,
         underParDiscountMode: config.discountUnderPar ? (config.underParDiscountMode ?? 'FIRST_PLACE') : null,
+        matchPlayHcpPercent: config.matchPlayHcpPercent ?? 100,
         positionPoints: config.positionPoints,
       });
       setConfig(saved);
@@ -215,6 +216,31 @@ const ScoringConfigSection = ({ tournamentAdminId, tipo, onSaved, saveSlotRef }:
                     style={inputStyle}
                   />
                   <span style={{ fontSize: '0.85rem', color: '#7f8c8d', minWidth: '30px' }}>pos.</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <label style={{ flex: 1, fontSize: '0.9rem', color: '#555' }}>
+                    Porcentaje de HCP Course (Match Play)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                    value={config.matchPlayHcpPercent ?? 100}
+                    onChange={(e) => {
+                      const parsed = e.target.value === '' ? 0 : Number(e.target.value);
+                      if (!Number.isFinite(parsed)) return;
+                      const clamped = Math.min(100, Math.max(0, parsed));
+                      handleFieldChange('matchPlayHcpPercent', Math.round(clamped * 10) / 10);
+                    }}
+                    style={inputStyle}
+                  />
+                  <span style={{ fontSize: '0.85rem', color: '#7f8c8d', minWidth: '30px' }}>%</span>
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#7f8c8d', fontStyle: 'italic', paddingLeft: '0.1rem' }}>
+                  Porcentaje del HCP Course con el que se reparten los golpes del Match Play Con HCP.
+                  Queda fijo en el partido la primera vez que un jugador abre la tarjeta.
                 </div>
 
                 {/* Modo de clasificación: solo para torneos CLASICO */}

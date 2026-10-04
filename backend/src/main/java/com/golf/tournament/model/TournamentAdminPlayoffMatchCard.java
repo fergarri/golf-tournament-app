@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +45,10 @@ public class TournamentAdminPlayoffMatchCard {
 
     @Column(name = "handicap_course")
     private Integer handicapCourse;
+
+    /** HCP Course de 9 hoyos antes del redondeo final. Null en 18 hoyos y en Scratch. */
+    @Column(name = "handicap_course_unrounded", precision = 28, scale = 20)
+    private BigDecimal handicapCourseUnrounded;
 
     /** IN_PROGRESS / DELIVERED / CANCELLED (levantó la bola) */
     @Column(nullable = false, length = 20)

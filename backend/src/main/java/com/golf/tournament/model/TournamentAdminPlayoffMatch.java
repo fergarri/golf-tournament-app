@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -52,6 +53,21 @@ public class TournamentAdminPlayoffMatch {
     @Column(nullable = false, length = 20)
     @Builder.Default
     private String status = "IN_PROGRESS";
+
+    /**
+     * STROKES: partidos ya empezados, se cargan los golpes.
+     * WINNER: partidos nuevos, se marca quién ganó el hoyo.
+     */
+    @Column(name = "entry_mode", nullable = false, length = 20)
+    @Builder.Default
+    private String entryMode = "STROKES";
+
+    /**
+     * Porcentaje de HCP Course congelado la primera vez que un jugador abre la tarjeta.
+     * Null hasta ese momento, y en partidos Scratch o de carga por golpes.
+     */
+    @Column(name = "hcp_allowance_percent", precision = 5, scale = 1)
+    private BigDecimal hcpAllowancePercent;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "winner_player_id")

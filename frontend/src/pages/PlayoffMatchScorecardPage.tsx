@@ -9,6 +9,7 @@ import Modal from '../components/Modal';
 import './PlayoffMatchScorecardPage.css';
 
 type LocalHoleScore = { propio: number | null; rival: number | null };
+type HoleMark = 'ME' | 'OPPONENT' | 'HALVED';
 
 const PlayoffMatchScorecardPage = () => {
   const { code, matchId: matchIdParam } = useParams<{ code: string; matchId: string }>();
@@ -18,6 +19,7 @@ const PlayoffMatchScorecardPage = () => {
 
   const [state, setState] = useState<PlayoffMatchState | null>(null);
   const [localScores, setLocalScores] = useState<{ [holeSequence: number]: LocalHoleScore }>({});
+  const [localMarks, setLocalMarks] = useState<{ [holeSequence: number]: HoleMark | null }>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -32,10 +34,15 @@ const PlayoffMatchScorecardPage = () => {
 
   const saveTimeoutRef = useRef<number | null>(null);
   const localScoresRef = useRef(localScores);
+  const localMarksRef = useRef(localMarks);
 
   useEffect(() => {
     localScoresRef.current = localScores;
   }, [localScores]);
+
+  useEffect(() => {
+    localMarksRef.current = localMarks;
+  }, [localMarks]);
 
   useEffect(() => {
     if (!code || !matricula || !Number.isFinite(matchId)) {
@@ -53,7 +60,7 @@ const PlayoffMatchScorecardPage = () => {
     if (state?.status === 'FINISHED') return;
     const interval = window.setInterval(() => {
       void refreshState({ silent: true });
-    }, 15000);
+    }, 3000);
     return () => window.clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [code, matricula, matchId, state?.status]);
@@ -64,8 +71,23 @@ const PlayoffMatchScorecardPage = () => {
     };
   }, []);
 
+  const toRelativeMark = (absolute: string | null | undefined, side: 'A' | 'B'): HoleMark | null => {
+    if (!absolute) return null;
+    if (absolute === 'HALVED') return 'HALVED';
+    return absolute === side ? 'ME' : 'OPPONENT';
+  };
+
   const applyStateToLocalScores = (data: PlayoffMatchState) => {
     const mySide = data.requestingPlayerId === data.playerA.playerId ? 'A' : 'B';
+    if (data.entryMode === 'WINNER') {
+      const next: { [holeSequence: number]: HoleMark | null } = {};
+      data.holes.forEach((hole) => {
+        const absolute = mySide === 'A' ? hole.markedByA : hole.markedByB;
+        next[hole.holeSequence] = toRelativeMark(absolute, mySide);
+      });
+      setLocalMarks(next);
+      return;
+    }
     const next: { [holeSequence: number]: LocalHoleScore } = {};
     data.holes.forEach((hole) => {
       next[hole.holeSequence] = {
@@ -168,6 +190,49 @@ const PlayoffMatchScorecardPage = () => {
     }
   };
 
+  const saveMarks = async () => {
+    if (!code || !matricula || !state) return;
+    const holeScores: UpdatePlayoffMatchHoleScore[] = state.holes
+      .filter((h) => !h.pending || localMarksRef.current[h.holeSequence] != null)
+      .map((h) => ({
+        holeSequence: h.holeSequence,
+        holeResult: localMarksRef.current[h.holeSequence] ?? null,
+      }));
+
+    try {
+      setSaving(true);
+      const updated = await tournamentAdminPlayoffMatchService.updateHoles(code, matchId, matricula, holeScores);
+      setState(updated);
+      setLastSaved(new Date());
+      saveTimeoutRef.current = null;
+      const side = updated.requestingPlayerId === updated.playerA.playerId ? 'A' : 'B';
+      const current = localMarksRef.current;
+      const next: { [holeSequence: number]: HoleMark | null } = { ...current };
+      updated.holes.forEach((hole) => {
+        if (next[hole.holeSequence] === undefined) {
+          const absolute = side === 'A' ? hole.markedByA : hole.markedByB;
+          next[hole.holeSequence] = toRelativeMark(absolute, side);
+        }
+      });
+      setLocalMarks(next);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Error guardando el resultado del hoyo');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleMark = (holeSequence: number, choice: HoleMark) => {
+    setLocalMarks((prev) => ({
+      ...prev,
+      [holeSequence]: prev[holeSequence] === choice ? null : choice,
+    }));
+    if (saveTimeoutRef.current !== null) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = window.setTimeout(() => {
+      void saveMarks();
+    }, 400);
+  };
+
   const showModal = (
     title: string,
     message: string,
@@ -257,6 +322,7 @@ const PlayoffMatchScorecardPage = () => {
   const isFinished = state.status === 'FINISHED';
   const myCardDelivered = me.cardStatus === 'DELIVERED';
   const inputsDisabled = isFinished || myCardDelivered;
+  const winnerMode = state.entryMode === 'WINNER';
 
   const cantidadHoyosJuego = state.cantidadHoyosJuego;
   const regularHoles = state.holes.filter((h) => h.holeSequence <= cantidadHoyosJuego);
@@ -386,6 +452,57 @@ const PlayoffMatchScorecardPage = () => {
       );
     });
 
+  const formatPercent = (value: number) => {
+    const rounded = Math.round(value * 10) / 10;
+    const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+    return text.replace('.', ',');
+  };
+
+  const marksConflict = (hole: PlayoffMatchHoleInfo) =>
+    Boolean(hole.markedByA && hole.markedByB && hole.markedByA !== hole.markedByB);
+
+  const countMark = (holes: PlayoffMatchHoleInfo[], choice: HoleMark) =>
+    holes.filter((h) => localMarks[h.holeSequence] === choice).length;
+
+  const renderMarkCells = (holes: PlayoffMatchHoleInfo[], choice: HoleMark) =>
+    holes.map((hole) => {
+      const checked = localMarks[hole.holeSequence] === choice;
+      const conflict = marksConflict(hole);
+      const agreed = Boolean(hole.markedByA && hole.markedByB && hole.markedByA === hole.markedByB);
+      const strokes = choice === 'ME' ? myStrokesOf(hole) : choice === 'OPPONENT' ? oppStrokesOf(hole) : 0;
+      const label =
+        choice === 'ME'
+          ? `Ganó ${me.shortName} el hoyo ${hole.numeroHoyo}`
+          : choice === 'OPPONENT'
+            ? `Ganó ${opponent.shortName} el hoyo ${hole.numeroHoyo}`
+            : `Empate en el hoyo ${hole.numeroHoyo}`;
+      return (
+        <td
+          key={hole.holeSequence}
+          className={`playoff-score-cell playoff-mark-cell ${conflict ? 'concordance-conflict' : ''} ${agreed && checked ? 'concordance-agreed' : ''}`}
+          title={conflict ? 'No coincide con lo que marcó tu rival' : undefined}
+        >
+          {state.scoreType === 'HCP' &&
+            (choice === 'HALVED' ? <div className="stroke-dots" /> : renderStrokeDots(strokes))}
+          <label className={`playoff-winner-check choice-${choice.toLowerCase()}`}>
+            <input
+              type="checkbox"
+              checked={checked}
+              disabled={inputsDisabled}
+              aria-label={label}
+              onChange={() => toggleMark(hole.holeSequence, choice)}
+            />
+          </label>
+        </td>
+      );
+    });
+
+  const renderMarkSubtotal = (holes: PlayoffMatchHoleInfo[], choice: HoleMark) => (
+    <td className="playoff-subtotal-cell">{holes.length ? countMark(holes, choice) : ''}</td>
+  );
+
+  const allowanceLabel = state.hcpAllowancePercent != null ? formatPercent(state.hcpAllowancePercent) : '100';
+
   return (
     <div className="playoff-match-container">
       <div className="playoff-match-header">
@@ -393,7 +510,19 @@ const PlayoffMatchScorecardPage = () => {
         <p className="playoff-match-players">
           <strong>{me.playerName}</strong> (Vos) vs <strong>{opponent.playerName}</strong>
         </p>
-        {me.handicapCourse !== null && (
+        {winnerMode && state.scoreType === 'HCP' && me.handicapCourse !== null && (
+          <div className="playoff-match-hcp-block">
+            <p className="playoff-match-hcp">
+              <strong>{me.playerName}</strong> — HCP C. 100%: {me.handicapCourse} · HCP C. {allowanceLabel}%:{' '}
+              {me.playingHandicap ?? me.handicapCourse}
+            </p>
+            <p className="playoff-match-hcp">
+              <strong>{opponent.playerName}</strong> — HCP C. 100%: {opponent.handicapCourse} · HCP C.{' '}
+              {allowanceLabel}%: {opponent.playingHandicap ?? opponent.handicapCourse}
+            </p>
+          </div>
+        )}
+        {!winnerMode && me.handicapCourse !== null && (
           <p className="playoff-match-hcp">Tu Handicap de Cancha: {me.handicapCourse}</p>
         )}
 
@@ -421,9 +550,11 @@ const PlayoffMatchScorecardPage = () => {
           <div className="playoff-blocked-reason">{state.blockedReason}</div>
         )}
 
-        <div className="playoff-legend-dot">
-          <span className="stroke-dot small">●</span> = golpe de hándicap a favor en ese hoyo
-        </div>
+        {(!winnerMode || state.scoreType === 'HCP') && (
+          <div className="playoff-legend-dot">
+            <span className="stroke-dot small">●</span> = golpe de hándicap a favor en ese hoyo
+          </div>
+        )}
 
         <div className="auto-save-indicator">
           {saving ? (
@@ -485,44 +616,89 @@ const PlayoffMatchScorecardPage = () => {
               <td className="playoff-total-cell">{sumPar(regularHoles)}</td>
             </tr>
 
-            <tr className="playoff-row-player playoff-row-me">
-              <td className="playoff-sticky-col playoff-label-cell playoff-player-label">{me.shortName}</td>
-              {renderMyScoreCells(frontNine)}
-              {hasBackNine && (
-                <td className="playoff-subtotal-cell">{sumMyScore(frontNine) ?? '-'}</td>
-              )}
-              {renderMyScoreCells(backNine)}
-              {hasBackNine && (
-                <td className="playoff-subtotal-cell">{sumMyScore(backNine) ?? '-'}</td>
-              )}
-              {hasExtraHoles && <td className="playoff-subtotal-cell" />}
-              {renderMyScoreCells(extraHoles)}
-              <td className="playoff-total-cell">{sumMyScore(allHoles) ?? '-'}</td>
-            </tr>
+            {winnerMode ? (
+              <>
+                <tr className="playoff-row-player playoff-row-me">
+                  <td className="playoff-sticky-col playoff-label-cell playoff-player-label">{me.shortName}</td>
+                  {renderMarkCells(frontNine, 'ME')}
+                  {hasBackNine && renderMarkSubtotal(frontNine, 'ME')}
+                  {renderMarkCells(backNine, 'ME')}
+                  {hasBackNine && renderMarkSubtotal(backNine, 'ME')}
+                  {hasExtraHoles && <td className="playoff-subtotal-cell" />}
+                  {renderMarkCells(extraHoles, 'ME')}
+                  <td className="playoff-total-cell">{countMark(allHoles, 'ME')}</td>
+                </tr>
+                <tr className="playoff-row-player playoff-row-tie">
+                  <td className="playoff-sticky-col playoff-label-cell playoff-tie-label">Empate</td>
+                  {renderMarkCells(frontNine, 'HALVED')}
+                  {hasBackNine && renderMarkSubtotal(frontNine, 'HALVED')}
+                  {renderMarkCells(backNine, 'HALVED')}
+                  {hasBackNine && renderMarkSubtotal(backNine, 'HALVED')}
+                  {hasExtraHoles && <td className="playoff-subtotal-cell" />}
+                  {renderMarkCells(extraHoles, 'HALVED')}
+                  <td className="playoff-total-cell">{countMark(allHoles, 'HALVED')}</td>
+                </tr>
+                <tr className="playoff-row-player playoff-row-rival">
+                  <td className="playoff-sticky-col playoff-label-cell playoff-rival-label">{opponent.shortName}</td>
+                  {renderMarkCells(frontNine, 'OPPONENT')}
+                  {hasBackNine && renderMarkSubtotal(frontNine, 'OPPONENT')}
+                  {renderMarkCells(backNine, 'OPPONENT')}
+                  {hasBackNine && renderMarkSubtotal(backNine, 'OPPONENT')}
+                  {hasExtraHoles && <td className="playoff-subtotal-cell" />}
+                  {renderMarkCells(extraHoles, 'OPPONENT')}
+                  <td className="playoff-total-cell">{countMark(allHoles, 'OPPONENT')}</td>
+                </tr>
+              </>
+            ) : (
+              <>
+                <tr className="playoff-row-player playoff-row-me">
+                  <td className="playoff-sticky-col playoff-label-cell playoff-player-label">{me.shortName}</td>
+                  {renderMyScoreCells(frontNine)}
+                  {hasBackNine && (
+                    <td className="playoff-subtotal-cell">{sumMyScore(frontNine) ?? '-'}</td>
+                  )}
+                  {renderMyScoreCells(backNine)}
+                  {hasBackNine && (
+                    <td className="playoff-subtotal-cell">{sumMyScore(backNine) ?? '-'}</td>
+                  )}
+                  {hasExtraHoles && <td className="playoff-subtotal-cell" />}
+                  {renderMyScoreCells(extraHoles)}
+                  <td className="playoff-total-cell">{sumMyScore(allHoles) ?? '-'}</td>
+                </tr>
 
-            <tr className="playoff-row-player playoff-row-rival">
-              <td className="playoff-sticky-col playoff-label-cell playoff-rival-label">{opponent.shortName}</td>
-              {renderRivalScoreCells(frontNine)}
-              {hasBackNine && (
-                <td className="playoff-subtotal-cell">{sumRivalScore(frontNine) ?? '-'}</td>
-              )}
-              {renderRivalScoreCells(backNine)}
-              {hasBackNine && (
-                <td className="playoff-subtotal-cell">{sumRivalScore(backNine) ?? '-'}</td>
-              )}
-              {hasExtraHoles && <td className="playoff-subtotal-cell" />}
-              {renderRivalScoreCells(extraHoles)}
-              <td className="playoff-total-cell">{sumRivalScore(allHoles) ?? '-'}</td>
-            </tr>
+                <tr className="playoff-row-player playoff-row-rival">
+                  <td className="playoff-sticky-col playoff-label-cell playoff-rival-label">{opponent.shortName}</td>
+                  {renderRivalScoreCells(frontNine)}
+                  {hasBackNine && (
+                    <td className="playoff-subtotal-cell">{sumRivalScore(frontNine) ?? '-'}</td>
+                  )}
+                  {renderRivalScoreCells(backNine)}
+                  {hasBackNine && (
+                    <td className="playoff-subtotal-cell">{sumRivalScore(backNine) ?? '-'}</td>
+                  )}
+                  {hasExtraHoles && <td className="playoff-subtotal-cell" />}
+                  {renderRivalScoreCells(extraHoles)}
+                  <td className="playoff-total-cell">{sumRivalScore(allHoles) ?? '-'}</td>
+                </tr>
+              </>
+            )}
           </tbody>
         </table>
       </div>
 
       <div className="playoff-match-legend">
-        <p>
-          Fila <strong>{me.shortName}</strong>: tus golpes. Fila <strong>{opponent.shortName}</strong>: los golpes de{' '}
-          {opponent.playerName} (vos los anotás, como su marcador).
-        </p>
+        {winnerMode ? (
+          <p>
+            Marcá quién ganó cada hoyo: <strong>{me.shortName}</strong>, <strong>Empate</strong> o{' '}
+            <strong>{opponent.shortName}</strong>. Solo puede quedar una opción. Los dos tienen que marcar lo mismo
+            para entregar la tarjeta.
+          </p>
+        ) : (
+          <p>
+            Fila <strong>{me.shortName}</strong>: tus golpes. Fila <strong>{opponent.shortName}</strong>: los golpes de{' '}
+            {opponent.playerName} (vos los anotás, como su marcador).
+          </p>
+        )}
       </div>
 
       <div className="playoff-match-floating-actions">

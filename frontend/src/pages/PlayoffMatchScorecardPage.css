@@ -293,19 +293,22 @@
   bottom: 1.5rem;
   right: 1.5rem;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.75rem;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
   z-index: 500;
 }
 
 .btn-floating {
-  border-radius: 10px;
-  padding: 0.9rem 1.5rem;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  padding: 0.35rem 0.85rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   white-space: nowrap;
-  width: 200px;
+  width: auto;
   text-align: center;
+  font-size: 0.82rem;
+  line-height: 1.2;
 }
 
 .btn-floating:disabled {
@@ -316,8 +319,8 @@
   background: linear-gradient(135deg, #b70707 0%, #b70707 100%);
   color: white;
   border: none;
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -325,8 +328,8 @@
   background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
   color: white;
   border: none;
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 0.82rem;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -379,8 +382,59 @@
   }
 
   .btn-floating {
-    width: 170px;
-    padding: 0.8rem 1.2rem;
-    font-size: 0.9rem;
+    width: auto;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.78rem;
   }
+}
+
+.playoff-match-hcp-block {
+  display: grid;
+  gap: 0.15rem;
+  margin-top: 0.35rem;
+}
+
+.playoff-row-tie .playoff-tie-label {
+  color: #8a6a12;
+}
+
+.playoff-mark-cell {
+  vertical-align: middle;
+}
+
+.playoff-winner-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.playoff-winner-check input {
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #1f7a3a;
+}
+
+.playoff-winner-check.choice-halved input {
+  accent-color: #c48a00;
+}
+
+.playoff-winner-check.choice-opponent input {
+  accent-color: #1d5f8a;
+}
+
+.playoff-winner-check input:disabled {
+  cursor: not-allowed;
+}
+
+.playoff-score-cell.concordance-conflict {
+  box-shadow: inset 0 0 0 2px #e74c3c;
+  background-color: #fdeeee;
+}
+
+.playoff-score-cell.concordance-agreed {
+  background-color: #eaf7ee;
 }

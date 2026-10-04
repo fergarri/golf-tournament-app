@@ -1,5 +1,6 @@
 package com.golf.tournament.service;
 
+import com.golf.tournament.dto.tournamentadmin.ScoringConfigDTO;
 import com.golf.tournament.dto.tournamentadmin.PlayoffMatchAccessResponseDTO;
 import com.golf.tournament.dto.tournamentadmin.PlayoffMatchStateDTO;
 import com.golf.tournament.dto.tournamentadmin.PlayoffRoundSessionDTO;
@@ -28,12 +29,14 @@ import com.golf.tournament.repository.TournamentAdminPlayoffMatchCardRepository;
 import com.golf.tournament.repository.TournamentAdminPlayoffMatchHoleScoreRepository;
 import com.golf.tournament.repository.TournamentAdminPlayoffMatchRepository;
 import com.golf.tournament.repository.TournamentAdminPlayoffRoundSessionRepository;
+import com.golf.tournament.util.MatchPlayPlayingHandicap;
 import com.golf.tournament.util.NineHoleCourseHandicapCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -62,6 +65,7 @@ public class TournamentAdminPlayoffMatchService {
     private final HandicapConversionRepository handicapConversionRepository;
     private final PlayerRepository playerRepository;
     private final TournamentAdminPlayoffBracketService bracketService;
+    private final TournamentAdminScoringConfigService scoringConfigService;
 
     private final Random random = new Random();
 
@@ -164,7 +168,8 @@ public class TournamentAdminPlayoffMatchService {
                 .map(TournamentAdminPlayoffMatchCard::getId)
                 .collect(Collectors.toList());
 
-        if (!cardIds.isEmpty() && holeScoreRepository.existsByCardIdInAndGolpesPropioIsNotNull(cardIds)) {
+        if (!cardIds.isEmpty() && (holeScoreRepository.existsByCardIdInAndGolpesPropioIsNotNull(cardIds)
+                || holeScoreRepository.existsByCardIdInAndHoleResultIsNotNull(cardIds))) {
             throw new BadRequestException(
                     "No se puede reiniciar la ronda: ya hay hoyos cargados en algún partido. " +
                             "Resolvé los partidos en curso primero.");
@@ -208,10 +213,11 @@ public class TournamentAdminPlayoffMatchService {
         throw new BadRequestException("No se encontró un partido para esa matrícula en esta ronda");
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PlayoffMatchStateDTO getMatchState(String code, Long matchId, String matricula) {
         TournamentAdminPlayoffMatch match = getMatchByCodeOrThrow(code, matchId);
         Player requestingPlayer = resolveRequestingPlayer(match, matricula);
+        snapshotAllowanceIfNeeded(match);
         return buildMatchStateDTO(match, requestingPlayer);
     }
 
@@ -221,8 +227,9 @@ public class TournamentAdminPlayoffMatchService {
         Player requestingPlayer = resolveRequestingPlayer(match, request.getMatricula());
 
         if ("FINISHED".equals(match.getStatus())) {
-            throw new BadRequestException("El partido ya terminó, no se pueden cargar más golpes.");
+            throw new BadRequestException("El partido ya terminó, no se puede modificar la tarjeta.");
         }
+        snapshotAllowanceIfNeeded(match);
 
         boolean requestingIsA = match.getPlayerA().getId().equals(requestingPlayer.getId());
         Player opponentPlayer = requestingIsA ? match.getPlayerB() : match.getPlayerA();
@@ -230,9 +237,11 @@ public class TournamentAdminPlayoffMatchService {
         TournamentAdminPlayoffMatchCard opponentCard = getCardOrThrow(match.getId(), opponentPlayer.getId());
 
         if (!"IN_PROGRESS".equals(ownCard.getStatus())) {
-            throw new BadRequestException("No se puede cargar golpes: tu tarjeta ya está " +
+            throw new BadRequestException("No se puede modificar la tarjeta: ya está " +
                     ("DELIVERED".equals(ownCard.getStatus()) ? "entregada" : "cancelada"));
         }
+
+        boolean winnerEntry = isWinnerEntry(match);
 
         int cantidadHoyosJuego = match.getRoundSession().getCantidadHoyosJuego();
         List<Hole> holesInPlay = resolveHolesInPlay(
@@ -250,15 +259,19 @@ public class TournamentAdminPlayoffMatchService {
                     .findByCardIdAndHoleSequence(opponentCard.getId(), seq)
                     .orElseGet(() -> createHoleScoreRow(opponentCard, seq, holesInPlay, cantidadHoyosJuego));
 
-            if (update.getGolpesPropio() != null) {
-                ownRow.setGolpesPropio(update.getGolpesPropio());
+            if (winnerEntry) {
+                ownRow.setHoleResult(toAbsoluteHoleResult(update.getHoleResult(), requestingIsA));
+                recomputeWinnerValidation(ownRow, opponentRow);
+            } else {
+                if (update.getGolpesPropio() != null) {
+                    ownRow.setGolpesPropio(update.getGolpesPropio());
+                }
+                if (update.getGolpesRival() != null) {
+                    ownRow.setGolpesRival(update.getGolpesRival());
+                }
+                recomputeValidation(ownRow, opponentRow);
+                recomputeValidation(opponentRow, ownRow);
             }
-            if (update.getGolpesRival() != null) {
-                ownRow.setGolpesRival(update.getGolpesRival());
-            }
-
-            recomputeValidation(ownRow, opponentRow);
-            recomputeValidation(opponentRow, ownRow);
             holeScoreRepository.save(ownRow);
             holeScoreRepository.save(opponentRow);
         }
@@ -286,6 +299,7 @@ public class TournamentAdminPlayoffMatchService {
             return buildMatchStateDTO(match, requestingPlayer);
         }
 
+        snapshotAllowanceIfNeeded(match);
         MatchComputation computation = computeMatch(match);
         TournamentAdminPlayoffMatchCard cardA = getCardOrThrow(match.getId(), match.getPlayerA().getId());
         TournamentAdminPlayoffMatchCard cardB = getCardOrThrow(match.getId(), match.getPlayerB().getId());
@@ -369,6 +383,7 @@ public class TournamentAdminPlayoffMatchService {
                 .playerA(playerA)
                 .playerB(playerB)
                 .status("IN_PROGRESS")
+                .entryMode("WINNER")
                 .build());
 
         TournamentAdminPlayoffMatchCard cardA = createCard(match, playerA, teeMasculino, teeFemenino,
@@ -393,6 +408,7 @@ public class TournamentAdminPlayoffMatchService {
         }
 
         Integer handicapCourse = null;
+        BigDecimal handicapCourseUnrounded = null;
         if (isHcp) {
             if (player.getHandicapIndex() == null) {
                 throw new BadRequestException("El jugador " + playerFullName(player) +
@@ -400,8 +416,9 @@ public class TournamentAdminPlayoffMatchService {
             }
             if (cantidadHoyosJuego == 9) {
                 int par9 = holesInPlay.stream().mapToInt(Hole::getPar).sum();
-                handicapCourse = NineHoleCourseHandicapCalculator.calculate(
+                handicapCourseUnrounded = NineHoleCourseHandicapCalculator.calculateUnrounded(
                         player.getHandicapIndex(), tee.getCourseRatingIda(), tee.getSlopeRatingIda(), par9);
+                handicapCourse = NineHoleCourseHandicapCalculator.roundHalfTowardPositiveInfinity(handicapCourseUnrounded);
             } else {
                 HandicapConversion conversion = handicapConversionRepository
                         .findByTeeAndHandicapIndex(tee.getId(), player.getHandicapIndex())
@@ -417,6 +434,7 @@ public class TournamentAdminPlayoffMatchService {
                 .player(player)
                 .tee(tee)
                 .handicapCourse(handicapCourse)
+                .handicapCourseUnrounded(handicapCourseUnrounded)
                 .status("IN_PROGRESS")
                 .build());
     }
@@ -454,6 +472,152 @@ public class TournamentAdminPlayoffMatchService {
         row.setValidado(validado);
     }
 
+    private void recomputeWinnerValidation(TournamentAdminPlayoffMatchHoleScore own,
+                                            TournamentAdminPlayoffMatchHoleScore opponent) {
+        boolean validado = own.getHoleResult() != null && own.getHoleResult().equals(opponent.getHoleResult());
+        own.setValidado(validado);
+        opponent.setValidado(validado);
+    }
+
+    private boolean isWinnerEntry(TournamentAdminPlayoffMatch match) {
+        return "WINNER".equals(match.getEntryMode());
+    }
+
+    /**
+     * La primera vez que se abre la tarjeta de un partido nuevo Con HCP, congela el porcentaje
+     * vigente de la configuración. Los dos jugadores ven el mismo valor.
+     */
+    private void snapshotAllowanceIfNeeded(TournamentAdminPlayoffMatch match) {
+        if (!isWinnerEntry(match)) {
+            return;
+        }
+        if (!"HCP".equals(match.getRoundSession().getBracket().getScoreType())) {
+            return;
+        }
+        if (match.getHcpAllowancePercent() != null) {
+            return;
+        }
+        Long adminId = match.getRoundSession().getBracket().getTournamentAdmin().getId();
+        ScoringConfigDTO config = scoringConfigService.getOrDefaultByTournamentAdminId(adminId);
+        BigDecimal percent = config.getMatchPlayHcpPercent() != null
+                ? config.getMatchPlayHcpPercent()
+                : new BigDecimal("100.0");
+        match.setHcpAllowancePercent(percent);
+        matchRepository.save(match);
+    }
+
+    private String toAbsoluteHoleResult(String relative, boolean requestingIsA) {
+        if (relative == null || relative.isBlank()) {
+            return null;
+        }
+        String value = relative.trim().toUpperCase();
+        if ("HALVED".equals(value)) {
+            return "HALVED";
+        }
+        if ("ME".equals(value)) {
+            return requestingIsA ? "A" : "B";
+        }
+        if ("OPPONENT".equals(value)) {
+            return requestingIsA ? "B" : "A";
+        }
+        throw new BadRequestException("El resultado del hoyo no es válido");
+    }
+
+    private void registerHoleResult(MatchComputation result, int seq, int cantidadHoyosJuego,
+                                     String holeWinner, Hole hole) {
+        if ("A".equals(holeWinner)) {
+            result.holesWonA++;
+        } else if ("B".equals(holeWinner)) {
+            result.holesWonB++;
+        } else {
+            result.holesHalved++;
+        }
+        result.holesPlayed++;
+
+        if (seq <= cantidadHoyosJuego) {
+            int diff = result.holesWonA - result.holesWonB;
+            int holesRemaining = cantidadHoyosJuego - result.holesPlayed;
+            if (Math.abs(diff) > holesRemaining) {
+                result.decided = true;
+                result.decidedThroughSequence = seq;
+                result.winnerSide = diff > 0 ? "A" : "B";
+                result.resultSummary = formatMarginResultSummary(Math.abs(diff), holesRemaining);
+            }
+        } else if ("A".equals(holeWinner) || "B".equals(holeWinner)) {
+            result.decided = true;
+            result.decidedThroughSequence = seq;
+            result.winnerSide = holeWinner;
+            int extraHoleNumber = seq - cantidadHoyosJuego;
+            result.resultSummary = "Definido en el hoyo extra Nº" + extraHoleNumber
+                    + " (hoyo " + hole.getNumeroHoyo() + ")";
+        }
+    }
+
+    /**
+     * El jugador ya marcó la ronda completa, pero el rival no confirmó los mismos hoyos.
+     * Hasta que coincidan, el partido no está definido y no se puede entregar.
+     */
+    private String winnerWaitingReason(Player requestingPlayer, TournamentAdminPlayoffMatch match,
+                                        TournamentAdminPlayoffMatchCard cardA,
+                                        TournamentAdminPlayoffMatchCard cardB) {
+        boolean requestingIsA = match.getPlayerA().getId().equals(requestingPlayer.getId());
+        String opponentName = playerFullName(requestingIsA ? match.getPlayerB() : match.getPlayerA());
+        Map<Integer, String> marksA = holeResultsBySequence(cardA);
+        Map<Integer, String> marksB = holeResultsBySequence(cardB);
+        int cantidad = match.getRoundSession().getCantidadHoyosJuego();
+
+        boolean finishedOwnCard = true;
+        boolean rivalMissing = false;
+        for (int seq = 1; seq <= cantidad; seq++) {
+            String mine = requestingIsA ? marksA.get(seq) : marksB.get(seq);
+            String theirs = requestingIsA ? marksB.get(seq) : marksA.get(seq);
+            if (mine == null) {
+                finishedOwnCard = false;
+            }
+            if (mine != null && theirs == null) {
+                rivalMissing = true;
+            }
+        }
+        if (finishedOwnCard && rivalMissing) {
+            return opponentName + " todavía no marcó el resultado de los hoyos. "
+                    + "Entregar se habilita cuando los dos marquen lo mismo.";
+        }
+        return null;
+    }
+
+    /**
+     * @param throughSequence último hoyo que debe coincidir. Los posteriores no se miran.
+     *                        Si es {@link Integer#MAX_VALUE}, se revisan todos los hoyos marcados.
+     */
+    private String winnerDisagreementReason(TournamentAdminPlayoffMatchCard cardA,
+                                             TournamentAdminPlayoffMatchCard cardB,
+                                             int throughSequence) {
+        Map<Integer, String> marksA = holeResultsBySequence(cardA);
+        Map<Integer, String> marksB = holeResultsBySequence(cardB);
+        int maxSequence = Math.max(
+                marksA.keySet().stream().max(Integer::compareTo).orElse(0),
+                marksB.keySet().stream().max(Integer::compareTo).orElse(0));
+        int limit = Math.min(maxSequence, throughSequence);
+        for (int seq = 1; seq <= limit; seq++) {
+            String markedA = marksA.get(seq);
+            String markedB = marksB.get(seq);
+            if (markedA != null && markedB != null && !markedA.equals(markedB)) {
+                return "En el hoyo " + seq + " no coincide el ganador que marcaste con el que marcó tu rival.";
+            }
+        }
+        return null;
+    }
+
+    private Map<Integer, String> holeResultsBySequence(TournamentAdminPlayoffMatchCard card) {
+        Map<Integer, String> result = new HashMap<>();
+        for (TournamentAdminPlayoffMatchHoleScore score : holeScoreRepository.findByCardIdOrderByHoleSequenceAsc(card.getId())) {
+            if (score.getHoleResult() != null) {
+                result.put(score.getHoleSequence(), score.getHoleResult());
+            }
+        }
+        return result;
+    }
+
     // ── Helpers: cálculo del resultado ──────────────────────────────────────
 
     private static class MatchComputation {
@@ -462,8 +626,12 @@ public class TournamentAdminPlayoffMatchService {
         int holesHalved;
         int holesPlayed;
         boolean decided;
+        /** Último hoyo que cuenta para el resultado. Los posteriores no traban la entrega. */
+        int decidedThroughSequence;
         String winnerSide;
         String resultSummary;
+        Integer playingHandicapA;
+        Integer playingHandicapB;
         List<PlayoffMatchStateDTO.HoleInfoDTO> holeInfos = new ArrayList<>();
     }
 
@@ -490,16 +658,34 @@ public class TournamentAdminPlayoffMatchService {
         List<Hole> holesInPlay = resolveHolesInPlay(
                 session.getBracket().getTournamentAdmin().getCourse().getId(), cantidadHoyosJuego);
 
+        boolean winnerEntry = isWinnerEntry(match);
         Map<Long, Integer> strokesMap = new HashMap<>();
         boolean aHasMoreHcp = false;
-        if (isHcp && cardA.getHandicapCourse() != null && cardB.getHandicapCourse() != null
-                && !cardA.getHandicapCourse().equals(cardB.getHandicapCourse())) {
-            int diff = Math.abs(cardA.getHandicapCourse() - cardB.getHandicapCourse());
-            aHasMoreHcp = cardA.getHandicapCourse() > cardB.getHandicapCourse();
-            strokesMap = computeStrokesGivenMap(holesInPlay, diff);
+        Integer playingA = null;
+        Integer playingB = null;
+        if (isHcp && cardA.getHandicapCourse() != null && cardB.getHandicapCourse() != null) {
+            if (winnerEntry) {
+                BigDecimal percent = match.getHcpAllowancePercent() != null
+                        ? match.getHcpAllowancePercent()
+                        : new BigDecimal("100");
+                playingA = MatchPlayPlayingHandicap.apply(
+                        cardA.getHandicapCourse(), cardA.getHandicapCourseUnrounded(), percent);
+                playingB = MatchPlayPlayingHandicap.apply(
+                        cardB.getHandicapCourse(), cardB.getHandicapCourseUnrounded(), percent);
+            } else {
+                playingA = cardA.getHandicapCourse();
+                playingB = cardB.getHandicapCourse();
+            }
+            if (!playingA.equals(playingB)) {
+                int diff = Math.abs(playingA - playingB);
+                aHasMoreHcp = playingA > playingB;
+                strokesMap = computeStrokesGivenMap(holesInPlay, diff);
+            }
         }
 
         MatchComputation result = new MatchComputation();
+        result.playingHandicapA = playingA;
+        result.playingHandicapB = playingB;
 
         int maxSequence = Math.max(
                 scoresA.keySet().stream().max(Integer::compareTo).orElse(0),
@@ -521,39 +707,30 @@ public class TournamentAdminPlayoffMatchService {
                 }
             }
 
+            String markedA = scoreA != null ? scoreA.getHoleResult() : null;
+            String markedB = scoreB != null ? scoreB.getHoleResult() : null;
+
             String holeWinner = null;
-            boolean bothFilled = scoreA != null && scoreB != null
-                    && scoreA.getGolpesPropio() != null && scoreB.getGolpesPropio() != null;
-
-            if (!result.decided && bothFilled) {
-                int netA = scoreA.getGolpesPropio() - strokesA;
-                int netB = scoreB.getGolpesPropio() - strokesB;
-                if (netA < netB) {
-                    holeWinner = "A";
-                    result.holesWonA++;
-                } else if (netB < netA) {
-                    holeWinner = "B";
-                    result.holesWonB++;
-                } else {
-                    holeWinner = "HALVED";
-                    result.holesHalved++;
+            if (winnerEntry) {
+                boolean agreed = markedA != null && markedA.equals(markedB);
+                if (!result.decided && agreed) {
+                    registerHoleResult(result, seq, cantidadHoyosJuego, markedA, hole);
+                    holeWinner = markedA;
                 }
-                result.holesPlayed++;
-
-                if (seq <= cantidadHoyosJuego) {
-                    int diff = result.holesWonA - result.holesWonB;
-                    int holesRemaining = cantidadHoyosJuego - result.holesPlayed;
-                    if (Math.abs(diff) > holesRemaining) {
-                        result.decided = true;
-                        result.winnerSide = diff > 0 ? "A" : "B";
-                        result.resultSummary = formatMarginResultSummary(Math.abs(diff), holesRemaining);
+            } else {
+                boolean bothFilled = scoreA != null && scoreB != null
+                        && scoreA.getGolpesPropio() != null && scoreB.getGolpesPropio() != null;
+                if (!result.decided && bothFilled) {
+                    int netA = scoreA.getGolpesPropio() - strokesA;
+                    int netB = scoreB.getGolpesPropio() - strokesB;
+                    if (netA < netB) {
+                        holeWinner = "A";
+                    } else if (netB < netA) {
+                        holeWinner = "B";
+                    } else {
+                        holeWinner = "HALVED";
                     }
-                } else if ("A".equals(holeWinner) || "B".equals(holeWinner)) {
-                    result.decided = true;
-                    result.winnerSide = holeWinner;
-                    int extraHoleNumber = seq - cantidadHoyosJuego;
-                    result.resultSummary = "Definido en el hoyo extra Nº" + extraHoleNumber
-                            + " (hoyo " + hole.getNumeroHoyo() + ")";
+                    registerHoleResult(result, seq, cantidadHoyosJuego, holeWinner, hole);
                 }
             }
 
@@ -573,6 +750,8 @@ public class TournamentAdminPlayoffMatchService {
                     .golpesRivalB(scoreB != null ? scoreB.getGolpesRival() : null)
                     .validadoB(scoreB != null ? scoreB.getValidado() : null)
                     .holeWinner(holeWinner)
+                    .markedByA(markedA)
+                    .markedByB(markedB)
                     .pending(false)
                     .build());
         }
@@ -613,13 +792,39 @@ public class TournamentAdminPlayoffMatchService {
                                                      TournamentAdminPlayoffMatchCard cardA,
                                                      TournamentAdminPlayoffMatchCard cardB) {
         DeliverCheck check = new DeliverCheck();
+        boolean winnerEntry = isWinnerEntry(match);
+        if (winnerEntry) {
+            int throughSequence = computation.decided
+                    ? computation.decidedThroughSequence
+                    : Integer.MAX_VALUE;
+            String disagreement = winnerDisagreementReason(cardA, cardB, throughSequence);
+            if (disagreement != null) {
+                check.eligible = false;
+                check.reason = disagreement;
+                return check;
+            }
+        }
         if (!computation.decided) {
             check.eligible = false;
+            if (winnerEntry) {
+                String waiting = winnerWaitingReason(requestingPlayer, match, cardA, cardB);
+                if (waiting != null) {
+                    check.reason = waiting;
+                    return check;
+                }
+            }
             if (computation.holesPlayed < match.getRoundSession().getCantidadHoyosJuego()) {
-                check.reason = "Todavía faltan hoyos por cargar para poder entregar la tarjeta.";
+                check.reason = winnerEntry
+                        ? "Todavía faltan hoyos por marcar para poder entregar la tarjeta."
+                        : "Todavía faltan hoyos por cargar para poder entregar la tarjeta.";
             } else {
                 check.reason = "El partido está empatado. Hay que seguir jugando hoyos de desempate (muerte súbita).";
             }
+            return check;
+        }
+
+        if (winnerEntry) {
+            check.eligible = true;
             return check;
         }
 
@@ -782,12 +987,14 @@ public class TournamentAdminPlayoffMatchService {
                 .matchId(match.getId())
                 .status(match.getStatus())
                 .scoreType(match.getRoundSession().getBracket().getScoreType())
+                .entryMode(match.getEntryMode() != null ? match.getEntryMode() : "STROKES")
+                .hcpAllowancePercent(match.getHcpAllowancePercent())
                 .cantidadHoyosJuego(match.getRoundSession().getCantidadHoyosJuego())
                 .resultSummary(humanizeResultSummary(match.getResultSummary()))
                 .winnerPlayerId(match.getWinnerPlayer() != null ? match.getWinnerPlayer().getId() : null)
                 .requestingPlayerId(requestingPlayer.getId())
-                .playerA(toPlayerSideDTO(match.getPlayerA(), cardA))
-                .playerB(toPlayerSideDTO(match.getPlayerB(), cardB))
+                .playerA(toPlayerSideDTO(match.getPlayerA(), cardA, computation.playingHandicapA))
+                .playerB(toPlayerSideDTO(match.getPlayerB(), cardB, computation.playingHandicapB))
                 .holes(computation.holeInfos)
                 .tally(PlayoffMatchStateDTO.TallyDTO.builder()
                         .holesWonA(computation.holesWonA)
@@ -805,13 +1012,15 @@ public class TournamentAdminPlayoffMatchService {
                 .build();
     }
 
-    private PlayoffMatchStateDTO.PlayerSideDTO toPlayerSideDTO(Player player, TournamentAdminPlayoffMatchCard card) {
+    private PlayoffMatchStateDTO.PlayerSideDTO toPlayerSideDTO(Player player, TournamentAdminPlayoffMatchCard card,
+                                                                Integer playingHandicap) {
         return PlayoffMatchStateDTO.PlayerSideDTO.builder()
                 .playerId(player.getId())
                 .playerName(playerFullName(player))
                 .shortName(playerShortName(player))
                 .teeName(card.getTee() != null ? card.getTee().getNombre() : null)
                 .handicapCourse(card.getHandicapCourse())
+                .playingHandicap(playingHandicap)
                 .cardStatus(card.getStatus())
                 .build();
     }

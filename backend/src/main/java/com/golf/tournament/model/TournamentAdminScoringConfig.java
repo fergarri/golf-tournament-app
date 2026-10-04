@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -76,6 +77,14 @@ public class TournamentAdminScoringConfig {
     /** FIRST_PLACE o ALL_UNDER_PAR. Solo se usa cuando discountUnderPar es true. */
     @Column(name = "under_par_discount_mode", length = 30)
     private String underParDiscountMode;
+
+    /**
+     * Porcentaje del HCP Course que se usa para repartir golpes en el Match Play Con HCP.
+     * 100 = handicap de cancha completo.
+     */
+    @Column(name = "match_play_hcp_percent", nullable = false, precision = 5, scale = 1)
+    @Builder.Default
+    private BigDecimal matchPlayHcpPercent = new BigDecimal("100.0");
 
     @OneToMany(mappedBy = "scoringConfig", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

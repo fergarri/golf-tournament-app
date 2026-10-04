@@ -653,10 +653,10 @@ const TournamentScorecardPage = () => {
           <span style={{ fontWeight: 'bold', color: '#000000' }}>Matrícula:</span> {matricula}
         </p>
         <p className="player-matricula">
-          <strong><span style={{ fontWeight: 'bold', color: '#000000' }}>Handicap Index:</span> {player?.handicapIndex ?? '-'}</strong>
+          <strong><span style={{ fontWeight: 'bold', color: '#000000' }}>Handicap I.:</span> {player?.handicapIndex ?? '-'}</strong>
         </p>
         <p className="player-matricula">
-          <strong><span style={{ fontWeight: 'bold', color: '#000000' }}>Handicap Course:</span> {scorecard?.handicapCourse ?? '-'}</strong>
+          <strong><span style={{ fontWeight: 'bold', color: '#000000' }}>Handicap C.:</span> {scorecard?.handicapCourse ?? '-'}</strong>
         </p>
         {scorecard?.status === 'DELIVERED' && (
           <div className="delivered-badge">

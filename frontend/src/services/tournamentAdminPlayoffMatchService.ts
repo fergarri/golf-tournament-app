@@ -10,6 +10,8 @@ export interface UpdatePlayoffMatchHoleScore {
   holeSequence: number;
   golpesPropio?: number | null;
   golpesRival?: number | null;
+  /** ME, OPPONENT, HALVED o null para desmarcar. */
+  holeResult?: 'ME' | 'OPPONENT' | 'HALVED' | null;
 }
 
 export const tournamentAdminPlayoffMatchService = {

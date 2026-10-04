@@ -2,6 +2,7 @@ package com.golf.tournament.service;
 
 import com.golf.tournament.dto.tournamentadmin.SaveScoringConfigRequest;
 import com.golf.tournament.dto.tournamentadmin.ScoringConfigDTO;
+import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.model.TournamentAdmin;
 import com.golf.tournament.model.TournamentAdminScoringConfig;
@@ -13,6 +14,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +36,7 @@ public class TournamentAdminScoringConfigService {
     private static final String DEFAULT_HCP_QUALIFIED_MODE = "GLOBAL";
     private static final String DEFAULT_TIE_BREAK_MODE = "NETO_HCP_HOLE";
     private static final boolean DEFAULT_DISCOUNT_UNDER_PAR = false;
+    private static final BigDecimal DEFAULT_MATCH_PLAY_HCP_PERCENT = new BigDecimal("100.0");
     static final String UNDER_PAR_MODE_FIRST_PLACE = "FIRST_PLACE";
 
     private final TournamentAdminRepository tournamentAdminRepository;
@@ -76,6 +80,7 @@ public class TournamentAdminScoringConfigService {
         config.setUnderParDiscountMode(discountUnderPar
                 ? normalizeUnderParMode(request.getUnderParDiscountMode())
                 : null);
+        config.setMatchPlayHcpPercent(normalizeMatchPlayPercent(request.getMatchPlayHcpPercent()));
 
         // Forzar el flush de los DELETEs antes de insertar las nuevas posiciones
         // para evitar conflicto de clave única con orphanRemoval en Hibernate
@@ -123,6 +128,9 @@ public class TournamentAdminScoringConfigService {
                 .underParDiscountMode(Boolean.TRUE.equals(config.getDiscountUnderPar())
                         ? normalizeUnderParMode(config.getUnderParDiscountMode())
                         : null)
+                .matchPlayHcpPercent(config.getMatchPlayHcpPercent() != null
+                        ? config.getMatchPlayHcpPercent()
+                        : DEFAULT_MATCH_PLAY_HCP_PERCENT)
                 .positionPoints(positions)
                 .build();
     }
@@ -141,6 +149,7 @@ public class TournamentAdminScoringConfigService {
                 .tieBreakMode(DEFAULT_TIE_BREAK_MODE)
                 .discountUnderPar(DEFAULT_DISCOUNT_UNDER_PAR)
                 .underParDiscountMode(null)
+                .matchPlayHcpPercent(DEFAULT_MATCH_PLAY_HCP_PERCENT)
                 .positionPoints(List.of(
                         new ScoringConfigDTO.PositionPointsDTO(1, 12),
                         new ScoringConfigDTO.PositionPointsDTO(2, 10),
@@ -150,6 +159,15 @@ public class TournamentAdminScoringConfigService {
                         new ScoringConfigDTO.PositionPointsDTO(6, 2)
                 ))
                 .build();
+    }
+
+    private BigDecimal normalizeMatchPlayPercent(BigDecimal raw) {
+        BigDecimal percent = raw == null ? DEFAULT_MATCH_PLAY_HCP_PERCENT : raw;
+        BigDecimal scaled = percent.setScale(1, RoundingMode.HALF_UP);
+        if (scaled.compareTo(BigDecimal.ZERO) < 0 || scaled.compareTo(DEFAULT_MATCH_PLAY_HCP_PERCENT) > 0) {
+            throw new BadRequestException("El porcentaje de HCP Course del Match Play debe estar entre 0 y 100");
+        }
+        return scaled;
     }
 
     private String normalizeUnderParMode(String mode) {

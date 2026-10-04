@@ -411,6 +411,8 @@ export interface ScoringConfig {
   discountUnderPar?: boolean;
   /** FIRST_PLACE o ALL_UNDER_PAR. */
   underParDiscountMode?: string | null;
+  /** Porcentaje de HCP Course para el Match Play Con HCP. 100 = completo. */
+  matchPlayHcpPercent?: number;
   positionPoints: ScoringPositionPoints[];
 }
 
@@ -429,6 +431,8 @@ export interface SaveScoringConfigRequest {
   discountUnderPar?: boolean;
   /** FIRST_PLACE o ALL_UNDER_PAR. */
   underParDiscountMode?: string | null;
+  /** Porcentaje de HCP Course para el Match Play Con HCP. 100 = completo. */
+  matchPlayHcpPercent?: number;
   positionPoints: ScoringPositionPoints[];
 }
 
@@ -638,7 +642,10 @@ export interface PlayoffMatchPlayerSide {
   shortName: string;
   /** Nombre del tee desde el que juega (ej: "Blanco", "Rojo"). Puede ser null. */
   teeName: string | null;
+  /** HCP Course al 100%. */
   handicapCourse: number | null;
+  /** HCP Course al porcentaje congelado del partido. */
+  playingHandicap: number | null;
   cardStatus: PlayoffMatchCardStatus;
 }
 
@@ -658,8 +665,12 @@ export interface PlayoffMatchHoleInfo {
   golpesPropioB: number | null;
   golpesRivalB: number | null;
   validadoB: boolean | null;
-  /** "A" / "B" / "HALVED" / null */
+  /** "A" / "B" / "HALVED" / null. Solo cuando ambos coinciden. */
   holeWinner: string | null;
+  /** Marca del jugador A: "A" / "B" / "HALVED" / null. */
+  markedByA?: string | null;
+  /** Marca del jugador B: "A" / "B" / "HALVED" / null. */
+  markedByB?: string | null;
   /** true si todavía no existe en la BD (próximo hoyo extra a habilitar) */
   pending: boolean;
 }
@@ -679,6 +690,10 @@ export interface PlayoffMatchState {
   matchId: number;
   status: PlayoffMatchStatus;
   scoreType: PlayoffScoreType;
+  /** STROKES (golpes) o WINNER (ganador del hoyo). */
+  entryMode?: 'STROKES' | 'WINNER';
+  /** Porcentaje de HCP Course congelado en el partido. */
+  hcpAllowancePercent?: number | null;
   cantidadHoyosJuego: number;
   resultSummary: string | null;
   winnerPlayerId: number | null;

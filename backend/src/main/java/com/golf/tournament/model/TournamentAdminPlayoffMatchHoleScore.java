@@ -46,6 +46,10 @@ public class TournamentAdminPlayoffMatchHoleScore {
     @Column(name = "golpes_rival")
     private Integer golpesRival;
 
+    /** Ganador marcado por el dueño de la tarjeta: A, B o HALVED. Null si todavía no marcó. */
+    @Column(name = "hole_result", length = 10)
+    private String holeResult;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean validado = false;
