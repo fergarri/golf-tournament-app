@@ -45,6 +45,28 @@ type PendingAction = { type: 'confirm' | 'revert' | 'reset'; bracketId: number }
 // 0.05 equivale a variar el zoom de a 5 unidades por click en +/-.
 const ZOOM_STEP = 0.05;
 
+/**
+ * Orden de los cruces de primera ronda para cabezas de serie.
+ * Devuelve, de arriba hacia abajo, la mejor semilla de cada partido.
+ * El rival es (tamaño + 1 − esa semilla): 1 vs último, 2 vs anteúltimo, etc.
+ * El 1 queda arriba y el 2 abajo, así solo se pueden cruzar en la final.
+ * 8 jugadores: 1, 4, 3, 2. 16: 1, 8, 5, 4, 3, 6, 7, 2.
+ */
+const seededMatchFavorites = (size: number): number[] => {
+  if (size <= 2) return [1];
+  const previous = seededMatchFavorites(size / 2);
+  const favorites: number[] = [];
+  for (let i = 0; i < previous.length; i += 2) {
+    const top = previous[i];
+    favorites.push(top, size / 2 + 1 - top);
+    const bottom = previous[i + 1];
+    if (bottom !== undefined) {
+      favorites.push(size / 2 + 1 - bottom, bottom);
+    }
+  }
+  return favorites;
+};
+
 const formatPlayerLabel = (name: string, handicapIndex: number | null | undefined) =>
   handicapIndex !== null && handicapIndex !== undefined ? name : name;
 
@@ -295,7 +317,8 @@ const TournamentAdminBracketsPage = () => {
     // torneos con clasificación por categoría es un ranking GLOBAL y puede tener saltos entre
     // los clasificados (ej: 1,2,3...13,16,17,20). Por eso no se puede usar ese número directo
     // como cabeza de serie: hay que recalcular el orden RELATIVO (1..Q) entre los clasificados
-    // de esta llave, y recién ahí aplicar el emparejamiento 1 vs Q, 2 vs Q-1, etc.
+    // de esta llave. Cada cruce sigue siendo k vs (tamaño+1−k); lo que cambia es el orden de
+    // los partidos, para que el 1 quede arriba y el 2 abajo.
     const placed = round1.slots
       .filter((s) => s.playerId !== null && s.playerSeed !== null)
       .map((s) => ({ playerId: s.playerId as number, position: s.playerSeed as number }));
@@ -309,13 +332,13 @@ const TournamentAdminBracketsPage = () => {
     orderedPlayerIds.forEach((playerId, idx) => playerIdByRelativeSeed.set(idx + 1, playerId));
 
     const size = round1.slots.length;
+    const favorites = seededMatchFavorites(size);
     const playerIdBySlotIndex = new Map<number, number | null>();
-    for (let pairIdx = 0; pairIdx < size / 2; pairIdx++) {
-      const topSeed = pairIdx + 1;
-      const bottomSeed = size - pairIdx;
+    favorites.forEach((topSeed, pairIdx) => {
+      const bottomSeed = size + 1 - topSeed;
       playerIdBySlotIndex.set(pairIdx * 2, playerIdByRelativeSeed.get(topSeed) ?? null);
       playerIdBySlotIndex.set(pairIdx * 2 + 1, playerIdByRelativeSeed.get(bottomSeed) ?? null);
-    }
+    });
 
     const assignments: SlotAssignment[] = round1.slots.map((slot) => ({
       slotId: slot.slotId,
@@ -580,7 +603,7 @@ const TournamentAdminBracketsPage = () => {
                 type="button"
                 className="btn-compact btn-compact-secondary"
                 onClick={() => handleSeedByRanking(activeBracket)}
-                title="Ubica a los clasificados según su posición en la Tabla de Play Off (1° vs último, 2° vs anteúltimo, etc.)"
+                title="Ubica a los clasificados según la Tabla de Play Off. El 1° queda arriba y el 2° abajo, y solo se pueden cruzar en la final."
               >
                 🌱 Cabezas de Serie
               </button>
