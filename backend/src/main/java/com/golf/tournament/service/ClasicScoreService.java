@@ -37,13 +37,27 @@ public class ClasicScoreService {
     private final TournamentScoreRepository tournamentScoreRepository;
     private final TournamentCategoryRepository categoryRepository;
     private final TournamentAdminScoringConfigService scoringConfigService;
+    private final ScorecardService scorecardService;
 
     // ── Cálculo ────────────────────────────────────────────────────────────────
 
     @Transactional
     public List<TournamentScoreDTO> calculateScores(Long tournamentId) {
+        return calculateScores(tournamentId, false);
+    }
+
+    /**
+     * @param recalculateHandicapCourse true: antes de calcular, recalcula el HCP Course de las tarjetas
+     *                                  entregadas del torneo con el HCP Index vigente.
+     */
+    @Transactional
+    public List<TournamentScoreDTO> calculateScores(Long tournamentId, boolean recalculateHandicapCourse) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
+
+        if (recalculateHandicapCourse) {
+            scorecardService.recalculateDeliveredHandicapCourses(tournamentId, true);
+        }
 
         int multiplier = Boolean.TRUE.equals(tournament.getDoublePoints()) ? 2 : 1;
         ScoringConfigDTO config = loadScoringConfig(tournamentId);

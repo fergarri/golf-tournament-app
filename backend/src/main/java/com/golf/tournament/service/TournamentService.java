@@ -460,6 +460,10 @@ public class TournamentService {
         // Resolver tarjetas pendientes: completas → DELIVERED, incompletas → CANCELLED
         resolveScorecardsBeforeFinalize(tournament);
 
+        // Actualizar el HCP Course de las tarjetas entregadas con el HCP Index vigente (puede cambiar el neto).
+        // Si el Torneo Administrativo ya tiene una llave confirmada, se omite.
+        scorecardService.recalculateDeliveredHandicapCourses(id, false);
+
         tournament.setEstado("FINALIZED");
         tournament = tournamentRepository.save(tournament);
         log.info("Tournament {} finalized", id);

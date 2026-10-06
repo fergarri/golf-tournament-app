@@ -9,7 +9,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -40,15 +39,6 @@ public class InscriptionController {
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<List<InscriptionResponse>> getTournamentInscriptions(@PathVariable Long tournamentId) {
         return ResponseEntity.ok(inscriptionService.getTournamentInscriptions(tournamentId));
-    }
-
-    @PatchMapping("/{inscriptionId}/handicap-course")
-    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
-    public ResponseEntity<Void> updateHandicapCourse(
-            @PathVariable Long inscriptionId,
-            @RequestParam BigDecimal handicapCourse) {
-        inscriptionService.updateHandicapCourse(inscriptionId, handicapCourse);
-        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{inscriptionId}")

@@ -36,8 +36,15 @@ export const leaderboardService = {
     return response.data;
   },
 
-  calculateFrutalesScores: async (tournamentId: number): Promise<TournamentScore[]> => {
-    const response = await api.post<TournamentScore[]>(`/leaderboard/tournaments/${tournamentId}/frutales/calculate`);
+  calculateFrutalesScores: async (
+    tournamentId: number,
+    recalculateHandicap = false
+  ): Promise<TournamentScore[]> => {
+    const response = await api.post<TournamentScore[]>(
+      `/leaderboard/tournaments/${tournamentId}/frutales/calculate`,
+      null,
+      { params: { recalculateHandicap } }
+    );
     return response.data;
   },
 
@@ -53,8 +60,15 @@ export const leaderboardService = {
     return response.data;
   },
 
-  calculateClasicScores: async (tournamentId: number): Promise<TournamentScore[]> => {
-    const response = await api.post<TournamentScore[]>(`/leaderboard/tournaments/${tournamentId}/clasic/calculate`);
+  calculateClasicScores: async (
+    tournamentId: number,
+    recalculateHandicap = false
+  ): Promise<TournamentScore[]> => {
+    const response = await api.post<TournamentScore[]>(
+      `/leaderboard/tournaments/${tournamentId}/clasic/calculate`,
+      null,
+      { params: { recalculateHandicap } }
+    );
     return response.data;
   },
 

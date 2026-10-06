@@ -34,6 +34,8 @@ const TournamentLeaderboardPage = () => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [tournamentScores, setTournamentScores] = useState<TournamentScore[]>([]);
   const [calculating, setCalculating] = useState(false);
+  const [showCalculateModal, setShowCalculateModal] = useState(false);
+  const [recalculateHandicap, setRecalculateHandicap] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('general'); // 'general', categoryId, 'scratch'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -111,17 +113,16 @@ const TournamentLeaderboardPage = () => {
     }
   };
 
-  const handleCalculateScores = async () => {
+  const handleCalculateScores = async (recalculateHandicap: boolean) => {
     if (!id || !tournament) return;
     try {
       setCalculating(true);
       const isClasic = tournament.tipo === 'CLASICO' && tournament.scoringConfig != null;
-      const [leaderboardData, scoresData] = await Promise.all([
-        leaderboardService.getLeaderboard(parseInt(id)),
-        isClasic
-          ? leaderboardService.calculateClasicScores(parseInt(id))
-          : leaderboardService.calculateFrutalesScores(parseInt(id)),
-      ]);
+      // Primero se calcula (y, si corresponde, se actualiza el HCP Course) y recién después se lee el ranking
+      const scoresData = isClasic
+        ? await leaderboardService.calculateClasicScores(parseInt(id), recalculateHandicap)
+        : await leaderboardService.calculateFrutalesScores(parseInt(id), recalculateHandicap);
+      const leaderboardData = await leaderboardService.getLeaderboard(parseInt(id));
       setLeaderboard(leaderboardData);
       setTournamentScores(scoresData);
       setError('');
@@ -852,7 +853,10 @@ const TournamentLeaderboardPage = () => {
     ...(hasScoringConfig
       ? [{
           label: calculating ? 'Calculando...' : 'Calcular Puntos',
-          onClick: handleCalculateScores,
+          onClick: () => {
+            setRecalculateHandicap(false);
+            setShowCalculateModal(true);
+          },
           disabled: calculating,
           variant: 'secondary' as const,
         }]
@@ -1071,6 +1075,51 @@ const TournamentLeaderboardPage = () => {
           tournament={tournament}
         />
       )}
+
+      <Modal
+        isOpen={showCalculateModal}
+        onClose={() => setShowCalculateModal(false)}
+        title="Calcular puntos"
+        size="medium"
+        footer={
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-cancel" onClick={() => setShowCalculateModal(false)}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setShowCalculateModal(false);
+                void handleCalculateScores(recalculateHandicap);
+              }}
+            >
+              Calcular
+            </button>
+          </div>
+        }
+      >
+        <p style={{ marginBottom: '1rem', color: '#475569', fontSize: '0.9rem' }}>
+          Se van a recalcular las posiciones y los puntos de este torneo.
+        </p>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={recalculateHandicap}
+            onChange={(e) => setRecalculateHandicap(e.target.checked)}
+            style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: '0.9rem', color: '#34495e' }}>
+            <strong>Recalcular HCP Course con el HCP Index actual</strong>
+            <br />
+            <span style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>
+              Actualiza el HCP Course de las tarjetas entregadas de este torneo y puede cambiar el neto y las
+              posiciones. Usalo solo en torneos por finalizar o recién finalizados. No se puede usar si la llave
+              de Playoff ya está confirmada.
+            </span>
+          </span>
+        </label>
+      </Modal>
 
       <Modal
         isOpen={confirmDialog !== null}

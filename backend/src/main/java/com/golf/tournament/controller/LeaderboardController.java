@@ -77,8 +77,10 @@ public class LeaderboardController {
 
     @PostMapping("/tournaments/{tournamentId}/frutales/calculate")
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
-    public ResponseEntity<List<TournamentScoreDTO>> calculateFrutalesScores(@PathVariable Long tournamentId) {
-        List<TournamentScoreDTO> result = frutalesScoreService.calculateScores(tournamentId);
+    public ResponseEntity<List<TournamentScoreDTO>> calculateFrutalesScores(
+            @PathVariable Long tournamentId,
+            @RequestParam(defaultValue = "false") boolean recalculateHandicap) {
+        List<TournamentScoreDTO> result = frutalesScoreService.calculateScores(tournamentId, recalculateHandicap);
         recalculateStagesIfNeeded(tournamentId);
         return ResponseEntity.ok(result);
     }
@@ -99,8 +101,10 @@ public class LeaderboardController {
 
     @PostMapping("/tournaments/{tournamentId}/clasic/calculate")
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
-    public ResponseEntity<List<TournamentScoreDTO>> calculateClasicScores(@PathVariable Long tournamentId) {
-        List<TournamentScoreDTO> result = clasicScoreService.calculateScores(tournamentId);
+    public ResponseEntity<List<TournamentScoreDTO>> calculateClasicScores(
+            @PathVariable Long tournamentId,
+            @RequestParam(defaultValue = "false") boolean recalculateHandicap) {
+        List<TournamentScoreDTO> result = clasicScoreService.calculateScores(tournamentId, recalculateHandicap);
         recalculateStagesIfNeeded(tournamentId);
         return ResponseEntity.ok(result);
     }

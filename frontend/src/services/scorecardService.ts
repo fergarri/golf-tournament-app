@@ -26,7 +26,6 @@ export interface HoleScoreUpdate {
 }
 
 export interface UpdateScorecardRequest {
-  handicapCourse?: number;
   holeScores: HoleScoreUpdate[];
 }
 

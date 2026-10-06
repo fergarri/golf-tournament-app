@@ -126,18 +126,6 @@ public class InscriptionService {
     }
 
     @Transactional
-    public void updateHandicapCourse(Long inscriptionId, BigDecimal handicapCourse) {
-        TournamentInscription inscription = inscriptionRepository.findById(inscriptionId)
-                .orElseThrow(() -> new ResourceNotFoundException("Inscription", "id", inscriptionId));
-        currentUserProvider.assertClubAccess(inscription.getTournament().getCourse().getId());
-
-        inscription.setHandicapCourse(handicapCourse);
-        inscriptionRepository.save(inscription);
-
-        log.info("Handicap actualizado para inscripción {}: {}", inscriptionId, handicapCourse);
-    }
-
-    @Transactional
     public void removeInscription(Long inscriptionId) {
         TournamentInscription inscription = inscriptionRepository.findById(inscriptionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Inscription", "id", inscriptionId));

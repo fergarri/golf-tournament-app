@@ -30,6 +30,8 @@ const FrutalesLeaderboardPage = () => {
   const [inscriptions, setInscriptions] = useState<InscriptionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
+  const [showCalculateModal, setShowCalculateModal] = useState(false);
+  const [recalculateHandicap, setRecalculateHandicap] = useState(false);
   const [error, setError] = useState('');
   const [editingScorecardId, setEditingScorecardId] = useState<number | null>(null);
   const [editingScorecard, setEditingScorecard] = useState<Scorecard | null>(null);
@@ -146,13 +148,14 @@ const FrutalesLeaderboardPage = () => {
     }
   };
 
-  const handleCalculateScores = async () => {
+  const handleCalculateScores = async (recalculateHandicap: boolean) => {
     if (!id) return;
     try {
       setCalculating(true);
-      const [entries, scores, inscriptions] = await Promise.all([
+      // Primero se calcula (y, si corresponde, se actualiza el HCP Course) y recién después se lee el ranking
+      const scores = await leaderboardService.calculateFrutalesScores(parseInt(id), recalculateHandicap);
+      const [entries, inscriptions] = await Promise.all([
         leaderboardService.getLeaderboard(parseInt(id)),
-        leaderboardService.calculateFrutalesScores(parseInt(id)),
         inscriptionService.getTournamentInscriptions(parseInt(id)),
       ]);
       setInscriptions(inscriptions);
@@ -281,16 +284,6 @@ const FrutalesLeaderboardPage = () => {
     });
   };
 
-  const handleHcpChange = (value: string) => {
-    if (!editingScorecard) return;
-    const parsed = value === '' ? undefined : parseFloat(value);
-    const newHcp = parsed === undefined || Number.isNaN(parsed) ? undefined : parsed;
-    setEditingScorecard({
-      ...editingScorecard,
-      handicapCourse: newHcp as any,
-    });
-  };
-
   const handleSaveScorecard = async () => {
     if (!editingScorecard) return;
     try {
@@ -302,7 +295,6 @@ const FrutalesLeaderboardPage = () => {
       }));
 
       await scorecardService.updateScorecard(editingScorecard.id, {
-        handicapCourse: editingScorecard.handicapCourse != null ? Number(editingScorecard.handicapCourse) : undefined,
         holeScores
       });
 
@@ -504,7 +496,10 @@ const FrutalesLeaderboardPage = () => {
       : []),
     {
       label: calculating ? 'Calculando...' : 'Calcular Puntos',
-      onClick: handleCalculateScores,
+      onClick: () => {
+        setRecalculateHandicap(false);
+        setShowCalculateModal(true);
+      },
       disabled: calculating,
       variant: 'secondary',
     },
@@ -653,6 +648,51 @@ const FrutalesLeaderboardPage = () => {
         cancelText="Cancelar"
       />
 
+      <Modal
+        isOpen={showCalculateModal}
+        onClose={() => setShowCalculateModal(false)}
+        title="Calcular puntos"
+        size="medium"
+        footer={
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+            <button type="button" className="btn btn-cancel" onClick={() => setShowCalculateModal(false)}>
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setShowCalculateModal(false);
+                void handleCalculateScores(recalculateHandicap);
+              }}
+            >
+              Calcular
+            </button>
+          </div>
+        }
+      >
+        <p style={{ marginBottom: '1rem', color: '#475569', fontSize: '0.9rem' }}>
+          Se van a recalcular las posiciones y los puntos de este torneo.
+        </p>
+        <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={recalculateHandicap}
+            onChange={(e) => setRecalculateHandicap(e.target.checked)}
+            style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: '0.9rem', color: '#34495e' }}>
+            <strong>Recalcular HCP Course con el HCP Index actual</strong>
+            <br />
+            <span style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>
+              Actualiza el HCP Course de las tarjetas entregadas de este torneo y puede cambiar el neto y las
+              posiciones. Usalo solo en torneos por finalizar o recién finalizados. No se puede usar si la llave
+              de Playoff ya está confirmada.
+            </span>
+          </span>
+        </label>
+      </Modal>
+
       {/* Edit Scorecard Modal */}
       {editingScorecardId && editingScorecard && (
         <div className="modal-overlay" onClick={handleCloseModal}>
@@ -661,24 +701,11 @@ const FrutalesLeaderboardPage = () => {
               <div>
                 <h2>Editar Tarjeta - {editingScorecard.playerName}</h2>
                 <p className="scorecard-info">
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                    HCP:
-                    <input
-                      type="number"
-                      min="0"
-                      max="54"
-                      step="0.1"
-                      value={editingScorecard.handicapCourse != null ? Number(editingScorecard.handicapCourse) : ''}
-                      onChange={(e) => handleHcpChange(e.target.value)}
-                      style={{
-                        width: '60px',
-                        padding: '1px 4px',
-                        fontSize: 'inherit',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '4px',
-                        textAlign: 'center',
-                      }}
-                    />
+                  <span>
+                    HCP:{' '}
+                    {editingScorecard.handicapCourse != null
+                      ? Number(editingScorecard.handicapCourse).toFixed(1)
+                      : '-'}
                   </span>
                   {' | '}Score:{' '}
                   {editingScorecard.holeScores.reduce((sum, hs) => sum + (hs.golpesPropio || 0), 0) || '-'}

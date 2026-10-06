@@ -47,6 +47,8 @@ public class ScorecardService {
     private final HandicapConversionRepository handicapConversionRepository;
     private final ScorecardEventService scorecardEventService;
     private final UnderParDiscountService underParDiscountService;
+    private final TournamentAdminRepository tournamentAdminRepository;
+    private final TournamentAdminPlayoffBracketRepository playoffBracketRepository;
 
     @Transactional
     public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId) {
@@ -75,7 +77,46 @@ public class ScorecardService {
      */
     @Transactional
     public void recalculateHandicapCoursesForTournament(Long tournamentId) {
-        List<Scorecard> scorecards = scorecardRepository.findByTournamentId(tournamentId);
+        recalculateHandicapCourses(tournamentId, scorecardRepository.findByTournamentId(tournamentId), "al iniciar");
+    }
+
+    /**
+     * Recalcula el HCP Course de las tarjetas ENTREGADAS del torneo con el HCP Index vigente de cada
+     * jugador (y el descuento bajo par de la fecha anterior, si la regla está activa).
+     * Solo toca ese torneo. Las tarjetas canceladas, descalificadas o inactivas no se modifican.
+     *
+     * @param failIfConfirmedBracket true: si el Torneo Administrativo tiene una llave confirmada, rechaza
+     *                               con error (acción manual). false: omite el recálculo y lo registra
+     *                               en el log (finalización, que no puede mostrar un error).
+     * @return true si se recalculó, false si se omitió por tener una llave confirmada
+     */
+    @Transactional
+    public boolean recalculateDeliveredHandicapCourses(Long tournamentId, boolean failIfConfirmedBracket) {
+        if (hasConfirmedBracket(tournamentId)) {
+            if (failIfConfirmedBracket) {
+                throw new BadRequestException(
+                        "No se puede recalcular el HCP Course: la llave de Playoff ya está confirmada y las etapas están cerradas.");
+            }
+            log.info("Torneo {}: se omite el recálculo de HCP Course porque la llave de Playoff está confirmada",
+                    tournamentId);
+            return false;
+        }
+        recalculateHandicapCourses(
+                tournamentId,
+                scorecardRepository.findByTournamentIdAndStatus(tournamentId, ScorecardStatus.DELIVERED),
+                "de tarjetas entregadas");
+        return true;
+    }
+
+    private boolean hasConfirmedBracket(Long tournamentId) {
+        return tournamentAdminRepository.findByTournamentInAnyStage(tournamentId)
+                .map(admin -> playoffBracketRepository.findByTournamentAdminIdOrderByScoreTypeAsc(admin.getId())
+                        .stream()
+                        .anyMatch(bracket -> "CONFIRMED".equals(bracket.getStatus())))
+                .orElse(false);
+    }
+
+    private void recalculateHandicapCourses(Long tournamentId, List<Scorecard> scorecards, String label) {
         Map<Long, BigDecimal> underParDiscounts = underParDiscountService.discountByPlayerId(tournamentId);
         List<Scorecard> toSave = new ArrayList<>();
         int skipped = 0;
@@ -105,8 +146,8 @@ public class ScorecardService {
                 failed++;
                 Long playerId = player != null ? player.getId() : null;
                 log.warn(
-                        "No se pudo recalcular HCP Course al iniciar torneo {} para scorecard {} (jugador {}): {}",
-                        tournamentId, scorecard.getId(), playerId, e.getMessage());
+                        "No se pudo recalcular HCP Course ({}) del torneo {} para scorecard {} (jugador {}): {}",
+                        label, tournamentId, scorecard.getId(), playerId, e.getMessage());
             }
         }
 
@@ -115,8 +156,8 @@ public class ScorecardService {
         }
 
         log.info(
-                "Recálculo HCP Course al iniciar torneo {}: actualizados={}, omitidos={}, fallidos={}",
-                tournamentId, toSave.size(), skipped, failed);
+                "Recálculo HCP Course ({}) torneo {}: actualizados={}, omitidos={}, fallidos={}",
+                label, tournamentId, toSave.size(), skipped, failed);
     }
 
     private ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId,
@@ -443,11 +484,7 @@ public class ScorecardService {
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
         ensureScorecardConfigured(scorecard);
 
-        if (request.getHandicapCourse() != null) {
-            scorecard.setHandicapCourse(request.getHandicapCourse());
-            scorecardRepository.save(scorecard);
-            log.info("HandicapCourse updated for scorecard {}: {}", scorecardId, request.getHandicapCourse());
-        }
+        // El HCP Course ya no se edita a mano: se calcula con el HCP Index (ver recalculateDeliveredHandicapCourses).
 
         for (HoleScoreUpdate holeScoreUpdate : request.getHoleScores()) {
             Hole hole = holeRepository.findById(holeScoreUpdate.getHoleId())
