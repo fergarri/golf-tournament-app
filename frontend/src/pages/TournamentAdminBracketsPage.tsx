@@ -514,7 +514,7 @@ const TournamentAdminBracketsPage = () => {
             {slot.playerName ? formatPlayerLabel(slot.playerName, slot.playerHandicapIndex) : 'Sin asignar'}
           </span>
         )}
-        {canShowActions && (
+        {canShowActions && !isLoser && (
           <div className="bracket-slot-actions bracket-no-pan">
             {!slot.isWinner ? (
               <button
