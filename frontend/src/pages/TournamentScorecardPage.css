@@ -3,7 +3,7 @@
 .scorecard-container {
   min-height: 100vh;
   background-color: #f5f5f5;
-  padding: 1rem;
+  padding: 1rem 1rem 4.5rem;
 }
 
 .scorecard-header {
@@ -395,26 +395,29 @@
 
 .scorecard-floating-actions {
   position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
+  bottom: 1rem;
+  right: 1rem;
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.75rem;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
   z-index: 500;
-  padding: 5px
 }
 
-.btn-floating {
-  border-radius: 10px;
-  padding: 0.9rem 1.5rem;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+.scorecard-floating-actions .btn-floating {
+  border-radius: 6px;
+  padding: 0.35rem 0.85rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
   white-space: nowrap;
-  width: 200px;
+  width: auto;
+  height: auto;
   text-align: center;
+  font-size: 0.82rem;
+  line-height: 1.2;
 }
 
-.btn-floating:disabled {
+.scorecard-floating-actions .btn-floating:disabled {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
@@ -470,14 +473,15 @@
   }
 
   .scorecard-floating-actions {
-    bottom: 1rem;
-    right: 1rem;
+    bottom: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    justify-content: flex-end;
   }
 
-  .btn-floating {
-    padding: 0.8rem 1.2rem;
-    font-size: 0.95rem;
-    width: 170px;
+  .scorecard-floating-actions .btn-floating {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.78rem;
   }
 }
 
