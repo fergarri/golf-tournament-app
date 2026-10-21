@@ -24,4 +24,7 @@ public interface TournamentInscriptionRepository extends JpaRepository<Tournamen
     Long countByTournamentId(@Param("tournamentId") Long tournamentId);
     
     List<TournamentInscription> findByTournamentIdAndCategoryId(Long tournamentId, Long categoryId);
+
+    @Query("SELECT i FROM TournamentInscription i JOIN FETCH i.player WHERE i.tournament.id = :tournamentId")
+    List<TournamentInscription> findByTournamentIdWithPlayer(@Param("tournamentId") Long tournamentId);
 }

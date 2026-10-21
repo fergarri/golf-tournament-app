@@ -14,6 +14,7 @@ export const PUBLIC_PATHS = [
   /^\/playoff-results\//,
   /^\/playoff-brackets\//,
   /^\/playoff-match\//,
+  /^\/salidas\//,
   /^\/tournaments\/[^/]+\/scorecard/,
 ];
 

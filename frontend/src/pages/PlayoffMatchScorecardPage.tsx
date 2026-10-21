@@ -288,6 +288,31 @@ const PlayoffMatchScorecardPage = () => {
 
   const liveStatusLabel = (): string => {
     if (!state || !me || !opponent) return '';
+
+    // En modo ganador el cartel sigue las marcas de esta tarjeta, no el resultado
+    // oficial (ese solo cuenta los hoyos en los que los dos coinciden).
+    if (state.entryMode === 'WINNER') {
+      const cantidad = state.cantidadHoyosJuego;
+      let myWins = 0;
+      let oppWins = 0;
+      let markedRegular = 0;
+      state.holes.forEach((hole) => {
+        const mark = localMarks[hole.holeSequence];
+        if (!mark) return;
+        if (hole.holeSequence <= cantidad) markedRegular += 1;
+        if (mark === 'ME') myWins += 1;
+        else if (mark === 'OPPONENT') oppWins += 1;
+      });
+      const holesRemaining = Math.max(0, cantidad - markedRegular);
+      if (myWins === oppWins) {
+        return holesRemaining > 0 ? 'IGUALADOS (ALL SQUARE)' : 'IGUALADOS';
+      }
+      const leaderIsMe = myWins > oppWins;
+      const margin = Math.abs(myWins - oppWins);
+      const leaderName = leaderIsMe ? 'Vos vas' : `${opponent.playerName} va`;
+      return `${leaderName} ${margin} UP`;
+    }
+
     const { holesWonA, holesWonB, holesRemaining } = state.tally;
     const myHolesWon = mySide === 'A' ? holesWonA : holesWonB;
     const oppHolesWon = mySide === 'A' ? holesWonB : holesWonA;

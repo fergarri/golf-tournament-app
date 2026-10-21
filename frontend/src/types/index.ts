@@ -686,6 +686,53 @@ export interface PlayoffMatchTally {
   holesRemaining: number;
 }
 
+export interface TeeSheetGroup {
+  holeNumber: number | null;
+  teeTime: string | null;
+  player1Id: number | null;
+  player2Id: number | null;
+  player3Id: number | null;
+  player4Id: number | null;
+}
+
+export interface TeeSheetPlayer {
+  playerId: number;
+  playerName: string;
+  nombre: string;
+  apellido: string;
+  handicapIndex: number | null;
+}
+
+export interface TournamentTeeSheet {
+  tournamentId: number;
+  tournamentName: string;
+  codigo: string;
+  courseName: string;
+  fechaInicio: string;
+  cantidadHoyosJuego: number;
+  locked: boolean;
+  published: boolean;
+  groups: TeeSheetGroup[];
+  players: TeeSheetPlayer[];
+}
+
+export interface PublicTeeSheetGroup {
+  holeNumber: number | null;
+  teeTime: string | null;
+  player1Name: string | null;
+  player2Name: string | null;
+  player3Name: string | null;
+  player4Name: string | null;
+}
+
+export interface PublicTeeSheet {
+  tournamentName: string;
+  courseName: string;
+  fechaInicio: string;
+  published: boolean;
+  groups: PublicTeeSheetGroup[];
+}
+
 export interface PlayoffMatchState {
   matchId: number;
   status: PlayoffMatchStatus;

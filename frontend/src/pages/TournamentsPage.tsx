@@ -421,6 +421,11 @@ const TournamentsPage = () => {
       show: (tournament) => tournament.estado === 'PENDING' || tournament.estado === 'IN_PROGRESS',
     },
     {
+      label: 'Definir Salidas',
+      onClick: (tournament) => navigate(`/tournaments/${tournament.id}/tee-sheet`),
+      variant: 'secondary',
+    },
+    {
       label: 'Iniciar Torneo',
       onClick: handleStartTournament,
       variant: 'primary',

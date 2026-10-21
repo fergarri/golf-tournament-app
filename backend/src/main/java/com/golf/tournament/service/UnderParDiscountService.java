@@ -82,7 +82,8 @@ public class UnderParDiscountService {
             return Map.of();
         }
 
-        Map<Long, BigDecimal> discounts = discountsFromPreviousDate(previous, config.getUnderParDiscountMode());
+        Map<Long, BigDecimal> discounts = discountsFromPreviousDate(
+                previous, config.getUnderParDiscountMode(), config.getTieBreakMode());
         if (!discounts.isEmpty()) {
             log.info("Descuento bajo par para torneo {} desde fecha {}: {} jugador(es)",
                     tournamentId, previous.getId(), discounts.size());
@@ -101,7 +102,7 @@ public class UnderParDiscountService {
         return baseHandicapCourse.subtract(strokes);
     }
 
-    private Map<Long, BigDecimal> discountsFromPreviousDate(Tournament previous, String mode) {
+    private Map<Long, BigDecimal> discountsFromPreviousDate(Tournament previous, String mode, String tieBreakMode) {
         List<Scorecard> delivered = scorecardRepository.findByTournamentIdAndStatus(
                 previous.getId(), ScorecardStatus.DELIVERED);
         if (delivered.isEmpty()) {
@@ -142,7 +143,7 @@ public class UnderParDiscountService {
         }
 
         if ("FRUTALES".equals(previous.getTipo())) {
-            addFirstPlaceUnderPar(discounts, rounds);
+            addFirstPlaceUnderPar(discounts, rounds, tieBreakMode);
             return discounts;
         }
 
@@ -154,24 +155,90 @@ public class UnderParDiscountService {
             byCategory.computeIfAbsent(round.categoryId, id -> new ArrayList<>()).add(round);
         }
         for (List<PlayedRound> group : byCategory.values()) {
-            addFirstPlaceUnderPar(discounts, group);
+            // En Clásico el primer puesto de cada categoría se define por neto, no por el desempate de Frutales.
+            addFirstPlaceUnderPar(discounts, group, "NETO_HCP_HOLE");
         }
         return discounts;
     }
 
-    private void addFirstPlaceUnderPar(Map<Long, BigDecimal> discounts, List<PlayedRound> group) {
-        BigDecimal bestNeto = group.stream()
-                .map(round -> round.neto)
-                .min(Comparator.naturalOrder())
-                .orElse(null);
-        if (bestNeto == null) {
+    /**
+     * Solo el primer puesto de la tabla recibe el descuento. Si empatan el neto, se usa el mismo
+     * desempate que el ranking. Si después de ese desempate siguen iguales, los dos son primeros.
+     */
+    private void addFirstPlaceUnderPar(Map<Long, BigDecimal> discounts, List<PlayedRound> group, String tieBreakMode) {
+        if (group.isEmpty()) {
             return;
         }
-        for (PlayedRound round : group) {
-            if (round.neto.compareTo(bestNeto) == 0 && round.underPar.signum() > 0) {
+        Comparator<PlayedRound> ranking = rankingComparator(tieBreakMode);
+        List<PlayedRound> ranked = new ArrayList<>(group);
+        ranked.sort(ranking);
+        PlayedRound first = ranked.get(0);
+        for (PlayedRound round : ranked) {
+            if (ranking.compare(first, round) != 0) {
+                break;
+            }
+            if (round.underPar.signum() > 0) {
                 discounts.put(round.playerId, round.underPar);
             }
         }
+    }
+
+    private Comparator<PlayedRound> rankingComparator(String tieBreakMode) {
+        if ("GROSS_BACK9".equals(tieBreakMode)) {
+            return this::compareGrossBack9;
+        }
+        return this::compareNetoHcpHole;
+    }
+
+    /** Mismo orden que la tabla: neto, HCP Index y hoyo por hoyo desde el último. */
+    private int compareNetoHcpHole(PlayedRound a, PlayedRound b) {
+        int netoCompare = a.neto.compareTo(b.neto);
+        if (netoCompare != 0) {
+            return netoCompare;
+        }
+        int hcpCompare = a.handicapIndex.compareTo(b.handicapIndex);
+        if (hcpCompare != 0) {
+            return hcpCompare;
+        }
+        return compareHoleByHoleFromLast(a, b);
+    }
+
+    /** Mismo desempate de vuelta gross que usa Frutales cuando está configurado. */
+    private int compareGrossBack9(PlayedRound a, PlayedRound b) {
+        int backNineCompare = Integer.compare(sumHoles(a, 10, 18), sumHoles(b, 10, 18));
+        if (backNineCompare != 0) {
+            return backNineCompare;
+        }
+        for (int hole = 18; hole >= 10; hole--) {
+            int scoreCompare = Integer.compare(scoreAt(a, hole), scoreAt(b, hole));
+            if (scoreCompare != 0) {
+                return scoreCompare;
+            }
+        }
+        return compareHoleByHoleFromLast(a, b);
+    }
+
+    private int compareHoleByHoleFromLast(PlayedRound a, PlayedRound b) {
+        int startHole = Math.max(a.maxHole, b.maxHole);
+        for (int hole = startHole; hole >= 1; hole--) {
+            int scoreCompare = Integer.compare(scoreAt(a, hole), scoreAt(b, hole));
+            if (scoreCompare != 0) {
+                return scoreCompare;
+            }
+        }
+        return 0;
+    }
+
+    private int sumHoles(PlayedRound round, int from, int to) {
+        int sum = 0;
+        for (int hole = from; hole <= to; hole++) {
+            sum += scoreAt(round, hole);
+        }
+        return sum;
+    }
+
+    private int scoreAt(PlayedRound round, int holeNumber) {
+        return round.scoresByHole.getOrDefault(holeNumber, 99);
     }
 
     private PlayedRound toPlayedRound(Scorecard scorecard, Long categoryId) {
@@ -185,8 +252,20 @@ public class UnderParDiscountService {
         BigDecimal handicap = scorecard.getHandicapCourse() != null ? scorecard.getHandicapCourse() : BigDecimal.ZERO;
         BigDecimal neto = BigDecimal.valueOf(gross).subtract(handicap);
         BigDecimal underPar = BigDecimal.valueOf(par).subtract(neto);
+        BigDecimal handicapIndex = scorecard.getPlayer().getHandicapIndex() != null
+                ? scorecard.getPlayer().getHandicapIndex()
+                : BigDecimal.valueOf(999);
 
-        return new PlayedRound(scorecard.getPlayer().getId(), categoryId, neto, underPar);
+        Map<Integer, Integer> scoresByHole = new HashMap<>();
+        int maxHole = 9;
+        for (HoleScore holeScore : holes) {
+            int numeroHoyo = holeScore.getHole().getNumeroHoyo();
+            scoresByHole.put(numeroHoyo, holeScore.getGolpesPropio());
+            maxHole = Math.max(maxHole, numeroHoyo);
+        }
+
+        return new PlayedRound(
+                scorecard.getPlayer().getId(), categoryId, neto, underPar, handicapIndex, scoresByHole, maxHole);
     }
 
     private boolean isBefore(Tournament candidate, Tournament current) {
@@ -210,6 +289,13 @@ public class UnderParDiscountService {
         return Long.compare(left.getId(), right.getId());
     }
 
-    private record PlayedRound(Long playerId, Long categoryId, BigDecimal neto, BigDecimal underPar) {
+    private record PlayedRound(
+            Long playerId,
+            Long categoryId,
+            BigDecimal neto,
+            BigDecimal underPar,
+            BigDecimal handicapIndex,
+            Map<Integer, Integer> scoresByHole,
+            int maxHole) {
     }
 }

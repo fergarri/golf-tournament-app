@@ -27,6 +27,8 @@ import PublicTournamentAdminPlayoffResultsPage from './pages/PublicTournamentAdm
 import PublicTournamentAdminBracketsPage from './pages/PublicTournamentAdminBracketsPage'
 import PlayoffMatchAccessPage from './pages/PlayoffMatchAccessPage'
 import PlayoffMatchScorecardPage from './pages/PlayoffMatchScorecardPage'
+import TournamentTeeSheetPage from './pages/TournamentTeeSheetPage'
+import PublicTeeSheetPage from './pages/PublicTeeSheetPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import PermissionRoute from './components/PermissionRoute'
 import Layout from './components/Layout'
@@ -42,6 +44,7 @@ function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/tournaments" element={<PermissionRoute permission="GAMES"><TournamentsPage /></PermissionRoute>} />
           <Route path="/tournaments/:id/leaderboard" element={<PermissionRoute permission="GAMES"><TournamentLeaderboardPage /></PermissionRoute>} />
+          <Route path="/tournaments/:id/tee-sheet" element={<PermissionRoute permission="GAMES"><TournamentTeeSheetPage /></PermissionRoute>} />
           <Route path="/tournaments/:id/frutales-leaderboard" element={<PermissionRoute permission="GAMES"><FrutalesLeaderboardPage /></PermissionRoute>} />
           <Route path="/players" element={<PermissionRoute permission="GAMES"><PlayersPage /></PermissionRoute>} />
           <Route path="/courses" element={<PermissionRoute permission="GAMES"><CoursesPage /></PermissionRoute>} />
@@ -68,6 +71,7 @@ function App() {
         <Route path="/playoff-brackets/:tournamentAdminId" element={<PublicTournamentAdminBracketsPage />} />
         <Route path="/playoff-match/:code" element={<PlayoffMatchAccessPage />} />
         <Route path="/playoff-match/:code/:matchId/scorecard" element={<PlayoffMatchScorecardPage />} />
+        <Route path="/salidas/:codigo" element={<PublicTeeSheetPage />} />
       </Routes>
     </AuthProvider>
   )

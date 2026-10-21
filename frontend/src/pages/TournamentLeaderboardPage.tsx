@@ -827,6 +827,13 @@ const TournamentLeaderboardPage = () => {
   if (loading) return <div className="loading">Cargando leaderboard...</div>;
 
   const actionItems: HeaderActionItem[] = [
+    ...(tournament
+      ? [{
+          label: 'Definir Salidas',
+          onClick: () => navigate(`/tournaments/${tournament.id}/tee-sheet`),
+          variant: 'primary' as const,
+        }]
+      : []),
     ...(tournament && (tournament.estado === 'PENDING' || tournament.estado === 'IN_PROGRESS')
       ? [{ label: 'Inscribir', onClick: () => setShowInscriptionModal(true), variant: 'success' as const }]
       : []),

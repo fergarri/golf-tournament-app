@@ -479,6 +479,13 @@ const FrutalesLeaderboardPage = () => {
   if (loading) return <div className="loading">Cargando leaderboard...</div>;
 
   const actionItems: HeaderActionItem[] = [
+    ...(tournament
+      ? [{
+          label: 'Definir Salidas',
+          onClick: () => navigate(`/tournaments/${tournament.id}/tee-sheet`),
+          variant: 'primary' as const,
+        }]
+      : []),
     ...(tournament?.estado === 'IN_PROGRESS'
       ? [{
           label: 'Pausar Torneo',

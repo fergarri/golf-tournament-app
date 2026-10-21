@@ -1,0 +1,13 @@
+---
+description: No verificar ni compilar al terminar una tarea
+alwaysApply: true
+---
+
+Cuando termines de implementar una funcionalidad:
+
+- No compiles el proyecto (ni `build`, `compile`, `tsc`, `mvn compile`, `npm run build` o similares).
+- No ejecutes tests automáticamente.
+- No abras navegadores ni uses herramientas de automatización para probar la funcionalidad.
+- Resume los cambios realizados y espera a que yo pida explícitamente la verificación.
+
+Solo ejecuta compilaciones, tests o pruebas en el navegador si yo lo pido en el mensaje.
