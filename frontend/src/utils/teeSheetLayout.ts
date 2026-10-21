@@ -42,21 +42,41 @@ export const unassignedPlayers = (players: TeeSheetPlayer[], groups: TeeSheetGro
   return players.filter((player) => !placed.has(player.playerId));
 };
 
+/**
+ * De a 4. Si sobra 1, tres threesomes; si sobra 2, dos. Con 5 jugadores, un threesome y un par.
+ * Nunca queda un jugador solo, salvo que haya un único inscripto.
+ */
+const groupSizesFor = (playerCount: number): number[] => {
+  if (playerCount <= 0) return [];
+  if (playerCount === 1) return [1];
+  if (playerCount === 2) return [2];
+  if (playerCount === 5) return [3, 2];
+
+  const remainder = playerCount % 4;
+  const foursomes = Math.floor(playerCount / 4);
+  if (remainder === 0) return Array(foursomes).fill(4);
+  if (remainder === 3) return [...Array(foursomes).fill(4), 3];
+  if (remainder === 2) return [...Array(foursomes - 1).fill(4), 3, 3];
+  return [...Array(foursomes - 2).fill(4), 3, 3, 3];
+};
+
 /** Reubica a todos los jugadores desde la primera fila. Conserva hoyo y horario, y no borra filas de más. */
 export const fillGroups = (groups: TeeSheetGroup[], playerIds: number[]): TeeSheetGroup[] => {
-  const rowsNeeded = Math.ceil(playerIds.length / 4);
-  const rowCount = Math.max(groups.length, rowsNeeded);
+  const sizes = groupSizesFor(playerIds.length);
+  const rowCount = Math.max(groups.length, sizes.length);
   const next: TeeSheetGroup[] = [];
+  let offset = 0;
   for (let i = 0; i < rowCount; i += 1) {
     const existing = groups[i];
-    const base = i * 4;
+    const slice = playerIds.slice(offset, offset + (sizes[i] ?? 0));
+    offset += sizes[i] ?? 0;
     next.push({
       holeNumber: existing?.holeNumber ?? null,
       teeTime: existing?.teeTime ?? null,
-      player1Id: playerIds[base] ?? null,
-      player2Id: playerIds[base + 1] ?? null,
-      player3Id: playerIds[base + 2] ?? null,
-      player4Id: playerIds[base + 3] ?? null,
+      player1Id: slice[0] ?? null,
+      player2Id: slice[1] ?? null,
+      player3Id: slice[2] ?? null,
+      player4Id: slice[3] ?? null,
     });
   }
   return next;
