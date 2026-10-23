@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Trophy, Loader2 } from 'lucide-react';
+import { Trophy, Loader2, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
@@ -91,6 +92,16 @@ const LoginPage = () => {
             </form>
           </CardContent>
         </Card>
+
+        <div className="mt-6 text-center">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2 text-sm text-emerald-100/90 transition-colors hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Volver al inicio
+          </Link>
+        </div>
       </div>
     </div>
   );
