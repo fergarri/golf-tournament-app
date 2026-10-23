@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       setUser(currentUser);
       if (window.location.pathname === '/login') {
-        navigate('/');
+        navigate('/dashboard');
       }
     }
     setIsLoading(false);
@@ -69,7 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('user', JSON.stringify(userData));
       
       setUser(userData);
-      navigate('/');
+      navigate('/dashboard');
     } catch (error) {
       throw error;
     }

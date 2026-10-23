@@ -150,7 +150,8 @@ const PlayersPage = () => {
     {
       header: 'Nombre',
       accessor: (row: Player) => <span className="font-medium">{row.apellido}, {row.nombre}</span>,
-      sortValue: (row: Player) => `${row.apellido} ${row.nombre}`,
+      sortValue: (row: Player) => `${row.apellido}, ${row.nombre}`,
+      truncate: true,
     },
     {
       header: 'Matrícula',
@@ -446,7 +447,9 @@ const PlayersPage = () => {
                       {bulkUpdateResult.altas!.map((a, idx) => (
                         <tr key={idx} className="border-t border-slate-100 hover:bg-slate-50">
                           <td className="px-3 py-2 font-mono">{a.matricula}</td>
-                          <td className="px-3 py-2">{a.apellido}, {a.nombre}</td>
+                          <td className="px-3 py-2">
+                            <span className="truncated-label" title={`${a.apellido}, ${a.nombre}`}>{a.apellido}, {a.nombre}</span>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -476,7 +479,9 @@ const PlayersPage = () => {
                         .map((c, idx) => (
                         <tr key={idx} className="border-t border-slate-100 hover:bg-slate-50">
                           <td className="px-3 py-2 font-mono">{c.matricula}</td>
-                          <td className="px-3 py-2">{c.apellido}, {c.nombre}</td>
+                          <td className="px-3 py-2">
+                            <span className="truncated-label" title={`${c.apellido}, ${c.nombre}`}>{c.apellido}, {c.nombre}</span>
+                          </td>
                           <td className="px-3 py-2 text-right text-slate-400">{formatHcpIndex(c.handicapAnterior)}</td>
                           <td className="px-3 py-2 text-right font-semibold text-emerald-700">{formatHcpIndex(c.handicapNuevo)}</td>
                         </tr>

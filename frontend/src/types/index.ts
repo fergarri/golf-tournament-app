@@ -188,6 +188,14 @@ export interface TournamentPrize {
   winnerName?: string | null;
 }
 
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+}
+
 export interface Tournament {
   id: number;
   nombre: string;

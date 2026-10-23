@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { tournamentService } from '../services/tournamentService';
 import { courseService } from '../services/courseService';
 import { Tournament, Course, TournamentCategory } from '../types';
 import Table, { TableAction } from '../components/Table';
+import Pagination from '../components/Pagination';
 import Modal from '../components/Modal';
 import ResultsMessageModal from '../components/ResultsMessageModal';
 import ManualInscriptionModal from '../components/ManualInscriptionModal';
@@ -17,8 +18,14 @@ const TournamentsPage = () => {
   const { canDelete } = useAuth();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [listReady, setListReady] = useState(false);
   const [error, setError] = useState('');
+  const listRequestId = useRef(0);
   const [showModal, setShowModal] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showCopyLinkModal, setShowCopyLinkModal] = useState(false);
@@ -89,25 +96,49 @@ const TournamentsPage = () => {
   };
 
   useEffect(() => {
-    loadData();
+    const loadCourses = async () => {
+      try {
+        const coursesData = await courseService.getAll();
+        setCourses(coursesData);
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Error al cargar los campos');
+      }
+    };
+    loadCourses();
   }, []);
 
-  const loadData = async () => {
+  const loadTournaments = useCallback(async () => {
+    const requestId = ++listRequestId.current;
     try {
       setLoading(true);
-      const [tournamentsData, coursesData] = await Promise.all([
-        tournamentService.getAll(),
-        courseService.getAll(),
-      ]);
-      setTournaments(tournamentsData);
-      setCourses(coursesData);
+      const data = await tournamentService.getPage(page, pageSize);
+      if (requestId !== listRequestId.current) return;
+      if (data.totalPages === 0 && page !== 0) {
+        setPage(0);
+        return;
+      }
+      if (data.totalPages > 0 && page > data.totalPages - 1) {
+        setPage(data.totalPages - 1);
+        return;
+      }
+      setTournaments(data.content);
+      setTotalPages(data.totalPages);
+      setTotalElements(data.totalElements);
       setError('');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error loading data');
+      if (requestId !== listRequestId.current) return;
+      setError(err.response?.data?.message || 'Error al cargar los torneos');
     } finally {
-      setLoading(false);
+      if (requestId === listRequestId.current) {
+        setLoading(false);
+        setListReady(true);
+      }
     }
-  };
+  }, [page, pageSize]);
+
+  useEffect(() => {
+    loadTournaments();
+  }, [loadTournaments]);
 
   const handleCreate = () => {
     setEditingTournament(null);
@@ -193,13 +224,18 @@ const TournamentsPage = () => {
       if (editingTournament) {
         await tournamentService.update(editingTournament.id, payload);
         setShowModal(false);
+        loadTournaments();
       } else {
         const created = await tournamentService.create(payload);
         setCreatedTournament(created);
         setShowModal(false);
         setShowCreatedModal(true);
+        if (page === 0) {
+          loadTournaments();
+        } else {
+          setPage(0);
+        }
       }
-      loadData();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error saving tournament');
     }
@@ -212,22 +248,6 @@ const TournamentsPage = () => {
 
   const getInscriptionLink = (codigo: string) => {
     return `${window.location.origin}/inscribe/${codigo}`;
-  };
-
-  const loadTournaments = async () => {
-    try {
-      setLoading(true);
-      const data = await tournamentService.getAll();
-      const activeTournaments = data.filter(t => {
-        return t.estado === 'IN_PROGRESS';
-      });
-      setTournaments(activeTournaments);
-      setError('');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error cargando torneos');
-    } finally {
-      setLoading(false);
-    }
   };
 
   const requestFinalizeTournament = (tournament: Tournament) => {
@@ -264,10 +284,10 @@ const TournamentsPage = () => {
         await loadTournaments();
       } else if (tournamentConfirm.type === 'pause') {
         await tournamentService.pause(t.id);
-        await loadData();
+        await loadTournaments();
       } else {
         await tournamentService.delete(t.id);
-        loadData();
+        await loadTournaments();
       }
       setTournamentConfirm(null);
     } catch (err: any) {
@@ -282,7 +302,7 @@ const TournamentsPage = () => {
       await tournamentService.start(tournament.id);
       setSelectedTournamentForLink(tournament);
       setShowLinkModal(true);
-      loadData();
+      loadTournaments();
     } catch (err: any) {
       const message = err.response?.data?.message || 'Error starting tournament';
       if (message.startsWith('Imposible iniciar el torneo')) {
@@ -390,6 +410,7 @@ const TournamentsPage = () => {
         </Link>
       ),
       sortValue: (row: Tournament) => row.nombre,
+      truncate: true,
     },
     { header: 'Código', accessor: 'codigo' as keyof Tournament },
     { header: 'Campo', accessor: 'courseName' as keyof Tournament },
@@ -479,7 +500,7 @@ const TournamentsPage = () => {
     },
   ];
 
-  if (loading) return <div className="loading">Cargando torneos...</div>;
+  if (!listReady) return <div className="loading">Cargando torneos...</div>;
 
   return (
     <div>
@@ -492,7 +513,22 @@ const TournamentsPage = () => {
 
       {error && <div className="error-message">{error}</div>}
 
-      <Table data={tournaments} columns={columns} actions={tournamentActions} />
+      <div className={loading ? 'tournaments-table-loading' : undefined}>
+        <Table data={tournaments} columns={columns} actions={tournamentActions} />
+      </div>
+
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        totalPages={totalPages}
+        totalElements={totalElements}
+        disabled={loading}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(0);
+        }}
+      />
 
       <Modal
         isOpen={tournamentConfirm !== null}
@@ -1011,7 +1047,7 @@ const TournamentsPage = () => {
           }}
           tournament={selectedTournamentForInscription}
           onSuccess={() => {
-            loadData();
+            loadTournaments();
             setShowInscriptionModal(false);
             setSelectedTournamentForInscription(null);
           }}

@@ -97,7 +97,7 @@ const PublicTournamentAdminBracketsPage = () => {
     const statusClass = slot.isWinner ? 'winner' : isLoser ? 'loser' : slot.playerId === null ? 'empty' : '';
     return (
       <div key={slot.slotId} className={`bracket-slot-box ${statusClass}`}>
-        <span className="bracket-slot-player-name">
+        <span className="bracket-slot-player-name" title={slot.playerName || undefined}>
           {slot.playerName ? formatPlayerLabel(slot.playerName, slot.playerHandicapIndex) : 'Sin asignar'}
         </span>
       </div>

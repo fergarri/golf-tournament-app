@@ -167,6 +167,11 @@
   100% { transform: rotate(360deg); }
 }
 
+.tournaments-table-loading {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 a.tournament-name-link {
   color: #16a34a;
   font-weight: 600;

@@ -233,6 +233,7 @@ const TournamentAdminStagesPage = () => {
         </Link>
       ),
       sortValue: (row: TournamentAdminStage) => row.nombre,
+      truncate: true,
     },
     { header: 'Cant. de Fechas', accessor: (row: TournamentAdminStage) => row.fechasCount },
     { header: 'Fecha Creación', accessor: (row: TournamentAdminStage) => formatDateSafe(row.createdAt) },

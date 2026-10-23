@@ -1,6 +1,8 @@
 package com.golf.tournament.repository;
 
 import com.golf.tournament.model.Tournament;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -28,11 +30,17 @@ public interface TournamentRepository extends JpaRepository<Tournament, Long> {
     
     List<Tournament> findByTipo(String tipo);
     
-    @Query("SELECT t FROM Tournament t ORDER BY t.fechaInicio DESC")
-    List<Tournament> findAllOrderByFechaInicioDesc();
+    @Query("SELECT t FROM Tournament t WHERE t.course.id = :courseId")
+    Page<Tournament> findByCourseId(@Param("courseId") Long courseId, Pageable pageable);
 
-    @Query("SELECT t FROM Tournament t WHERE t.course.id = :courseId ORDER BY t.fechaInicio DESC")
-    List<Tournament> findByCourseIdOrderByFechaInicioDesc(@Param("courseId") Long courseId);
+    @Query("SELECT t FROM Tournament t WHERE t.estado = :estado")
+    Page<Tournament> findByEstado(@Param("estado") String estado, Pageable pageable);
+
+    @Query("SELECT t FROM Tournament t WHERE t.course.id = :courseId AND t.estado = :estado")
+    Page<Tournament> findByCourseIdAndEstado(
+            @Param("courseId") Long courseId,
+            @Param("estado") String estado,
+            Pageable pageable);
 
     @Query("SELECT t FROM Tournament t WHERE t.tipo = :tipo AND t.id NOT IN (" +
             "SELECT st.id FROM TournamentAdminStage s JOIN s.tournaments st" +

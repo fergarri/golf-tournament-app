@@ -26,7 +26,9 @@ const PublicTeeSheetGrid = ({ sheet }: { sheet: PublicTeeSheet }) => {
             <tr key={index}>
               {startTitle && <td className="tee-sheet-table-start">{formatStartCell(group.holeNumber, group.teeTime)}</td>}
               {playerNames(group).map((name, slot) => (
-                <td key={slot}>{name ?? ''}</td>
+                <td key={slot}>
+                  {name ? <span className="truncated-label" title={name}>{name}</span> : ''}
+                </td>
               ))}
             </tr>
           ))}

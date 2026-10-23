@@ -275,6 +275,7 @@ const AdministrationPage = () => {
         </Link>
       ),
       sortValue: (row: TournamentAdmin) => row.nombre,
+      truncate: true,
     },
     { header: 'Tipo', accessor: (row: TournamentAdmin) => (
       <span style={{
@@ -562,7 +563,7 @@ const AdministrationPage = () => {
                             onChange={() => togglePlayer(player.id)}
                           />
                           <div className="player-info">
-                            <div className="player-name">
+                            <div className="player-name truncated-label" title={`${player.apellido} ${player.nombre}`}>
                               {player.apellido} {player.nombre}
                             </div>
                             <div className="player-details">

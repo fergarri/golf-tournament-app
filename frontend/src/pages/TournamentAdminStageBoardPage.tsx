@@ -128,7 +128,9 @@ const TournamentAdminStageBoardPage = () => {
                 const pos = standardRank(rows, index, r => r.totalPoints);
                 return (
                   <tr key={row.playerId}>
-                    <td>{row.playerName}</td>
+                    <td>
+                      <span className="truncated-label" title={row.playerName}>{row.playerName}</span>
+                    </td>
                     {board.tournaments.map(tournament => (
                       <td
                         key={`${row.playerId}-${tournament.tournamentId}`}

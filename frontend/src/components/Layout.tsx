@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { to: '/', label: 'Dashboard', icon: LayoutDashboard, permission: null },
+  { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
   { to: '/tournaments', label: 'Torneos', icon: Trophy, permission: 'GAMES' },
   { to: '/players', label: 'Jugadores', icon: Users, permission: 'GAMES' },
   { to: '/courses', label: 'Campos', icon: Map, permission: 'GAMES' },
@@ -29,7 +29,7 @@ const Layout = () => {
       <header className="bg-[#1a3c2e] text-white shadow-md sticky top-0 z-40">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 shrink-0">
+          <Link to="/dashboard" className="flex items-center gap-2 shrink-0">
             <Trophy className="h-6 w-6 text-emerald-400" />
             <span className="font-bold text-lg tracking-tight hidden sm:block">Torneos de Golf</span>
           </Link>
@@ -38,9 +38,8 @@ const Layout = () => {
           <nav className="hidden md:flex items-center gap-1">
             {visibleItems.map((item) => {
               const Icon = item.icon;
-              const active = item.to === '/'
-                ? location.pathname === '/'
-                : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+              const active =
+                location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
               return (
                 <Link
                   key={item.to}
@@ -95,9 +94,8 @@ const Layout = () => {
           <div className="md:hidden border-t border-emerald-800 bg-[#1a3c2e] px-4 py-2">
             {visibleItems.map((item) => {
               const Icon = item.icon;
-              const active = item.to === '/'
-                ? location.pathname === '/'
-                : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
+              const active =
+                location.pathname === item.to || location.pathname.startsWith(`${item.to}/`);
               return (
                 <Link
                   key={item.to}

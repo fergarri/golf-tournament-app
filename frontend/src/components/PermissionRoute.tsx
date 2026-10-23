@@ -11,7 +11,7 @@ const PermissionRoute = ({ permission, children }: PermissionRouteProps) => {
   const { hasPermission } = useAuth();
 
   if (!hasPermission(permission)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

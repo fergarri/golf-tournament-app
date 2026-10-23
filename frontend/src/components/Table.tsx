@@ -8,6 +8,20 @@ interface Column<T> {
   /** Valor usado para ordenar cuando el accessor devuelve JSX */
   sortValue?: (row: T) => string | number;
   width?: string;
+  /** Corta el texto en una línea y muestra el valor completo al pasar el mouse */
+  truncate?: boolean;
+}
+
+function truncateTitle<T>(row: T, column: Column<T>): string | undefined {
+  if (column.sortValue) {
+    const value = column.sortValue(row);
+    if (value !== null && value !== undefined && value !== '') return String(value);
+  }
+  if (typeof column.accessor !== 'function') {
+    const value = row[column.accessor];
+    if (value !== null && value !== undefined && value !== '') return String(value);
+  }
+  return undefined;
 }
 
 const isPixelWidth = (width?: string) => Boolean(width && /^\d+(\.\d+)?px$/.test(width));
@@ -186,13 +200,21 @@ function Table<T>({
                 >
                   {columns.map((column, colIndex) => {
                     const compact = isPixelWidth(column.width);
+                    const fullText = column.truncate ? truncateTitle(row, column) : undefined;
                     return (
                     <td
                       key={colIndex}
                       style={columnWidthStyle(column.width)}
-                      className={`${compact ? 'px-2 text-center' : 'px-4'} py-3 text-slate-700`}
+                      title={fullText}
+                      className={`${compact ? 'px-2 text-center' : 'px-4'} py-3 text-slate-700${column.truncate ? ' cell-truncate' : ''}`}
                     >
-                      {renderCell(row, column)}
+                      {column.truncate ? (
+                        <span className="truncated-label" title={fullText}>
+                          {renderCell(row, column)}
+                        </span>
+                      ) : (
+                        renderCell(row, column)
+                      )}
                     </td>
                     );
                   })}

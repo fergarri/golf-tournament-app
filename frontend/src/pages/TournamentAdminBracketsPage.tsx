@@ -102,6 +102,7 @@ const DraggablePlayerChip = ({
       {...attributes}
       className="bracket-player-chip bracket-no-pan"
       style={style}
+      title={playerName}
     >
       {formatPlayerLabel(playerName, handicapIndex)}
     </div>
@@ -510,7 +511,7 @@ const TournamentAdminBracketsPage = () => {
             scale={zoomScale}
           />
         ) : (
-          <span className="bracket-slot-player-name">
+          <span className="bracket-slot-player-name" title={slot.playerName || undefined}>
             {slot.playerName ? formatPlayerLabel(slot.playerName, slot.playerHandicapIndex) : 'Sin asignar'}
           </span>
         )}
@@ -657,7 +658,7 @@ const TournamentAdminBracketsPage = () => {
                       handicapIndex={p.playerHandicapIndex}
                     />
                   ) : (
-                    <span key={p.playerId} className="bracket-slot-player-name">
+                    <span key={p.playerId} className="bracket-slot-player-name" title={p.playerName}>
                       {formatPlayerLabel(p.playerName, p.playerHandicapIndex)}
                     </span>
                   )

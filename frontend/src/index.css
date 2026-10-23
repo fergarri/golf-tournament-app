@@ -100,3 +100,35 @@
     border-left: 4px solid hsl(var(--destructive));
   }
 }
+
+/* Nombres largos en listas: una línea, con puntos suspensivos */
+td.cell-truncate {
+  max-width: 28rem;
+  overflow: hidden;
+}
+
+.truncated-label,
+.truncated-label > a,
+.truncated-label > button,
+.truncated-label > span {
+  display: block;
+  max-width: 28rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+td.cell-truncate .truncated-label,
+td.cell-truncate .truncated-label > a,
+td.cell-truncate .truncated-label > button,
+td.cell-truncate .truncated-label > span {
+  max-width: 100%;
+}
+
+.player-info {
+  min-width: 0;
+}
+
+.player-info > .truncated-label {
+  max-width: 100%;
+}

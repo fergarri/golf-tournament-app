@@ -1,5 +1,6 @@
 package com.golf.tournament.controller;
 
+import com.golf.tournament.dto.PageResponse;
 import com.golf.tournament.dto.tournament.CreateTournamentRequest;
 import com.golf.tournament.dto.tournament.TournamentDTO;
 import com.golf.tournament.service.TournamentService;
@@ -10,8 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/tournaments")
 @RequiredArgsConstructor
@@ -21,8 +20,11 @@ public class TournamentController {
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
-    public ResponseEntity<List<TournamentDTO>> getAllTournaments() {
-        return ResponseEntity.ok(tournamentService.getAllTournaments());
+    public ResponseEntity<PageResponse<TournamentDTO>> getAllTournaments(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String estado) {
+        return ResponseEntity.ok(tournamentService.getAllTournaments(page, size, estado));
     }
 
     @GetMapping("/{id}")

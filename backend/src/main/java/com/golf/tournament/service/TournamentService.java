@@ -1,5 +1,6 @@
 package com.golf.tournament.service;
 
+import com.golf.tournament.dto.PageResponse;
 import com.golf.tournament.dto.tournament.*;
 import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.ResourceNotFoundException;
@@ -8,6 +9,10 @@ import com.golf.tournament.repository.*;
 import com.golf.tournament.security.CurrentUserProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,19 +47,54 @@ public class TournamentService {
     private static final String CATEGORY_SEX_MALE = "M";
     private static final String CATEGORY_SEX_FEMALE = "F";
     private static final String CATEGORY_SEX_MIXED = "X";
+    private static final List<Integer> ALLOWED_PAGE_SIZES = List.of(10, 25, 50);
+    private static final List<String> ALLOWED_ESTADOS = List.of("PENDING", "IN_PROGRESS", "FINALIZED");
 
     @Transactional(readOnly = true)
-    public List<TournamentDTO> getAllTournaments() {
-        List<Tournament> tournaments = currentUserProvider.isSuperAdmin()
-                ? tournamentRepository.findAllOrderByFechaInicioDesc()
-                : tournamentRepository.findByCourseIdOrderByFechaInicioDesc(currentUserProvider.getCurrentCourseId());
-        return tournaments.stream()
+    public PageResponse<TournamentDTO> getAllTournaments(int page, int size, String estado) {
+        if (page < 0) {
+            throw new BadRequestException("La página no puede ser negativa");
+        }
+        if (!ALLOWED_PAGE_SIZES.contains(size)) {
+            throw new BadRequestException("El tamaño de página debe ser 10, 25 o 50");
+        }
+        String estadoFilter = null;
+        if (estado != null && !estado.isBlank()) {
+            estadoFilter = estado.trim();
+            if (!ALLOWED_ESTADOS.contains(estadoFilter)) {
+                throw new BadRequestException("Estado de torneo no válido");
+            }
+        }
+
+        Sort sort = Sort.by(Sort.Order.desc("fechaInicio"), Sort.Order.desc("id"));
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Page<Tournament> tournaments;
+        if (currentUserProvider.isSuperAdmin()) {
+            tournaments = estadoFilter == null
+                    ? tournamentRepository.findAll(pageable)
+                    : tournamentRepository.findByEstado(estadoFilter, pageable);
+        } else {
+            Long courseId = currentUserProvider.getCurrentCourseId();
+            tournaments = estadoFilter == null
+                    ? tournamentRepository.findByCourseId(courseId, pageable)
+                    : tournamentRepository.findByCourseIdAndEstado(courseId, estadoFilter, pageable);
+        }
+
+        List<TournamentDTO> content = tournaments.getContent().stream()
                 .map(tournament -> {
                     TournamentDTO dto = convertToDTO(tournament);
                     enrichWithAdminStage(dto, false);
                     return dto;
                 })
                 .collect(Collectors.toList());
+
+        return PageResponse.<TournamentDTO>builder()
+                .content(content)
+                .page(tournaments.getNumber())
+                .size(tournaments.getSize())
+                .totalElements(tournaments.getTotalElements())
+                .totalPages(tournaments.getTotalPages())
+                .build();
     }
 
     @Transactional(readOnly = true)

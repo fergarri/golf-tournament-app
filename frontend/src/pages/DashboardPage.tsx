@@ -40,8 +40,17 @@ const DashboardPage = () => {
   const loadTournaments = async () => {
     try {
       setLoading(true);
-      const data = await tournamentService.getAll();
-      setTournaments(data.filter(t => t.estado === 'IN_PROGRESS'));
+      const pageSize = 50;
+      let currentPage = 0;
+      let pages = 1;
+      const inProgress: Tournament[] = [];
+      do {
+        const data = await tournamentService.getPage(currentPage, pageSize, 'IN_PROGRESS');
+        inProgress.push(...data.content);
+        pages = data.totalPages;
+        currentPage += 1;
+      } while (currentPage < pages);
+      setTournaments(inProgress);
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error cargando torneos');
@@ -138,6 +147,7 @@ const DashboardPage = () => {
         </Link>
       ),
       sortValue: (row: Tournament) => row.nombre,
+      truncate: true,
       width: '28%',
     },
     { header: 'Campo', accessor: 'courseName' as keyof Tournament, width: '20%' },

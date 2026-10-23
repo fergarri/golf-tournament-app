@@ -1,6 +1,7 @@
 import { Routes, Route } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import LoginPage from './pages/LoginPage'
+import HomePage from './pages/HomePage'
 import DashboardPage from './pages/DashboardPage'
 import TournamentsPage from './pages/TournamentsPage'
 import PlayersPage from './pages/PlayersPage'
@@ -38,10 +39,11 @@ function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        
+        <Route path="/" element={<HomePage />} />
+
         {/* Protected routes MUST come before public routes to avoid conflicts */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/tournaments" element={<PermissionRoute permission="GAMES"><TournamentsPage /></PermissionRoute>} />
           <Route path="/tournaments/:id/leaderboard" element={<PermissionRoute permission="GAMES"><TournamentLeaderboardPage /></PermissionRoute>} />
           <Route path="/tournaments/:id/tee-sheet" element={<PermissionRoute permission="GAMES"><TournamentTeeSheetPage /></PermissionRoute>} />

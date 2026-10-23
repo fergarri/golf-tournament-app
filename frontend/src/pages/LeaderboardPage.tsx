@@ -144,7 +144,9 @@ const LeaderboardPage: React.FC = () => {
                             <span className="position-badge">{pos}</span>
                           </td>
                         )}
-                        <td className="player-name">{entry.playerName}</td>
+                        <td className="player-name">
+                          <span className="truncated-label" title={entry.playerName}>{entry.playerName}</span>
+                        </td>
                         <td className="matricula">{entry.matricula}</td>
                         <td className="handicap">
                           {entry.handicapCourse !== undefined && entry.handicapCourse !== null

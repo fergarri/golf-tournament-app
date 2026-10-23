@@ -356,7 +356,9 @@ const TournamentAdminDetailPage = () => {
                   filteredInscriptions.map((inscription, index) => (
                     <tr key={inscription.inscriptionId}>
                       <td style={{ textAlign: 'center', fontWeight: 600 }}>{index + 1}</td>
-                      <td>{inscription.playerName}</td>
+                      <td>
+                        <span className="truncated-label" title={inscription.playerName}>{inscription.playerName}</span>
+                      </td>
                       <td>{inscription.telefono || '-'}</td>
                       <td>{inscription.email || '-'}</td>
                       {cuotaColumns.map(n => {
@@ -460,7 +462,7 @@ const TournamentAdminDetailPage = () => {
                             onChange={() => togglePlayer(player.id)}
                           />
                           <div className="player-info">
-                            <div className="player-name">
+                            <div className="player-name truncated-label" title={`${player.apellido} ${player.nombre}`}>
                               {player.apellido} {player.nombre}
                             </div>
                             <div className="player-details">

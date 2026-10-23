@@ -307,6 +307,7 @@ const PublicLeaderboardPage = () => {
         />
       ),
       sortValue: (row: LeaderboardEntry) => row.playerName,
+      truncate: true,
       width: '15%',
     },
     { header: 'Matrícula', accessor: 'matricula' as keyof LeaderboardEntry, width: '10%' },

@@ -68,7 +68,7 @@ const PlayerChip = ({ player, from }: { player: TeeSheetPlayer; from: PlayerOrig
   });
   const style: CSSProperties = { opacity: isDragging ? 0.35 : 1 };
   return (
-    <div ref={setNodeRef} {...listeners} {...attributes} className="tee-sheet-player-chip" style={style}>
+    <div ref={setNodeRef} {...listeners} {...attributes} className="tee-sheet-player-chip" style={style} title={player.playerName}>
       {player.playerName}
     </div>
   );
@@ -100,7 +100,7 @@ const TeeSheetCell = ({
         editable ? (
           <PlayerChip player={player} from={{ kind: 'cell', rowIndex, slot }} />
         ) : (
-          <span className="tee-sheet-player-static">{player.playerName}</span>
+          <span className="tee-sheet-player-static" title={player.playerName}>{player.playerName}</span>
         )
       ) : (
         editable && <span className="tee-sheet-cell-placeholder">Soltar jugador</span>
@@ -288,7 +288,7 @@ const UnassignedPanel = ({
           editable ? (
             <PlayerChip key={player.playerId} player={player} from={{ kind: 'unassigned' }} />
           ) : (
-            <span key={player.playerId} className="tee-sheet-player-static">
+            <span key={player.playerId} className="tee-sheet-player-static" title={player.playerName}>
               {player.playerName}
             </span>
           )

@@ -228,7 +228,7 @@ const PrintScorecardsModal = ({ isOpen, onClose, tournament }: PrintScorecardsMo
                           onChange={() => togglePlayer(player.id)}
                         />
                         <div className="player-info">
-                          <div className="player-name">
+                          <div className="player-name truncated-label" title={`${player.nombre} ${player.apellido}`}>
                             {player.nombre} {player.apellido}
                           </div>
                           <div className="player-details">

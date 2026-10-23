@@ -1,9 +1,15 @@
 import api from './api';
-import { Tournament, TournamentPrize } from '../types';
+import { PageResponse, Tournament, TournamentPrize } from '../types';
 
 export const tournamentService = {
-  getAll: async (): Promise<Tournament[]> => {
-    const response = await api.get<Tournament[]>('/tournaments');
+  getPage: async (page: number, size: number, estado?: string): Promise<PageResponse<Tournament>> => {
+    const response = await api.get<PageResponse<Tournament>>('/tournaments', {
+      params: {
+        page,
+        size,
+        ...(estado ? { estado } : {}),
+      },
+    });
     return response.data;
   },
 

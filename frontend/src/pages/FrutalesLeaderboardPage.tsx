@@ -379,6 +379,7 @@ const FrutalesLeaderboardPage = () => {
         />
       ),
       sortValue: (row: FrutalesScore) => row.playerName,
+      truncate: true,
       width: '15%',
     },
     { header: 'Matrícula', accessor: 'matricula' as keyof FrutalesScore, width: '8%' },

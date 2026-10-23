@@ -6,6 +6,7 @@
  * IMPORTANTE: mantener esta lista actualizada al agregar nuevas páginas públicas.
  */
 export const PUBLIC_PATHS = [
+  /^\/$/,
   /^\/inscribe\//,
   /^\/play\//,
   /^\/results\//,
