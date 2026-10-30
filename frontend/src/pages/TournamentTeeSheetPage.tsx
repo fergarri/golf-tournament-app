@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   CollisionDetection,
@@ -77,18 +78,25 @@ const PlayerChip = ({ player, from }: { player: TeeSheetPlayer; from: PlayerOrig
   );
 };
 
+const normalizeSearch = (value: string) =>
+  value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
 const TeeSheetCell = ({
   rowIndex,
   slot,
   player,
   editable,
+  candidates,
   onClear,
+  onPick,
 }: {
   rowIndex: number;
   slot: number;
   player: TeeSheetPlayer | undefined;
   editable: boolean;
+  candidates: TeeSheetPlayer[];
   onClear: () => void;
+  onPick: (playerId: number) => void;
 }) => {
   const { active } = useDndContext();
   const { setNodeRef, isOver } = useDroppable({
@@ -96,17 +104,116 @@ const TeeSheetCell = ({
     data: { type: 'cell', rowIndex, slot },
     disabled: !editable,
   });
+  const [searching, setSearching] = useState(false);
+  const [query, setQuery] = useState('');
+  const [menuBox, setMenuBox] = useState<{ top: number; left: number; width: number } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const highlight = isOver && active?.data.current?.type === 'player';
+  const needle = normalizeSearch(query.trim());
+  const matches = useMemo(() => {
+    if (!needle) return [];
+    return candidates.filter((candidate) =>
+      normalizeSearch(candidate.nombre).includes(needle)
+      || normalizeSearch(candidate.apellido).includes(needle)
+      || normalizeSearch(candidate.playerName).includes(needle),
+    );
+  }, [candidates, needle]);
+
+  useEffect(() => {
+    if (searching) inputRef.current?.focus();
+  }, [searching]);
+
+  useEffect(() => {
+    if (!searching || !needle) {
+      setMenuBox(null);
+      return;
+    }
+    const place = () => {
+      const rect = inputRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setMenuBox({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [searching, needle]);
+
+  useEffect(() => {
+    if (player) {
+      setSearching(false);
+      setQuery('');
+    }
+  }, [player]);
+
+  const closeSearch = () => {
+    setSearching(false);
+    setQuery('');
+  };
+
   return (
-    <div ref={setNodeRef} className={`tee-sheet-cell ${highlight ? 'is-drop-over' : ''}`}>
+    <div
+      ref={setNodeRef}
+      className={`tee-sheet-cell ${highlight ? 'is-drop-over' : ''} ${searching ? 'is-searching' : ''}`}
+      onClick={() => {
+        if (editable && !player) setSearching(true);
+      }}
+    >
       {player ? (
         editable ? (
           <PlayerChip player={player} from={{ kind: 'cell', rowIndex, slot }} />
         ) : (
           <span className="tee-sheet-player-static" title={player.playerName}>{player.playerName}</span>
         )
+      ) : searching ? (
+        <div className="tee-sheet-search" onClick={(event) => event.stopPropagation()}>
+          <input
+            ref={inputRef}
+            className="tee-sheet-search-input"
+            aria-label="Buscar jugador"
+            placeholder="Buscar jugador"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            onBlur={() => {
+              window.setTimeout(closeSearch, 150);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') closeSearch();
+            }}
+          />
+          {needle && menuBox && createPortal(
+            <ul
+              className="tee-sheet-search-results"
+              style={{ top: menuBox.top, left: menuBox.left, width: menuBox.width }}
+            >
+              {matches.length === 0 ? (
+                <li className="tee-sheet-search-empty">Sin coincidencias</li>
+              ) : (
+                matches.map((candidate) => (
+                  <li key={candidate.playerId}>
+                    <button
+                      type="button"
+                      onPointerDown={(event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        onPick(candidate.playerId);
+                        closeSearch();
+                      }}
+                    >
+                      {candidate.playerName}
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>,
+            document.body,
+          )}
+        </div>
       ) : (
-        editable && <span className="tee-sheet-cell-placeholder">Soltar jugador</span>
+        editable && <span className="tee-sheet-cell-placeholder">Soltar o Buscar Jugador</span>
       )}
       {player && editable && (
         <button
@@ -132,8 +239,10 @@ const TeeSheetRow = ({
   onHoleChange,
   onTimeChange,
   rowCount,
+  candidates,
   onRemove,
   onClearPlayer,
+  onPickPlayer,
   onMoveUp,
   onMoveDown,
 }: {
@@ -145,8 +254,10 @@ const TeeSheetRow = ({
   onHoleChange: (value: number | null) => void;
   onTimeChange: (value: string | null) => void;
   rowCount: number;
+  candidates: TeeSheetPlayer[];
   onRemove: () => void;
   onClearPlayer: (slot: number) => void;
+  onPickPlayer: (slot: number, playerId: number) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }) => {
@@ -258,7 +369,9 @@ const TeeSheetRow = ({
           slot={slot}
           player={playerId != null ? playersById.get(playerId) : undefined}
           editable={editable}
+          candidates={candidates}
           onClear={() => onClearPlayer(slot)}
+          onPick={(playerIdPicked) => onPickPlayer(slot, playerIdPicked)}
         />
       ))}
     </div>
@@ -604,6 +717,23 @@ const TournamentTeeSheetPage = () => {
           >
             Salidas por HCP
           </button>
+          <button
+            type="button"
+            className="btn-compact btn-compact-secondary"
+            disabled={!editable || !anyPlayerPlaced(sheet.groups)}
+            onClick={() => {
+              const groups = sheet.groups.map((group) => ({
+                ...group,
+                player1Id: null,
+                player2Id: null,
+                player3Id: null,
+                player4Id: null,
+              }));
+              void persist(groups);
+            }}
+          >
+            Limpiar Grilla
+          </button>
         </div>
         <div className="tee-sheet-toolbar-group">
           {sheet.locked ? (
@@ -682,7 +812,17 @@ const TournamentTeeSheetPage = () => {
                   onTimeChange={(teeTime) =>
                     void persist(sheet.groups.map((item, index) => (index === rowIndex ? { ...item, teeTime } : item)))
                   }
+                  candidates={unassigned}
                   onRemove={() => void persist(sheet.groups.filter((_, index) => index !== rowIndex))}
+                  onPickPlayer={(slot, playerId) => {
+                    const groups = movePlayer(
+                      sheet.groups,
+                      playerId,
+                      { kind: 'unassigned' },
+                      { kind: 'cell', rowIndex, slot },
+                    );
+                    if (groups !== sheet.groups) void persist(groups);
+                  }}
                   onMoveUp={() => {
                     const groups = moveRow(sheet.groups, rowIndex, rowIndex - 1);
                     if (groups !== sheet.groups) void persist(groups);
