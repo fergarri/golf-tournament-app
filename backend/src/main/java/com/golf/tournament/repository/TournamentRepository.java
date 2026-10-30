@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -33,13 +34,13 @@ public interface TournamentRepository extends JpaRepository<Tournament, Long> {
     @Query("SELECT t FROM Tournament t WHERE t.course.id = :courseId")
     Page<Tournament> findByCourseId(@Param("courseId") Long courseId, Pageable pageable);
 
-    @Query("SELECT t FROM Tournament t WHERE t.estado = :estado")
-    Page<Tournament> findByEstado(@Param("estado") String estado, Pageable pageable);
+    @Query("SELECT t FROM Tournament t WHERE t.estado IN :estados")
+    Page<Tournament> findByEstadoIn(@Param("estados") Collection<String> estados, Pageable pageable);
 
-    @Query("SELECT t FROM Tournament t WHERE t.course.id = :courseId AND t.estado = :estado")
-    Page<Tournament> findByCourseIdAndEstado(
+    @Query("SELECT t FROM Tournament t WHERE t.course.id = :courseId AND t.estado IN :estados")
+    Page<Tournament> findByCourseIdAndEstadoIn(
             @Param("courseId") Long courseId,
-            @Param("estado") String estado,
+            @Param("estados") Collection<String> estados,
             Pageable pageable);
 
     @Query("SELECT t FROM Tournament t WHERE t.tipo = :tipo AND t.id NOT IN (" +

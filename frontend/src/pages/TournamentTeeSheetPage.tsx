@@ -230,6 +230,67 @@ const TeeSheetCell = ({
   );
 };
 
+/** Vacío se guarda como null. HH:mm válido se normaliza. Cualquier otra cosa se descarta. */
+const commitTeeTime = (raw: string): string | null | undefined => {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const digits = /^\d{4}$/.test(trimmed) ? `${trimmed.slice(0, 2)}:${trimmed.slice(2)}` : trimmed;
+  const match = digits.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return undefined;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return undefined;
+  return `${String(hour).padStart(2, '0')}:${match[2]}`;
+};
+
+const TeeTimeField = ({
+  value,
+  disabled,
+  onCommit,
+}: {
+  value: string | null;
+  disabled: boolean;
+  onCommit: (value: string | null) => void;
+}) => {
+  const [text, setText] = useState(value ?? '');
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (!focused.current) setText(value ?? '');
+  }, [value]);
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      autoComplete="off"
+      placeholder="HH:mm"
+      className="tee-sheet-time"
+      aria-label="Horario"
+      value={text}
+      disabled={disabled}
+      maxLength={5}
+      onFocus={() => {
+        focused.current = true;
+      }}
+      onChange={(event) => setText(event.target.value.replace(/[^\d:]/g, '').slice(0, 5))}
+      onBlur={() => {
+        focused.current = false;
+        const next = commitTeeTime(text);
+        if (next === undefined) {
+          setText(value ?? '');
+          return;
+        }
+        setText(next ?? '');
+        if (next !== value) onCommit(next);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+    />
+  );
+};
+
 const TeeSheetRow = ({
   rowIndex,
   group,
@@ -335,24 +396,10 @@ const TeeSheetRow = ({
                 </option>
               ))}
             </select>
-            <input
-              type="time"
-              className="tee-sheet-time"
-              aria-label="Horario"
-              value={group.teeTime ?? ''}
+            <TeeTimeField
+              value={group.teeTime}
               disabled={!editable}
-              onPointerDown={(event) => {
-                // Vacío, el selector nativo abre en la hora actual. Se fija 00:00 antes de que se abra.
-                if (!event.currentTarget.value) {
-                  event.currentTarget.value = '00:00';
-                }
-              }}
-              onChange={(event) => onTimeChange(event.target.value === '' ? null : event.target.value.slice(0, 5))}
-              onBlur={(event) => {
-                if (!group.teeTime) {
-                  event.currentTarget.value = '';
-                }
-              }}
+              onCommit={onTimeChange}
             />
           </div>
         </div>

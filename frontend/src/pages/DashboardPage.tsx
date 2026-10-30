@@ -43,14 +43,14 @@ const DashboardPage = () => {
       const pageSize = 50;
       let currentPage = 0;
       let pages = 1;
-      const inProgress: Tournament[] = [];
+      const active: Tournament[] = [];
       do {
-        const data = await tournamentService.getPage(currentPage, pageSize, 'IN_PROGRESS');
-        inProgress.push(...data.content);
+        const data = await tournamentService.getPage(currentPage, pageSize, 'IN_PROGRESS,PENDING');
+        active.push(...data.content);
         pages = data.totalPages;
         currentPage += 1;
       } while (currentPage < pages);
-      setTournaments(inProgress);
+      setTournaments(active);
       setError('');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error cargando torneos');
@@ -215,7 +215,7 @@ const DashboardPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard</h1>
-          <p className="text-slate-500 text-sm mt-0.5">Resumen de torneos activos</p>
+          <p className="text-slate-500 text-sm mt-0.5">Torneos en curso y pendientes</p>
         </div>
         <Button onClick={() => navigate('/tournaments')} size="sm">
           <Trophy className="h-4 w-4" />
@@ -232,7 +232,7 @@ const DashboardPage = () => {
             </div>
             <div>
               <p className="text-2xl font-bold text-slate-800">{tournaments.length}</p>
-              <p className="text-sm text-slate-500">Torneos Activos</p>
+              <p className="text-sm text-slate-500">En curso y pendientes</p>
             </div>
           </CardContent>
         </Card>
@@ -257,7 +257,7 @@ const DashboardPage = () => {
             <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
               <Trophy className="h-8 w-8 text-slate-300" />
             </div>
-            <h2 className="text-lg font-semibold text-slate-700 mb-1">No hay torneos activos</h2>
+            <h2 className="text-lg font-semibold text-slate-700 mb-1">No hay torneos en curso ni pendientes</h2>
             <p className="text-slate-400 text-sm mb-5">Creá un nuevo torneo para comenzar</p>
             <Button onClick={() => navigate('/tournaments')}>
               <Trophy className="h-4 w-4" />
@@ -270,7 +270,7 @@ const DashboardPage = () => {
           data={tournaments}
           columns={columns}
           actions={dashboardActions}
-          emptyMessage="No hay torneos activos"
+          emptyMessage="No hay torneos en curso ni pendientes"
         />
       )}
 

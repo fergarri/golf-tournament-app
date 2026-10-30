@@ -58,26 +58,20 @@ public class TournamentService {
         if (!ALLOWED_PAGE_SIZES.contains(size)) {
             throw new BadRequestException("El tamaño de página debe ser 10, 25 o 50");
         }
-        String estadoFilter = null;
-        if (estado != null && !estado.isBlank()) {
-            estadoFilter = estado.trim();
-            if (!ALLOWED_ESTADOS.contains(estadoFilter)) {
-                throw new BadRequestException("Estado de torneo no válido");
-            }
-        }
+        List<String> estados = parseEstados(estado);
 
         Sort sort = Sort.by(Sort.Order.desc("fechaInicio"), Sort.Order.desc("id"));
         Pageable pageable = PageRequest.of(page, size, sort);
         Page<Tournament> tournaments;
         if (currentUserProvider.isSuperAdmin()) {
-            tournaments = estadoFilter == null
+            tournaments = estados.isEmpty()
                     ? tournamentRepository.findAll(pageable)
-                    : tournamentRepository.findByEstado(estadoFilter, pageable);
+                    : tournamentRepository.findByEstadoIn(estados, pageable);
         } else {
             Long courseId = currentUserProvider.getCurrentCourseId();
-            tournaments = estadoFilter == null
+            tournaments = estados.isEmpty()
                     ? tournamentRepository.findByCourseId(courseId, pageable)
-                    : tournamentRepository.findByCourseIdAndEstado(courseId, estadoFilter, pageable);
+                    : tournamentRepository.findByCourseIdAndEstadoIn(courseId, estados, pageable);
         }
 
         List<TournamentDTO> content = tournaments.getContent().stream()
@@ -95,6 +89,26 @@ public class TournamentService {
                 .totalElements(tournaments.getTotalElements())
                 .totalPages(tournaments.getTotalPages())
                 .build();
+    }
+
+    private List<String> parseEstados(String estado) {
+        if (estado == null || estado.isBlank()) {
+            return List.of();
+        }
+        List<String> estados = new ArrayList<>();
+        for (String value : estado.split(",")) {
+            String trimmed = value.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            if (!ALLOWED_ESTADOS.contains(trimmed)) {
+                throw new BadRequestException("Estado de torneo no válido");
+            }
+            if (!estados.contains(trimmed)) {
+                estados.add(trimmed);
+            }
+        }
+        return estados;
     }
 
     @Transactional(readOnly = true)
