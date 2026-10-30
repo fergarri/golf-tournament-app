@@ -82,6 +82,25 @@
   color: #5c6770;
 }
 
+.tee-sheet-preview-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+}
+
+.tee-sheet-preview-note {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
+  color: #5c6770;
+}
+
+.tee-sheet-preview-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .tee-sheet-layout {
   display: flex;
   gap: 1.5rem;

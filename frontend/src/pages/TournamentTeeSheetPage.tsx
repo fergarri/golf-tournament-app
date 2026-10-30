@@ -18,6 +18,7 @@ import Modal from '../components/Modal';
 import { teeSheetService } from '../services/teeSheetService';
 import { TeeSheetGroup, TeeSheetPlayer, TournamentTeeSheet } from '../types';
 import { formatDateSafe } from '../utils/dateUtils';
+import { renderTeeSheetImage } from '../utils/teeSheetImage';
 import {
   PlayerOrigin,
   anyPlayerPlaced,
@@ -25,6 +26,7 @@ import {
   fillGroups,
   movePlayer,
   moveRow,
+  playerSlotIds,
   shufflePlayers,
   sortPlayersByHandicap,
   unassignedPlayers,
@@ -34,6 +36,7 @@ import './TournamentLeaderboardPage.css';
 import './TournamentTeeSheetPage.css';
 
 type PendingAction = 'confirm' | 'random' | 'hcp';
+type GridPreview = { url: string; blob: Blob } | 'empty';
 type DragPreview =
   | { kind: 'player'; name: string }
   | { kind: 'row'; names: (string | null)[] };
@@ -309,6 +312,8 @@ const TournamentTeeSheetPage = () => {
   const [error, setError] = useState('');
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [showCopyModal, setShowCopyModal] = useState(false);
+  const [gridPreview, setGridPreview] = useState<GridPreview | null>(null);
+  const [gridPreviewNote, setGridPreviewNote] = useState('');
   const [dragPreview, setDragPreview] = useState<DragPreview | null>(null);
   const savingRef = useRef(false);
 
@@ -414,6 +419,60 @@ const TournamentTeeSheetPage = () => {
       setShowCopyModal(true);
     } catch {
       setError('No se pudo copiar el link');
+    }
+  };
+
+  const closeGridPreview = () => {
+    setGridPreview((current) => {
+      if (current && current !== 'empty') URL.revokeObjectURL(current.url);
+      return null;
+    });
+    setGridPreviewNote('');
+  };
+
+  const openGridPreview = async () => {
+    if (!sheet) return;
+    setGridPreview((current) => {
+      if (current && current !== 'empty') URL.revokeObjectURL(current.url);
+      return null;
+    });
+    setGridPreviewNote('');
+    const groups = sheet.groups.flatMap((group) => {
+      const names = playerSlotIds(group)
+        .map((playerId) => (playerId != null ? playersById.get(playerId)?.playerName ?? null : null))
+        .filter((name): name is string => Boolean(name));
+      const hasStart = group.holeNumber != null || Boolean(group.teeTime);
+      if (names.length === 0 && !hasStart) return [];
+      return [{
+        holeNumber: group.holeNumber,
+        teeTime: group.teeTime,
+        names: [names[0] ?? null, names[1] ?? null, names[2] ?? null, names[3] ?? null],
+      }];
+    });
+    if (groups.length === 0) {
+      setGridPreview('empty');
+      return;
+    }
+    try {
+      const blob = await renderTeeSheetImage({
+        tournamentName: sheet.tournamentName,
+        courseName: sheet.courseName,
+        fechaLabel: formatDateSafe(sheet.fechaInicio),
+        groups,
+      });
+      setGridPreview({ url: URL.createObjectURL(blob), blob });
+    } catch {
+      setError('No se pudo armar la imagen de la grilla');
+    }
+  };
+
+  const copyGridImage = async () => {
+    if (!gridPreview || gridPreview === 'empty') return;
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': gridPreview.blob })]);
+      setGridPreviewNote('Imagen copiada. Ya podés pegarla en un chat o un documento.');
+    } catch {
+      setGridPreviewNote('No se pudo copiar la imagen.');
     }
   };
 
@@ -570,6 +629,13 @@ const TournamentTeeSheetPage = () => {
           <button
             type="button"
             className="btn-compact btn-compact-secondary"
+            onClick={() => void openGridPreview()}
+          >
+            Ver Grilla
+          </button>
+          <button
+            type="button"
+            className="btn-compact btn-compact-secondary"
             disabled={!sheet.published || saving}
             title={sheet.published ? undefined : 'Confirmá las salidas para copiar el link público'}
             onClick={() => void copyPublicLink()}
@@ -669,6 +735,37 @@ const TournamentTeeSheetPage = () => {
           )}
         </DragOverlay>
       </DndContext>
+
+      <Modal
+        isOpen={gridPreview !== null}
+        onClose={closeGridPreview}
+        title="Grilla de salidas"
+        size="large"
+        footer={
+          <div className="tee-sheet-preview-actions">
+            <button
+              type="button"
+              className="btn-compact btn-compact-primary"
+              disabled={!gridPreview || gridPreview === 'empty'}
+              onClick={() => void copyGridImage()}
+            >
+              Copiar Imagen
+            </button>
+            <button type="button" className="btn-compact btn-compact-secondary" onClick={closeGridPreview}>
+              Cerrar
+            </button>
+          </div>
+        }
+      >
+        {gridPreview && gridPreview !== 'empty' ? (
+          <>
+            <img className="tee-sheet-preview-image" src={gridPreview.url} alt="Grilla de salidas" />
+            {gridPreviewNote && <p className="tee-sheet-preview-note">{gridPreviewNote}</p>}
+          </>
+        ) : (
+          <div className="tee-sheet-unpublished">No hay salidas para mostrar.</div>
+        )}
+      </Modal>
 
       <Modal
         isOpen={pending !== null}
