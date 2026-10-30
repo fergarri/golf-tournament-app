@@ -692,11 +692,11 @@ const TournamentTeeSheetPage = () => {
   if (loading) return <div className="loading">Cargando salidas...</div>;
   if (!sheet) return <div className="error-message">{error || 'No se encontraron las salidas'}</div>;
 
-  const confirmDisabled = saving || unassigned.length > 0 || sheet.players.length === 0;
+  const confirmDisabled = saving || !anyPlayerPlaced(sheet.groups);
   const confirmTitle = sheet.players.length === 0
     ? 'No hay jugadores inscriptos'
-    : unassigned.length > 0
-      ? 'Ubicá a todos los jugadores antes de confirmar'
+    : !anyPlayerPlaced(sheet.groups)
+      ? 'Ubicá al menos un jugador antes de confirmar'
       : undefined;
 
   const pendingCopy = pending === 'confirm'

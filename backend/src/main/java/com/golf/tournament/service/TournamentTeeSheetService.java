@@ -266,8 +266,8 @@ public class TournamentTeeSheetService {
         if (!inscribedIds.containsAll(placed)) {
             throw new BadRequestException("La lista de inscriptos cambió. Actualizá la página antes de confirmar.");
         }
-        if (!placed.containsAll(inscribedIds)) {
-            throw new BadRequestException("Ubicá a todos los jugadores antes de confirmar.");
+        if (placed.isEmpty()) {
+            throw new BadRequestException("Ubicá al menos un jugador antes de confirmar.");
         }
     }
 
