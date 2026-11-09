@@ -1,9 +1,12 @@
-import { useState } from 'react';
-import { Outlet, Link, useLocation } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { Trophy, Users, Map, LayoutDashboard, Settings, LogOut, Menu, X, Shield } from 'lucide-react';
+import { authService } from '../services/authService';
+import { Trophy, Users, Map, LayoutDashboard, Settings, LogOut, Menu, X, Shield, ChevronDown } from 'lucide-react';
 import { Button } from './ui/button';
 import { cn } from '@/lib/utils';
+import ChangePasswordModal from './ChangePasswordModal';
+import Modal from './Modal';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, permission: null },
@@ -17,7 +20,32 @@ const navItems = [
 const Layout = () => {
   const { user, logout, hasPermission } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [passwordSuccessOpen, setPasswordSuccessOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!userMenuOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setUserMenuOpen(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [userMenuOpen]);
 
   const visibleItems = navItems.filter(
     (item) => item.permission === null || hasPermission(item.permission)
@@ -69,6 +97,47 @@ const Layout = () => {
             <span className="hidden sm:block text-sm text-emerald-200 truncate max-w-[180px]">
               {user?.email}
             </span>
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                className="p-1.5 rounded-md text-emerald-100 hover:text-white hover:bg-emerald-800"
+                onClick={() => setUserMenuOpen((open) => !open)}
+                aria-label="Menú de usuario"
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+              >
+                <ChevronDown className={cn('h-4 w-4 transition-transform', userMenuOpen && 'rotate-180')} />
+              </button>
+              {userMenuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-full z-50 mt-2 w-52 rounded-md bg-white py-1 shadow-lg ring-1 ring-black/5"
+                >
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      navigate('/perfil');
+                    }}
+                  >
+                    Perfil
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-100"
+                    onClick={() => {
+                      setUserMenuOpen(false);
+                      setPasswordModalOpen(true);
+                    }}
+                  >
+                    Cambiar contraseña
+                  </button>
+                </div>
+              )}
+            </div>
             <Button
               variant="ghost"
               size="sm"
@@ -121,6 +190,27 @@ const Layout = () => {
       <main className="flex-1 max-w-[1400px] w-full mx-auto px-4 sm:px-6 py-6">
         <Outlet />
       </main>
+
+      <ChangePasswordModal
+        isOpen={passwordModalOpen}
+        onClose={() => setPasswordModalOpen(false)}
+        requireCurrentPassword
+        formId="own-password-form"
+        onSubmit={({ currentPassword, newPassword }) =>
+          authService.changeOwnPassword({
+            currentPassword: currentPassword ?? '',
+            newPassword,
+          })
+        }
+        onSuccess={() => setPasswordSuccessOpen(true)}
+      />
+      <Modal
+        isOpen={passwordSuccessOpen}
+        onClose={() => setPasswordSuccessOpen(false)}
+        title="Contraseña actualizada"
+        message="Tu contraseña se cambió correctamente."
+        type="success"
+      />
     </div>
   );
 };

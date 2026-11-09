@@ -33,6 +33,7 @@ import PublicTeeSheetPage from './pages/PublicTeeSheetPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import PermissionRoute from './components/PermissionRoute'
 import Layout from './components/Layout'
+import ProfilePage from './pages/ProfilePage'
 
 function App() {
   return (
@@ -44,6 +45,7 @@ function App() {
         {/* Protected routes MUST come before public routes to avoid conflicts */}
         <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/perfil" element={<ProfilePage />} />
           <Route path="/tournaments" element={<PermissionRoute permission="GAMES"><TournamentsPage /></PermissionRoute>} />
           <Route path="/tournaments/:id/leaderboard" element={<PermissionRoute permission="GAMES"><TournamentLeaderboardPage /></PermissionRoute>} />
           <Route path="/tournaments/:id/tee-sheet" element={<PermissionRoute permission="GAMES"><TournamentTeeSheetPage /></PermissionRoute>} />

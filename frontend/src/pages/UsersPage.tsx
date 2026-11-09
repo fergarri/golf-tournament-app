@@ -4,6 +4,7 @@ import { courseService } from '../services/courseService';
 import { UserDetail, CreateUserRequest, Course } from '../types';
 import Table, { TableAction } from '../components/Table';
 import Modal from '../components/Modal';
+import ChangePasswordModal from '../components/ChangePasswordModal';
 import { formatDateSafe } from '../utils/dateUtils';
 import { useAuth } from '../hooks/useAuth';
 import '../components/Form.css';
@@ -20,6 +21,7 @@ const UsersPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [passwordSuccessOpen, setPasswordSuccessOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserDetail | null>(null);
 
   const [createData, setCreateData] = useState<CreateUserRequest>({
@@ -35,10 +37,6 @@ const UsersPage = () => {
     matricula: '',
     role: 'USER',
     courseId: null as number | null,
-  });
-
-  const [passwordData, setPasswordData] = useState({
-    newPassword: '',
   });
 
   useEffect(() => {
@@ -150,22 +148,7 @@ const UsersPage = () => {
 
   const openPasswordModal = (user: UserDetail) => {
     setSelectedUser(user);
-    setPasswordData({ newPassword: '' });
     setShowPasswordModal(true);
-  };
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUser) return;
-    try {
-      await userService.changePassword(selectedUser.id, passwordData);
-      setShowPasswordModal(false);
-      setSelectedUser(null);
-      setPasswordData({ newPassword: '' });
-      alert('Contraseña cambiada exitosamente');
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Error cambiando contraseña');
-    }
   };
 
   const handleDelete = async (user: UserDetail) => {
@@ -409,37 +392,26 @@ const UsersPage = () => {
         </form>
       </Modal>
 
-      <Modal
+      <ChangePasswordModal
         isOpen={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
-        title="Cambiar Contraseña"
-        size="small"
-        footer={
-          <div className="form-actions" style={{ marginTop: 0, paddingTop: 0, borderTop: 'none' }}>
-            <button type="button" onClick={() => setShowPasswordModal(false)} className="btn btn-cancel">
-              Cancelar
-            </button>
-            <button type="submit" form="password-form" className="btn btn-primary">
-              Cambiar Contraseña
-            </button>
-          </div>
-        }
-      >
-        <p style={{ color: '#7f8c8d', marginBottom: '1.5rem' }}>Usuario: {selectedUser?.email}</p>
-        <form id="password-form" onSubmit={handleChangePassword}>
-          <div className="form-group">
-            <label>Nueva Contraseña *</label>
-            <input
-              type="password"
-              value={passwordData.newPassword}
-              onChange={(e) => setPasswordData({ newPassword: e.target.value })}
-              required
-              minLength={6}
-              placeholder="Ingrese nueva contraseña (mínimo 6 caracteres)"
-            />
-          </div>
-        </form>
-      </Modal>
+        requireCurrentPassword={false}
+        formId="admin-password-form"
+        description={selectedUser ? `Usuario: ${selectedUser.email}` : undefined}
+        onSubmit={async ({ newPassword }) => {
+          if (!selectedUser) return;
+          await userService.changePassword(selectedUser.id, { newPassword });
+        }}
+        onSuccess={() => setPasswordSuccessOpen(true)}
+      />
+
+      <Modal
+        isOpen={passwordSuccessOpen}
+        onClose={() => setPasswordSuccessOpen(false)}
+        title="Contraseña actualizada"
+        message="La contraseña se cambió correctamente."
+        type="success"
+      />
     </div>
   );
 };

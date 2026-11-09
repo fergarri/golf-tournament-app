@@ -13,6 +13,7 @@ import com.golf.tournament.model.User;
 import com.golf.tournament.repository.CourseRepository;
 import com.golf.tournament.repository.UserRepository;
 import com.golf.tournament.security.CurrentUserProvider;
+import com.golf.tournament.security.PasswordPolicy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.AccessDeniedException;
@@ -31,6 +32,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final PasswordEncoder passwordEncoder;
+    private final PasswordPolicy passwordPolicy;
     private final CurrentUserProvider currentUserProvider;
 
     @Transactional(readOnly = true)
@@ -115,6 +117,11 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("User", "id", id));
         assertManageableByCurrentUser(user);
+
+        passwordPolicy.validate(request.getNewPassword());
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BadRequestException("La nueva contraseña no puede ser igual a la actual");
+        }
 
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);

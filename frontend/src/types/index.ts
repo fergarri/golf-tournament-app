@@ -38,6 +38,26 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface UserProfile {
+  id: number;
+  email: string;
+  matricula?: string;
+  role: string;
+  courseId?: number | null;
+  courseName?: string | null;
+  /** Presente cuando el email cambió y hay que reemplazar el token. */
+  token?: string | null;
+}
+
+export interface UpdateOwnProfileRequest {
+  email: string;
+}
+
+export interface ChangeOwnPasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
 export interface LoginResponse {
   token: string;
   type: string;

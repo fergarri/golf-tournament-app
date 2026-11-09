@@ -1,6 +1,7 @@
 package com.golf.tournament.security;
 
 import com.golf.tournament.config.CustomUserDetails;
+import com.golf.tournament.exception.UnauthorizedException;
 import com.golf.tournament.model.Role;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
@@ -27,6 +28,14 @@ public class CurrentUserProvider {
     public boolean isSuperAdmin() {
         CustomUserDetails user = getCurrentUser();
         return user != null && user.isSuperAdmin();
+    }
+
+    public Long getCurrentUserId() {
+        CustomUserDetails user = getCurrentUser();
+        if (user == null || user.getUserId() == null) {
+            throw new UnauthorizedException("No autenticado");
+        }
+        return user.getUserId();
     }
 
     public Long getCurrentCourseId() {

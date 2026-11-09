@@ -9,6 +9,8 @@ interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  /** Actualiza el usuario en memoria y, si viene token, lo reemplaza (por ejemplo al cambiar el email). */
+  updateCurrentUser: (partial: Partial<User>, token?: string | null) => void;
   isLoading: boolean;
   hasPermission: (permission: string) => boolean;
   /** true para el rol ADMIN (superadmin, ve y administra todos los clubes) */
@@ -81,6 +83,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     navigate('/login');
   };
 
+  const updateCurrentUser = (partial: Partial<User>, token?: string | null) => {
+    const base = user ?? authService.getCurrentUser();
+    if (!base) return;
+    const next = { ...base, ...partial };
+    localStorage.setItem('user', JSON.stringify(next));
+    if (token) {
+      localStorage.setItem('token', token);
+    }
+    setUser(next);
+  };
+
   const hasPermission = (permission: string): boolean => {
     if (!user || !user.permissions) return false;
     return user.permissions.includes('TOTAL') || user.permissions.includes(permission);
@@ -90,7 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const canDelete = user?.role !== 'USER';
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isLoading, hasPermission, isSuperAdmin, canDelete }}>
+    <AuthContext.Provider value={{ user, login, logout, updateCurrentUser, isLoading, hasPermission, isSuperAdmin, canDelete }}>
       {children}
     </AuthContext.Provider>
   );
