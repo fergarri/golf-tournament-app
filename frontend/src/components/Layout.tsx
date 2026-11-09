@@ -55,7 +55,7 @@ const Layout = () => {
     <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Navbar */}
       <header className="bg-[#1a3c2e] text-white shadow-md sticky top-0 z-40">
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+        <div className="w-full max-w-[max(1400px,90%)] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           {/* Logo */}
           <Link to="/dashboard" className="flex items-center gap-2 shrink-0">
             <Trophy className="h-6 w-6 text-emerald-400" />
