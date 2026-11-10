@@ -1,5 +1,6 @@
 package com.golf.tournament.repository;
 
+import com.golf.tournament.model.Role;
 import com.golf.tournament.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
@@ -17,6 +18,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByEmail(String email);
     
     boolean existsByMatricula(String matricula);
+
+    boolean existsByRole(Role role);
 
     List<User> findByCourseId(Long courseId);
 }

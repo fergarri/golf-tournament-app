@@ -29,7 +29,7 @@ services:
       DB_NAME: golf_tournament
       DB_USER: postgres
       DB_PASSWORD: postgres
-      JWT_SECRET: mySecretKeyForJWTTokenGenerationPleaseChangeInProduction
+      JWT_SECRET: ${JWT_SECRET:-local-dev-only-jwt-secret-do-not-use-in-production}
       JWT_EXPIRATION: 86400000
     ports:
       - "8080:8080"

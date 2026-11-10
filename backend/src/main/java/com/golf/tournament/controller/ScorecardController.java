@@ -45,6 +45,7 @@ public class ScorecardController {
     }
 
     @PostMapping("/tournaments/{tournamentId}/print")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
     public ResponseEntity<byte[]> printScorecards(
             @PathVariable Long tournamentId,
             @Valid @RequestBody PrintScorecardsRequest request) {

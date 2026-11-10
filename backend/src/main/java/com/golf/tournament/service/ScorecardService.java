@@ -9,6 +9,7 @@ import com.golf.tournament.exception.ResourceNotFoundException;
 import com.golf.tournament.dto.scorecard.UpdateScorecardRequest.HoleScoreUpdate;
 import com.golf.tournament.model.*;
 import com.golf.tournament.repository.*;
+import com.golf.tournament.security.CurrentUserProvider;
 import com.golf.tournament.util.NineHoleCourseHandicapCalculator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +50,7 @@ public class ScorecardService {
     private final UnderParDiscountService underParDiscountService;
     private final TournamentAdminRepository tournamentAdminRepository;
     private final TournamentAdminPlayoffBracketRepository playoffBracketRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional
     public ScorecardDTO getOrCreateScorecard(Long tournamentId, Long playerId) {
@@ -637,6 +639,7 @@ public class ScorecardService {
     public ScorecardDTO disqualifyScorecard(Long scorecardId) {
         Scorecard scorecard = scorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+        assertScorecardClubAccess(scorecard);
 
         scorecard.setStatus(ScorecardStatus.DISQUALIFIED);
         scorecard = scorecardRepository.save(scorecard);
@@ -649,6 +652,7 @@ public class ScorecardService {
     public ScorecardDTO undoDisqualifyScorecard(Long scorecardId) {
         Scorecard scorecard = scorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+        assertScorecardClubAccess(scorecard);
 
         if (scorecard.getStatus() != ScorecardStatus.DISQUALIFIED) {
             throw new BadRequestException("La tarjeta no está descalificada");
@@ -678,6 +682,7 @@ public class ScorecardService {
     public ScorecardDTO adminCancelScorecard(Long scorecardId) {
         Scorecard scorecard = scorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+        assertScorecardClubAccess(scorecard);
 
         if (scorecard.getStatus() == ScorecardStatus.CANCELLED) {
             throw new BadRequestException("La tarjeta ya está cancelada");
@@ -701,6 +706,7 @@ public class ScorecardService {
     public ScorecardDTO undoCancelScorecard(Long scorecardId) {
         Scorecard scorecard = scorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ResourceNotFoundException("Scorecard", "id", scorecardId));
+        assertScorecardClubAccess(scorecard);
 
         if (scorecard.getStatus() != ScorecardStatus.CANCELLED) {
             throw new BadRequestException("La tarjeta no está cancelada");
@@ -723,9 +729,16 @@ public class ScorecardService {
 
     @Transactional(readOnly = true)
     public List<ScorecardDTO> getTournamentScorecards(Long tournamentId) {
+        Tournament tournament = tournamentRepository.findById(tournamentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
         return scorecardRepository.findByTournamentId(tournamentId).stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    private void assertScorecardClubAccess(Scorecard scorecard) {
+        currentUserProvider.assertClubAccess(scorecard.getTournament().getCourse().getId());
     }
 
     @Transactional(readOnly = true)

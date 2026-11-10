@@ -79,9 +79,12 @@ Ver [DEPLOYMENT_README.md](DEPLOYMENT_README.md) para resumen rápido.
 
 ```bash
 cd backend
+export JWT_SECRET="$(openssl rand -base64 64 | tr -d '\n')"
 mvn clean install
 mvn spring-boot:run
 ```
+
+El backend no arranca sin `JWT_SECRET` (mínimo 32 bytes). En una base nueva, definí también `INITIAL_ADMIN_EMAIL` e `INITIAL_ADMIN_PASSWORD` para crear el primer superadmin.
 
 #### Frontend
 
@@ -140,8 +143,9 @@ The API is available at `http://localhost:8080/api`
 - `DB_NAME` - Database name
 - `DB_USER` - Database user
 - `DB_PASSWORD` - Database password
-- `JWT_SECRET` - JWT secret key
+- `JWT_SECRET` - JWT secret key (obligatorio, mínimo 32 bytes)
 - `JWT_EXPIRATION` - JWT expiration time in milliseconds
+- `INITIAL_ADMIN_EMAIL` / `INITIAL_ADMIN_PASSWORD` - Superadmin inicial (opcional; solo si no existe ningún ADMIN)
 
 ### Frontend (.env)
 - `VITE_API_URL` - Backend API URL

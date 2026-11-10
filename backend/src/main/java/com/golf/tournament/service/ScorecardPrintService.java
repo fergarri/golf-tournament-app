@@ -15,6 +15,7 @@ import com.golf.tournament.repository.PlayerRepository;
 import com.golf.tournament.repository.ScorecardRepository;
 import com.golf.tournament.repository.TournamentCategoryRepository;
 import com.golf.tournament.repository.TournamentRepository;
+import com.golf.tournament.security.CurrentUserProvider;
 import com.golf.tournament.util.NineHoleCourseHandicapCalculator;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -73,11 +74,13 @@ public class ScorecardPrintService {
     private final HandicapConversionRepository handicapConversionRepository;
     private final ScorecardRepository scorecardRepository;
     private final UnderParDiscountService underParDiscountService;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional(readOnly = true)
     public byte[] generatePrintablePdf(Long tournamentId, List<Long> playerIds) {
         Tournament tournament = tournamentRepository.findById(tournamentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Tournament", "id", tournamentId));
+        currentUserProvider.assertClubAccess(tournament.getCourse().getId());
 
         Map<Long, Player> playersById = playerRepository.findAllById(playerIds).stream()
                 .collect(Collectors.toMap(Player::getId, p -> p));
