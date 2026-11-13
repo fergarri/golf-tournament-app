@@ -9,7 +9,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
-import { Users, Plus, Upload, Search, CheckCircle2, Loader2, X } from 'lucide-react';
+import { Users, Plus, Upload, Search, CheckCircle2, Loader2, X, Printer } from 'lucide-react';
+import PrintClubScorecardsModal from '../components/PrintClubScorecardsModal';
 import '../components/Form.css';
 
 const formatHcpIndex = (value: number | null | undefined): string => {
@@ -31,6 +32,7 @@ const PlayersPage = () => {
     fechaNacimiento: '', sexo: 'M', handicapIndex: 0, telefono: '', clubOrigen: '', hcpActivo: true,
   });
   const [showBulkUpdateModal, setShowBulkUpdateModal] = useState(false);
+  const [showPrintModal, setShowPrintModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [bulkUpdateResult, setBulkUpdateResult] = useState<BulkUpdateResult | null>(null);
@@ -198,6 +200,10 @@ const PlayersPage = () => {
           <p className="text-slate-500 text-sm mt-0.5">{clubFilteredPlayers.length} jugadores registrados</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowPrintModal(true)}>
+            <Printer className="h-4 w-4" />
+            Imprimir Tarjetas
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setShowBulkUpdateModal(true)}>
             <Upload className="h-4 w-4" />
             Actualizar
@@ -509,6 +515,13 @@ const PlayersPage = () => {
           </div>
         )}
       </Modal>
+
+      <PrintClubScorecardsModal
+        isOpen={showPrintModal}
+        onClose={() => setShowPrintModal(false)}
+        players={players}
+        courses={courses}
+      />
     </div>
   );
 };

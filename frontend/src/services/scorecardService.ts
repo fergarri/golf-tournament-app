@@ -125,4 +125,20 @@ export const scorecardService = {
       : `tarjetas_torneo_${tournamentId}.pdf`;
     downloadPdfBlob(response.data, filename);
   },
+
+  printClubScorecards: async (
+    request: {
+      courseId: number;
+      cantidadHoyos: number;
+      teeId?: number;
+      teeMasculinoId?: number;
+      teeFemeninoId?: number;
+      playerIds?: number[];
+      cantidad?: number;
+    },
+    filename: string
+  ): Promise<void> => {
+    const response = await api.post('/scorecards/print', request, { responseType: 'arraybuffer' });
+    downloadPdfBlob(response.data, filename);
+  },
 };

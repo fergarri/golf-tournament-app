@@ -1,5 +1,6 @@
 package com.golf.tournament.controller;
 
+import com.golf.tournament.dto.scorecard.PrintClubScorecardsRequest;
 import com.golf.tournament.dto.scorecard.PrintScorecardsRequest;
 import com.golf.tournament.dto.scorecard.ScorecardDTO;
 import com.golf.tournament.dto.scorecard.UpdateScoreRequest;
@@ -42,6 +43,17 @@ public class ScorecardController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<ScorecardDTO>> getTournamentScorecards(@PathVariable Long tournamentId) {
         return ResponseEntity.ok(scorecardService.getTournamentScorecards(tournamentId));
+    }
+
+    @PostMapping("/print")
+    @PreAuthorize("hasAnyAuthority('TOTAL', 'GAMES')")
+    public ResponseEntity<byte[]> printClubScorecards(@Valid @RequestBody PrintClubScorecardsRequest request) {
+        byte[] pdf = scorecardPrintService.generateClubPdf(request);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"tarjetas.pdf\"")
+                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(pdf.length))
+                .body(pdf);
     }
 
     @PostMapping("/tournaments/{tournamentId}/print")

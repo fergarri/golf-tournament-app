@@ -2,6 +2,7 @@ package com.golf.tournament.service;
 
 import com.golf.tournament.exception.BadRequestException;
 import com.golf.tournament.exception.ResourceNotFoundException;
+import com.golf.tournament.model.Course;
 import com.golf.tournament.model.CourseTee;
 import com.golf.tournament.model.Hole;
 import com.golf.tournament.model.HoleDistance;
@@ -9,12 +10,15 @@ import com.golf.tournament.model.Player;
 import com.golf.tournament.model.Scorecard;
 import com.golf.tournament.model.Tournament;
 import com.golf.tournament.model.TournamentCategory;
+import com.golf.tournament.repository.CourseRepository;
+import com.golf.tournament.repository.CourseTeeRepository;
 import com.golf.tournament.repository.HandicapConversionRepository;
 import com.golf.tournament.repository.HoleRepository;
 import com.golf.tournament.repository.PlayerRepository;
 import com.golf.tournament.repository.ScorecardRepository;
 import com.golf.tournament.repository.TournamentCategoryRepository;
 import com.golf.tournament.repository.TournamentRepository;
+import com.golf.tournament.dto.scorecard.PrintClubScorecardsRequest;
 import com.golf.tournament.security.CurrentUserProvider;
 import com.golf.tournament.util.NineHoleCourseHandicapCalculator;
 import lombok.AllArgsConstructor;
@@ -55,8 +59,9 @@ import java.util.stream.Collectors;
 public class ScorecardPrintService {
 
     private static final float MM_TO_PT = 72f / 25.4f;
-    private static final float OUTER_MARGIN_MM = 10f;
-    private static final float CARD_GAP_MM = 8f;
+    private static final float OUTER_MARGIN_MM = 5f;
+    private static final float CARD_GAP_MM = 5f;
+    private static final int MAX_CARDS_PER_PDF = 150;
     private static final float FOLD_GAP_MM = 3f;
     private static final float FIXED_SCORE_ROW_MM = 7f;
     private static final float CUT_GAP_MM = 3f;
@@ -68,6 +73,8 @@ public class ScorecardPrintService {
     private static final DateTimeFormatter DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final TournamentRepository tournamentRepository;
+    private final CourseRepository courseRepository;
+    private final CourseTeeRepository courseTeeRepository;
     private final PlayerRepository playerRepository;
     private final HoleRepository holeRepository;
     private final TournamentCategoryRepository categoryRepository;
@@ -122,6 +129,50 @@ public class ScorecardPrintService {
                         scorecardsByPlayer.get(player.getId()), underParDiscounts))
                 .collect(Collectors.toList());
 
+        return renderPdf(cards, cantidadHoyos);
+    }
+
+    /**
+     * Tarjetas de un club, sin torneo: o bien de jugadores elegidos (fecha y categoría en blanco),
+     * o bien tarjetas vacías para completar a mano.
+     */
+    @Transactional(readOnly = true)
+    public byte[] generateClubPdf(PrintClubScorecardsRequest request) {
+        int cantidadHoyos = request.getCantidadHoyos() != null ? request.getCantidadHoyos() : 0;
+        if (cantidadHoyos != 9 && cantidadHoyos != 18) {
+            throw new BadRequestException("La cantidad de hoyos debe ser 9 o 18");
+        }
+
+        Course course = courseRepository.findById(request.getCourseId())
+                .orElseThrow(() -> new ResourceNotFoundException("Course", "id", request.getCourseId()));
+        currentUserProvider.assertClubAccess(course.getId());
+
+        List<Hole> holesToPrint = holesForPrint(course.getId(), cantidadHoyos);
+        boolean playersMode = request.getPlayerIds() != null && !request.getPlayerIds().isEmpty();
+
+        List<PlayerCardData> cards;
+        if (playersMode) {
+            if (request.getPlayerIds().size() > MAX_CARDS_PER_PDF) {
+                throw new BadRequestException("Se pueden imprimir hasta " + MAX_CARDS_PER_PDF + " tarjetas por vez");
+            }
+            cards = buildClubPlayerCards(course, request, holesToPrint, cantidadHoyos);
+        } else {
+            int cantidad = request.getCantidad() != null ? request.getCantidad() : 0;
+            if (cantidad < 1 || cantidad > MAX_CARDS_PER_PDF) {
+                throw new BadRequestException("La cantidad de tarjetas debe estar entre 1 y " + MAX_CARDS_PER_PDF);
+            }
+            CourseTee tee = requireTee(request.getTeeId(), course.getId(), null);
+            PlayerCardData template = blankCard(course, tee, holesToPrint, cantidadHoyos);
+            cards = new ArrayList<>();
+            for (int i = 0; i < cantidad; i++) {
+                cards.add(template);
+            }
+        }
+
+        return renderPdf(cards, cantidadHoyos);
+    }
+
+    private byte[] renderPdf(List<PlayerCardData> cards, int cantidadHoyos) {
         boolean landscape = cantidadHoyos == 18;
         int cardsPerPage = landscape ? 3 : 4;
         PDRectangle pageSize = landscape
@@ -143,6 +194,139 @@ public class ScorecardPrintService {
         } catch (IOException e) {
             throw new UncheckedIOException("Error generando el PDF de tarjetas", e);
         }
+    }
+
+    private List<PlayerCardData> buildClubPlayerCards(Course course,
+                                                       PrintClubScorecardsRequest request,
+                                                       List<Hole> holes,
+                                                       int cantidadHoyos) {
+        Map<Long, Player> playersById = playerRepository.findAllById(request.getPlayerIds()).stream()
+                .collect(Collectors.toMap(Player::getId, p -> p));
+
+        List<Player> orderedPlayers = request.getPlayerIds().stream()
+                .distinct()
+                .map(playersById::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        if (orderedPlayers.isEmpty()) {
+            throw new BadRequestException("No se encontraron jugadores válidos para imprimir");
+        }
+
+        boolean needsMale = orderedPlayers.stream().anyMatch(player -> !isFemale(player));
+        boolean needsFemale = orderedPlayers.stream().anyMatch(this::isFemale);
+        CourseTee teeMasculino = needsMale ? requireTee(request.getTeeMasculinoId(), course.getId(), SEX_MALE) : null;
+        CourseTee teeFemenino = needsFemale ? requireTee(request.getTeeFemeninoId(), course.getId(), SEX_FEMALE) : null;
+
+        return orderedPlayers.stream()
+                .map(player -> {
+                    CourseTee tee = isFemale(player) ? teeFemenino : teeMasculino;
+                    return PlayerCardData.builder()
+                            .courseName(course.getNombre())
+                            .playerName((player.getNombre() + " " + player.getApellido()).trim())
+                            .playerInitials(buildInitials(player.getNombre(), player.getApellido()))
+                            .matricula(player.getMatricula())
+                            .handicapIndex(player.getHandicapIndex())
+                            .handicapCourse(handicapCourseFor(player, tee, cantidadHoyos, holes))
+                            .categoryName("")
+                            .teeName(tee != null ? tee.getNombre() : null)
+                            .fecha("")
+                            .cantidadHoyos(cantidadHoyos)
+                            .holes(holeRows(holes, tee != null ? tee.getId() : null))
+                            .blankInfo(false)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    private PlayerCardData blankCard(Course course, CourseTee tee, List<Hole> holes, int cantidadHoyos) {
+        return PlayerCardData.builder()
+                .courseName(course.getNombre())
+                .playerName("")
+                .playerInitials("")
+                .matricula("")
+                .categoryName("")
+                .teeName(tee.getNombre())
+                .fecha("")
+                .cantidadHoyos(cantidadHoyos)
+                .holes(holeRows(holes, tee.getId()))
+                .blankInfo(true)
+                .build();
+    }
+
+    private List<Hole> holesForPrint(Long courseId, int cantidadHoyos) {
+        List<Hole> holes = holeRepository.findByCourseIdOrderByNumeroHoyoAsc(courseId).stream()
+                .filter(hole -> hole.getNumeroHoyo() != null && hole.getNumeroHoyo() <= cantidadHoyos)
+                .sorted(Comparator.comparing(Hole::getNumeroHoyo))
+                .collect(Collectors.toList());
+        if (holes.isEmpty()) {
+            throw new BadRequestException("El club no tiene hoyos cargados para imprimir la tarjeta");
+        }
+        return holes;
+    }
+
+    private List<HoleRow> holeRows(List<Hole> holes, Long teeId) {
+        return holes.stream()
+                .map(hole -> new HoleRow(
+                        hole.getNumeroHoyo(),
+                        hole.getPar(),
+                        hole.getHandicap(),
+                        teeId != null ? distanceForTee(hole, teeId) : null))
+                .collect(Collectors.toList());
+    }
+
+    private CourseTee requireTee(Long teeId, Long courseId, String expectedGenero) {
+        if (teeId == null) {
+            if (SEX_FEMALE.equals(expectedGenero)) {
+                throw new BadRequestException("Debe seleccionar el tee de damas");
+            }
+            if (SEX_MALE.equals(expectedGenero)) {
+                throw new BadRequestException("Debe seleccionar el tee de caballeros");
+            }
+            throw new BadRequestException("Debe seleccionar el tee de salida");
+        }
+        CourseTee tee = courseTeeRepository.findById(teeId)
+                .orElseThrow(() -> new ResourceNotFoundException("CourseTee", "id", teeId));
+        if (tee.getCourse() == null || !courseId.equals(tee.getCourse().getId())) {
+            throw new BadRequestException("El tee seleccionado no pertenece al club");
+        }
+        if (!Boolean.TRUE.equals(tee.getActive())) {
+            throw new BadRequestException("El tee " + tee.getNombre() + " no está activo");
+        }
+        if (expectedGenero != null && !expectedGenero.equalsIgnoreCase(tee.getGenero())) {
+            throw new BadRequestException(SEX_FEMALE.equals(expectedGenero)
+                    ? "El tee seleccionado para damas no corresponde a damas"
+                    : "El tee seleccionado para caballeros no corresponde a caballeros");
+        }
+        return tee;
+    }
+
+    private boolean isFemale(Player player) {
+        return player.getSexo() != null && SEX_FEMALE.equals(player.getSexo().trim().toUpperCase());
+    }
+
+    private BigDecimal handicapCourseFor(Player player, CourseTee tee, int cantidadHoyos, List<Hole> holes) {
+        if (tee == null || player.getHandicapIndex() == null) {
+            return null;
+        }
+        if (cantidadHoyos == 9) {
+            try {
+                int par9 = holes.stream()
+                        .map(Hole::getPar)
+                        .filter(Objects::nonNull)
+                        .mapToInt(Integer::intValue)
+                        .sum();
+                return BigDecimal.valueOf(NineHoleCourseHandicapCalculator.calculate(
+                        player.getHandicapIndex(), tee.getCourseRatingIda(), tee.getSlopeRatingIda(), par9));
+            } catch (BadRequestException e) {
+                return null;
+            }
+        }
+        return handicapConversionRepository
+                .findByTeeAndHandicapIndex(tee.getId(), player.getHandicapIndex())
+                .map(conversion -> BigDecimal.valueOf(conversion.getCourseHandicap())
+                        .setScale(1, RoundingMode.HALF_UP))
+                .orElse(null);
     }
 
     // ------------------------------------------------------------------
@@ -632,11 +816,12 @@ public class ScorecardPrintService {
                                    PDFont boldFont,
                                    float x, float topY, float width, float rowHeight,
                                    PlayerCardData data) throws IOException {
-        String fecha = data.getFecha() != null ? data.getFecha() : "-";
-        String matricula = data.getMatricula() != null ? data.getMatricula() : "-";
-        String hcpIndex = formatDecimal(data.getHandicapIndex());
-        String hcpCourse = formatDecimal(data.getHandicapCourse());
-        String categoria = data.getCategoryName() != null ? data.getCategoryName() : "-";
+        boolean blank = data.isBlankInfo();
+        String fecha = blank ? "" : (data.getFecha() != null ? data.getFecha() : "-");
+        String matricula = blank ? "" : (data.getMatricula() != null ? data.getMatricula() : "-");
+        String hcpIndex = blank ? "" : formatDecimal(data.getHandicapIndex());
+        String hcpCourse = blank ? "" : formatDecimal(data.getHandicapCourse());
+        String categoria = blank ? "" : (data.getCategoryName() != null ? data.getCategoryName() : "-");
 
         String[] labels = {"FECHA", "MATRICULA", "HCP INDEX", "HCP COURSE", "CATEGORIA"};
         String[] values = {fecha, matricula, hcpIndex, hcpCourse, categoria};
@@ -785,6 +970,8 @@ public class ScorecardPrintService {
         private String fecha;
         private int cantidadHoyos;
         private List<HoleRow> holes;
+        /** Tarjeta vacía: los datos del jugador quedan en blanco para completar a mano. */
+        private boolean blankInfo;
     }
 
     @Data
