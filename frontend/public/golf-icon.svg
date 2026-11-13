@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Golfero">
+  <rect width="32" height="32" rx="7" fill="#1a3c2e"/>
+  <path fill="#34d399" d="M12 7h13l-4.2 5.2L25 17.4H12z"/>
+  <path stroke="#d1fae5" stroke-width="2" stroke-linecap="round" d="M12 6.5v19"/>
+  <circle cx="12" cy="26" r="1.5" fill="#d1fae5"/>
+</svg>
