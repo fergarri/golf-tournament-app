@@ -1,5 +1,6 @@
 package com.golf.tournament.controller;
 
+import com.golf.tournament.dto.course.CourseCatalogDTO;
 import com.golf.tournament.dto.course.CourseDTO;
 import com.golf.tournament.dto.course.CourseTeeDTO;
 import com.golf.tournament.dto.course.CreateCourseRequest;
@@ -35,6 +36,16 @@ public class CourseController {
     @GetMapping
     public ResponseEntity<List<CourseDTO>> getAllCourses() {
         return ResponseEntity.ok(courseService.getAllCourses());
+    }
+
+    /**
+     * Catálogo de nombres de todos los campos. No respeta el club del usuario:
+     * sirve para elegir el club de origen de un jugador. No autoriza a administrar
+     * esos campos; el detalle sigue en {@code GET /courses/{id}}.
+     */
+    @GetMapping("/catalog")
+    public ResponseEntity<List<CourseCatalogDTO>> getCourseCatalog() {
+        return ResponseEntity.ok(courseService.getCourseCatalog());
     }
 
     @GetMapping("/{id}")

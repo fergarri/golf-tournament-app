@@ -1,6 +1,7 @@
 import api from './api';
 import {
   Course,
+  CourseCatalogItem,
   ImportHandicapConversionResponse,
   ImportNineHoleRatingsResponse,
   PreviewHandicapImportResponse,
@@ -10,6 +11,11 @@ import {
 export const courseService = {
   getAll: async (): Promise<Course[]> => {
     const response = await api.get<Course[]>('/courses');
+    return response.data;
+  },
+
+  getCatalog: async (): Promise<CourseCatalogItem[]> => {
+    const response = await api.get<CourseCatalogItem[]>('/courses/catalog');
     return response.data;
   },
 

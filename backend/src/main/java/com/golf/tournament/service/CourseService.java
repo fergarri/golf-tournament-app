@@ -1,5 +1,6 @@
 package com.golf.tournament.service;
 
+import com.golf.tournament.dto.course.CourseCatalogDTO;
 import com.golf.tournament.dto.course.CourseDTO;
 import com.golf.tournament.dto.course.CourseTeeDTO;
 import com.golf.tournament.dto.course.CreateCourseRequest;
@@ -45,6 +46,16 @@ public class CourseService {
         return courses.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Nombres de todos los campos, sin filtrar por el club del usuario. El alta de
+     * un jugador puede asociarlo a cualquier club; administrar un campo ajeno sigue
+     * bloqueado en el resto de los endpoints.
+     */
+    @Transactional(readOnly = true)
+    public List<CourseCatalogDTO> getCourseCatalog() {
+        return courseRepository.findCatalog();
     }
 
     @Transactional(readOnly = true)

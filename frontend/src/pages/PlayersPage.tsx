@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { playerService } from '../services/playerService';
 import { courseService } from '../services/courseService';
-import { BulkUpdateResult, Course, Player } from '../types';
+import { BulkUpdateResult, Course, CourseCatalogItem, Player } from '../types';
 import { useAuth } from '../hooks/useAuth';
 import Table from '../components/Table';
 import Modal from '../components/Modal';
@@ -22,7 +22,10 @@ const PlayersPage = () => {
   const { user, canDelete } = useAuth();
   const hasOwnClub = !!user?.courseId;
   const [players, setPlayers] = useState<Player[]>([]);
+  const [clubs, setClubs] = useState<CourseCatalogItem[]>([]);
   const [courses, setCourses] = useState<Course[]>([]);
+  const clubsLoaded = useRef(false);
+  const coursesLoaded = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -40,7 +43,7 @@ const PlayersPage = () => {
   // Por defecto, un admin de club ve solo "sus" jugadores; el superadmin ve todos.
   const [clubFilter, setClubFilter] = useState<'mine' | 'all'>(hasOwnClub ? 'mine' : 'all');
 
-  useEffect(() => { loadPlayers(); loadCourses(); }, []);
+  useEffect(() => { loadPlayers(); }, []);
 
   const loadPlayers = async () => {
     try {
@@ -55,11 +58,26 @@ const PlayersPage = () => {
     }
   };
 
+  const loadClubs = async () => {
+    if (clubsLoaded.current) return;
+    clubsLoaded.current = true;
+    try {
+      const data = await courseService.getCatalog();
+      setClubs(data);
+    } catch (err: any) {
+      clubsLoaded.current = false;
+      setError(err.response?.data?.message || 'Error cargando clubes');
+    }
+  };
+
   const loadCourses = async () => {
+    if (coursesLoaded.current) return;
+    coursesLoaded.current = true;
     try {
       const data = await courseService.getAll();
       setCourses(data);
     } catch (err: any) {
+      coursesLoaded.current = false;
       setError(err.response?.data?.message || 'Error cargando clubes');
     }
   };
@@ -68,6 +86,7 @@ const PlayersPage = () => {
     setEditingPlayer(null);
     setFormData({ nombre: '', apellido: '', email: '', matricula: '', fechaNacimiento: '', sexo: 'M', handicapIndex: 0, telefono: '', clubOrigen: '', hcpActivo: true });
     setShowModal(true);
+    loadClubs();
   };
 
   const handleEdit = (player: Player) => {
@@ -80,6 +99,12 @@ const PlayersPage = () => {
       hcpActivo: player.hcpActivo !== false,
     });
     setShowModal(true);
+    loadClubs();
+  };
+
+  const handleOpenPrint = () => {
+    setShowPrintModal(true);
+    loadCourses();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -200,7 +225,7 @@ const PlayersPage = () => {
           <p className="text-slate-500 text-sm mt-0.5">{clubFilteredPlayers.length} jugadores registrados</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowPrintModal(true)}>
+          <Button variant="outline" size="sm" onClick={handleOpenPrint}>
             <Printer className="h-4 w-4" />
             Imprimir Tarjetas
           </Button>
@@ -336,10 +361,10 @@ const PlayersPage = () => {
                 onChange={(e) => setFormData({ ...formData, clubOrigen: e.target.value })}
               >
                 <option value="">Sin club</option>
-                {formData.clubOrigen && !courses.some((c) => c.nombre === formData.clubOrigen) && (
+                {formData.clubOrigen && !clubs.some((c) => c.nombre === formData.clubOrigen) && (
                   <option value={formData.clubOrigen}>{formData.clubOrigen} (no está en la lista)</option>
                 )}
-                {[...courses]
+                {[...clubs]
                   .sort((a, b) => a.nombre.localeCompare(b.nombre))
                   .map((course) => (
                     <option key={course.id} value={course.nombre}>{course.nombre}</option>

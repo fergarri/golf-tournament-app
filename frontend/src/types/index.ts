@@ -106,6 +106,12 @@ export interface BulkUpdateResult {
   cambiosHandicapIndex: BulkUpdateHandicapChangeItem[];
 }
 
+/** Nombre de un campo, para el select de club de un jugador. */
+export interface CourseCatalogItem {
+  id: number;
+  nombre: string;
+}
+
 export interface Course {
   id: number;
   nombre: string;

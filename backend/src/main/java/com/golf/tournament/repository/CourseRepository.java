@@ -1,5 +1,6 @@
 package com.golf.tournament.repository;
 
+import com.golf.tournament.dto.course.CourseCatalogDTO;
 import com.golf.tournament.model.Course;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -21,4 +22,8 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     List<Course> findByPais(String pais);
 
     Optional<Course> findByNombreIgnoreCase(String nombre);
+
+    @Query("SELECT new com.golf.tournament.dto.course.CourseCatalogDTO(c.id, c.nombre) " +
+           "FROM Course c ORDER BY LOWER(c.nombre)")
+    List<CourseCatalogDTO> findCatalog();
 }
