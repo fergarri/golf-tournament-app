@@ -127,6 +127,9 @@ const DashboardPage = () => {
 
   const getPlayLink = (codigo: string) => `${window.location.origin}/play/${codigo}`;
 
+  const getPlayShareText = (tournament: Pick<Tournament, 'codigo' | 'nombre'>) =>
+    `Tarjetas Torneo ${tournament.nombre}\n${getPlayLink(tournament.codigo)}`;
+
   const copyLink = (link: string) => {
     navigator.clipboard.writeText(link);
     setCopied(true);
@@ -198,7 +201,7 @@ const DashboardPage = () => {
 
   const dashboardActions: TableAction<Tournament>[] = [
     { label: 'Iniciar', onClick: handleStartTournament, variant: 'primary', show: (t) => t.estado === 'PENDING' },
-    { label: 'Copiar Link', onClick: (t) => copyLink(getPlayLink(t.codigo)), variant: 'secondary', show: (t) => t.estado === 'IN_PROGRESS' },
+    { label: 'Copiar Link', onClick: (t) => copyLink(getPlayShareText(t)), variant: 'secondary', show: (t) => t.estado === 'IN_PROGRESS' },
     { label: 'Tabla de Líderes', onClick: handleViewLeaderboard, variant: 'primary', show: (t) => t.estado === 'IN_PROGRESS' },
     { label: 'Pausar Torneo', onClick: handlePauseTournament, variant: 'default', show: (t) => t.estado === 'IN_PROGRESS' },
     { label: 'Finalizar', onClick: handleFinalizeTournament, variant: 'danger', show: (t) => t.estado === 'IN_PROGRESS' },
@@ -294,13 +297,13 @@ const DashboardPage = () => {
             </p>
             <div className="bg-slate-50 border border-slate-200 rounded-lg px-4 py-3 mb-4 text-left">
               <div className="flex items-center justify-between gap-3">
-                <code className="text-sm text-slate-700 break-all flex-1">
-                  {getPlayLink(selectedTournament.codigo)}
+                <code className="text-sm text-slate-700 break-all whitespace-pre-line flex-1 text-left">
+                  {getPlayShareText(selectedTournament)}
                 </code>
                 <Button
                   size="sm"
                   variant={copied ? 'secondary' : 'default'}
-                  onClick={() => copyLink(getPlayLink(selectedTournament!.codigo))}
+                  onClick={() => copyLink(getPlayShareText(selectedTournament!))}
                   className="shrink-0"
                 >
                   {copied ? (

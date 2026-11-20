@@ -250,6 +250,10 @@ const TournamentsPage = () => {
     return `${window.location.origin}/inscribe/${codigo}`;
   };
 
+  const getInscriptionShareText = (tournament: Pick<Tournament, 'codigo' | 'nombre'>) => {
+    return `Inscripción Torneo ${tournament.nombre}\n${getInscriptionLink(tournament.codigo)}`;
+  };
+
   const requestFinalizeTournament = (tournament: Tournament) => {
     setTournamentConfirm({ type: 'finalize', tournament });
   };
@@ -335,6 +339,10 @@ const TournamentsPage = () => {
 
   const getPlayLink = (codigo: string) => {
     return `${window.location.origin}/play/${codigo}`;
+  };
+
+  const getPlayShareText = (tournament: Pick<Tournament, 'codigo' | 'nombre'>) => {
+    return `Tarjetas Torneo ${tournament.nombre}\n${getPlayLink(tournament.codigo)}`;
   };
 
   const addCategory = () => {
@@ -437,7 +445,7 @@ const TournamentsPage = () => {
     },
     {
       label: 'Link Inscripción',
-      onClick: (tournament) => copyLink(getInscriptionLink(tournament.codigo)),
+      onClick: (tournament) => copyLink(getInscriptionShareText(tournament)),
       variant: 'secondary',
       show: (tournament) => tournament.estado === 'PENDING' || tournament.estado === 'IN_PROGRESS',
     },
@@ -454,7 +462,7 @@ const TournamentsPage = () => {
     },
     {
       label: 'Link Tarjetas',
-      onClick: (tournament) => copyLink(getPlayLink(tournament.codigo)),
+      onClick: (tournament) => copyLink(getPlayShareText(tournament)),
       variant: 'secondary',
       show: (tournament) => tournament.estado === 'IN_PROGRESS',
     },
@@ -977,13 +985,13 @@ const TournamentsPage = () => {
               <p style={{ color: '#7f8c8d', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
                 Comparte este link con los jugadores para inscribirse:
               </p>
-              <div style={{ backgroundColor: '#f8f9fa', padding: '1rem', borderRadius: '6px', marginBottom: '0.5rem', wordBreak: 'break-all' }}>
+              <div style={{ backgroundColor: '#f8f9fa', padding: '1rem', borderRadius: '6px', marginBottom: '0.5rem', wordBreak: 'break-all', whiteSpace: 'pre-line' }}>
                 <code style={{ fontSize: '0.9rem', color: '#2c3e50' }}>
-                  {getInscriptionLink(createdTournament.codigo)}
+                  {getInscriptionShareText(createdTournament)}
                 </code>
               </div>
               <button 
-                onClick={() => copyLink(getInscriptionLink(createdTournament.codigo))} 
+                onClick={() => copyLink(getInscriptionShareText(createdTournament))} 
                 className="btn btn-secondary"
               >
                 Copiar Link de Inscripción
@@ -1018,14 +1026,15 @@ const TournamentsPage = () => {
               padding: '1rem', 
               borderRadius: '6px', 
               marginBottom: '1rem',
-              wordBreak: 'break-all'
+              wordBreak: 'break-all',
+              whiteSpace: 'pre-line'
             }}>
               <code style={{ fontSize: '1rem', color: '#2c3e50' }}>
-                {getPlayLink(selectedTournamentForLink.codigo)}
+                {getPlayShareText(selectedTournamentForLink)}
               </code>
             </div>
             <button 
-              onClick={() => copyLink(getPlayLink(selectedTournamentForLink.codigo))} 
+              onClick={() => copyLink(getPlayShareText(selectedTournamentForLink))} 
               className="btn btn-primary"
               style={{ marginBottom: '1rem' }}
             >
