@@ -59,6 +59,9 @@ interface TableProps<T> {
   actions?: TableAction<T>[];
   emptyMessage?: string;
   getRowKey?: (row: T, index: number) => string | number;
+  /** Índice de columna ordenada al abrir la tabla */
+  defaultSortColumn?: number;
+  defaultSortDirection?: 'asc' | 'desc';
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -72,9 +75,13 @@ function Table<T>({
   actions,
   emptyMessage = 'No hay datos disponibles',
   getRowKey,
+  defaultSortColumn,
+  defaultSortDirection = 'asc',
 }: TableProps<T>) {
-  const [sortColumn, setSortColumn] = useState<number | null>(null);
-  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const [sortColumn, setSortColumn] = useState<number | null>(defaultSortColumn ?? null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(
+    defaultSortColumn !== undefined ? defaultSortDirection : null
+  );
 
   const getKey = (row: T, index: number): string | number => {
     if (getRowKey) return getRowKey(row, index);
@@ -111,11 +118,10 @@ function Table<T>({
       if (typeof aValue === 'number' && typeof bValue === 'number') {
         return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
       }
-      const aStr = String(aValue).toLowerCase();
-      const bStr = String(bValue).toLowerCase();
-      if (aStr < bStr) return sortDirection === 'asc' ? -1 : 1;
-      if (aStr > bStr) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
+      const aStr = String(aValue);
+      const bStr = String(bValue);
+      const cmp = aStr.localeCompare(bStr, 'es', { sensitivity: 'accent' });
+      return sortDirection === 'asc' ? cmp : -cmp;
     });
   }, [data, sortColumn, sortDirection, columns]);
 

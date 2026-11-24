@@ -169,7 +169,10 @@ const FrutalesLeaderboardPage = () => {
   };
 
   const handleRemoveInscription = async (row: FrutalesScore) => {
-    if (!confirm(`¿Dar de baja a ${row.playerName} de este torneo?`)) return;
+    const message = row.scorecardId
+      ? `¿Dar de baja a ${row.playerName} de este torneo? Se eliminará también su tarjeta.`
+      : `¿Dar de baja a ${row.playerName} de este torneo?`;
+    if (!confirm(message)) return;
     const entry = inscriptions.find(i => i.player.id === row.playerId);
     if (!entry) {
       setError('No se encontró la inscripción del jugador');
@@ -443,10 +446,6 @@ const FrutalesLeaderboardPage = () => {
     {
       label: 'Dar de baja',
       onClick: (row) => {
-        if (row.scorecardId) {
-          setError('No se puede dar de baja porque ya tiene tarjeta creada');
-          return;
-        }
         handleRemoveInscription(row);
       },
       variant: 'danger',

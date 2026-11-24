@@ -292,7 +292,14 @@ const PlayersPage = () => {
         )}
       </div>
 
-      <Table data={filteredPlayers} columns={columns} onEdit={handleEdit} onDelete={canDelete ? handleDelete : undefined} />
+      <Table
+        data={filteredPlayers}
+        columns={columns}
+        defaultSortColumn={0}
+        defaultSortDirection="asc"
+        onEdit={handleEdit}
+        onDelete={canDelete ? handleDelete : undefined}
+      />
 
       {/* Modal editar/crear jugador */}
       <Modal

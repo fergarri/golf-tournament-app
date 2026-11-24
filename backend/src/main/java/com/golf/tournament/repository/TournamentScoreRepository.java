@@ -23,4 +23,8 @@ public interface TournamentScoreRepository extends JpaRepository<TournamentScore
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM TournamentScore ts WHERE ts.tournament.id = :tournamentId")
     void deleteAllByTournamentId(@Param("tournamentId") Long tournamentId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM TournamentScore ts WHERE ts.scorecard.id = :scorecardId")
+    void deleteByScorecardId(@Param("scorecardId") Long scorecardId);
 }

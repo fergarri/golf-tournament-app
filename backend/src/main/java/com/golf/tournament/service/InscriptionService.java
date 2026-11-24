@@ -26,6 +26,8 @@ public class InscriptionService {
     private final PlayerRepository playerRepository;
     private final TournamentInscriptionRepository inscriptionRepository;
     private final ScorecardRepository scorecardRepository;
+    private final HoleScoreRepository holeScoreRepository;
+    private final TournamentScoreRepository tournamentScoreRepository;
     private final ScorecardService scorecardService;
     private final CurrentUserProvider currentUserProvider;
 
@@ -131,13 +133,16 @@ public class InscriptionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Inscription", "id", inscriptionId));
         currentUserProvider.assertClubAccess(inscription.getTournament().getCourse().getId());
 
-        boolean hasScorecard = scorecardRepository.existsByTournamentIdAndPlayerId(
+        scorecardRepository.findByTournamentIdAndPlayerId(
                 inscription.getTournament().getId(),
                 inscription.getPlayer().getId()
-        );
-        if (hasScorecard) {
-            throw new BadRequestException("No se puede dar de baja al jugador porque ya tiene tarjeta creada");
-        }
+        ).ifPresent(scorecard -> {
+            Long scorecardId = scorecard.getId();
+            tournamentScoreRepository.deleteByScorecardId(scorecardId);
+            holeScoreRepository.deleteByScorecardId(scorecardId);
+            scorecardRepository.deleteById(scorecardId);
+            log.info("Tarjeta {} eliminada físicamente al dar de baja la inscripción {}", scorecardId, inscriptionId);
+        });
         inscriptionRepository.deleteById(inscriptionId);
         log.info("Inscripción eliminada: {}", inscriptionId);
     }

@@ -790,10 +790,6 @@ const TournamentLeaderboardPage = () => {
     {
       label: 'Dar de baja',
       onClick: (row) => {
-        if (row.scorecardId) {
-          setError('No se puede dar de baja porque ya tiene tarjeta creada');
-          return;
-        }
         handleRemoveInscription(row);
       },
       variant: 'danger',
@@ -1213,6 +1209,7 @@ const TournamentLeaderboardPage = () => {
           {confirmDialog?.kind === 'removeInscription' && (
             <>
               ¿Dar de baja a <strong>{confirmDialog.entry.playerName}</strong> de este torneo?
+              {confirmDialog.entry.scorecardId ? ' Se eliminará también su tarjeta.' : ''}
             </>
           )}
           {confirmDialog?.kind === 'disqualify' && (
